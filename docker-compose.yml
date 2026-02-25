@@ -6,11 +6,12 @@ services:
     container_name: sportstock-db
     restart: unless-stopped
     ports:
-      - "6432:5432"
+      - "${DB_PORT}:5432"
     environment:
       POSTGRES_DB: sportstock
       POSTGRES_USER: sportstock
       POSTGRES_PASSWORD: ${DB_PASSWORD:-localdev}
+      DB_PORT: ${DB_PORT:-5432}
     env_file: .env
     volumes:
       - postgres-data:/var/lib/postgresql/data
