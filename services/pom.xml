@@ -15,6 +15,7 @@
 
   <modules>
     <!-- services go here later -->
+    <module>user-authentication</module>
   </modules>
 
 </project>
