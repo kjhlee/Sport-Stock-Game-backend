@@ -15,6 +15,7 @@
 
   <modules>
     <!-- services go here later -->
+    <module>stock-market</module>
   </modules>
 
 </project>
