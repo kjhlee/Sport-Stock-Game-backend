@@ -8,6 +8,7 @@ import com.example.user_authentication.security.SecurityConfig;
 
 @Service
 public class RegisterAccountService {
+    
     private final RegisterAccountRepo accountRepo;
     private final SecurityConfig passwordEncoder;
 
