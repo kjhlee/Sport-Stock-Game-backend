@@ -80,13 +80,13 @@ public class Athlete {
     @Column(name = "birth_city", length = 100)
     private String birthCity;
 
-    @Column(name = "birth_state", length = 10)
+    @Column(name = "birth_state", length = 15)
     private String birthState;
 
     @Column(name = "birth_country", length = 50)
     private String birthCountry;
 
-    @Column(name = "college_espn_id", length = 10)
+    @Column(name = "college_espn_id", length = 20)
     private String collegeEspnId;
 
     @Column(name = "college_name", length = 100)
