@@ -7,25 +7,37 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.user_authentication.DTO.RegisterRequest;
+import com.example.user_authentication.service.LoginService;
 import com.example.user_authentication.service.RegisterAccountService;
 
 @RestController
-@RequestMapping("/api/register")
+@RequestMapping("/api")
 public class RegisterController {
     
     private RegisterAccountService accountService;
+    private LoginService loginService;
 
-    public RegisterController(RegisterAccountService accountService) {
+    public RegisterController(RegisterAccountService accountService, LoginService loginService) {
         this.accountService = accountService;
+        this.loginService = loginService;
     }
     
-    @PostMapping
+    @PostMapping("/register")
     public ResponseEntity<String> registerAccount(@RequestBody RegisterRequest request) {
         try {
             accountService.registerAccount(request.getEmail(), request.getPassword());
             return ResponseEntity.ok("Account registered successfully");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+    @PostMapping("/login")
+    public ResponseEntity<String> login(@RequestBody RegisterRequest request) {
+        try {
+            loginService.login(request.getEmail(), request.getPassword());
+            return ResponseEntity.ok("Login successful");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());    
         }
     }
 }
