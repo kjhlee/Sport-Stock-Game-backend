@@ -3,6 +3,7 @@ package com.sportstock.ingestion.service;
 import com.sportstock.ingestion.util.RateLimiter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -19,6 +20,7 @@ public class IngestionOrchestrationService {
     private final EventSummaryIngestionService eventSummaryIngestionService;
     private final RateLimiter rateLimiter;
 
+    @Async("ingestionExecutor")
     public void runFoundationSync(Integer seasonYear, Integer seasonType, Integer week) {
         log.info("Starting foundation sync for season {} type {} week {}", seasonYear, seasonType, week);
         eventIngestionService.ingestScoreboard(seasonYear, seasonType, week);
@@ -26,6 +28,7 @@ public class IngestionOrchestrationService {
         log.info("Foundation sync complete");
     }
 
+    @Async("ingestionExecutor")
     public void runWeeklySync(Integer seasonYear, Integer seasonType, Integer week) {
         log.info("Starting weekly sync for season {} type {} week {}", seasonYear, seasonType, week);
         eventIngestionService.ingestScoreboard(seasonYear, seasonType, week);
@@ -38,6 +41,7 @@ public class IngestionOrchestrationService {
         log.info("Weekly sync complete: processed {} events", events.size());
     }
 
+    @Async("ingestionExecutor")
     public void runFullSync(
             Integer seasonYear,
             Integer seasonType,
@@ -53,7 +57,7 @@ public class IngestionOrchestrationService {
 
         var teams = teamIngestionService.listTeams();
         for (var team : teams) {
-            teamIngestionService.ingestTeamDetail(team.getEspnId());
+            teamIngestionService.ingestTeamDetail(team.getEspnId(), seasonYear);
             rateLimiter.pause();
         }
 

@@ -16,7 +16,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -55,7 +54,7 @@ public class TeamIngestionService {
     }
 
     @Transactional
-    public void ingestTeamDetail(String teamEspnId) {
+    public void ingestTeamDetail(String teamEspnId, Integer seasonYear) {
         String json = espnApiClient.fetchTeamDetail(teamEspnId);
         JsonNode root = JsonNodeUtils.parseJson(json);
         JsonNode teamNode = root.path("team");
@@ -68,15 +67,15 @@ public class TeamIngestionService {
         TeamMapper.applyDetailFields(teamNode, team);
         teamRepository.save(team);
 
-        upsertRecords(teamNode, team);
+        upsertRecords(teamNode, team, seasonYear);
         log.info("Ingested detail for team {} ({})", team.getDisplayName(), teamEspnId);
     }
 
     @Transactional
-    public void ingestAllTeamDetails() {
+    public void ingestAllTeamDetails(Integer seasonYear) {
         List<Team> teams = teamRepository.findAllByOrderByDisplayNameAsc();
         for (Team team : teams) {
-            ingestTeamDetail(team.getEspnId());
+            ingestTeamDetail(team.getEspnId(), seasonYear);
             rateLimiter.pause();
         }
         log.info("Ingested details for {} teams", teams.size());
@@ -91,6 +90,18 @@ public class TeamIngestionService {
                 .orElseThrow(() -> new EntityNotFoundException("Team not found with ESPN ID: " + teamEspnId));
     }
 
+    public List<TeamRecord> listRecordsByTeam(String teamEspnId, Integer seasonYear) {
+        Team team = getTeamByEspnId(teamEspnId);
+        return teamRecordRepository.findByTeamIdAndSeasonYear(team.getId(), seasonYear);
+    }
+
+    public TeamRecord getRecord(String teamEspnId, Integer seasonYear, String recordType) {
+        Team team = getTeamByEspnId(teamEspnId);
+        return teamRecordRepository.findByTeamIdAndSeasonYearAndRecordType(team.getId(), seasonYear, recordType)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Record not found for team " + teamEspnId + " season " + seasonYear + " type " + recordType));
+    }
+
     private Team upsertTeamFromNode(JsonNode teamNode) {
         String espnId = teamNode.path("id").asText();
         Team team = teamRepository.findByEspnId(espnId).orElseGet(Team::new);
@@ -98,13 +109,12 @@ public class TeamIngestionService {
         return teamRepository.save(team);
     }
 
-    private void upsertRecords(JsonNode teamNode, Team team) {
+    private void upsertRecords(JsonNode teamNode, Team team, Integer seasonYear) {
         JsonNode items = teamNode.path("record").path("items");
         if (!items.isArray()) {
             return;
         }
 
-        int seasonYear = LocalDate.now().getYear();
         for (JsonNode item : items) {
             String recordType = item.path("type").asText();
             TeamRecord record = teamRecordRepository

@@ -1,6 +1,7 @@
 package com.sportstock.ingestion.controller;
 
 import com.sportstock.ingestion.entity.Team;
+import com.sportstock.ingestion.entity.TeamRecord;
 import com.sportstock.ingestion.service.RosterIngestionService;
 import com.sportstock.ingestion.service.TeamIngestionService;
 import jakarta.validation.constraints.Max;
@@ -41,16 +42,19 @@ public class TeamIngestionController {
     }
 
     @PostMapping("/sync/teams/details")
-    public ResponseEntity<Map<String, Object>> syncAllTeamDetails() {
-        teamIngestionService.ingestAllTeamDetails();
+    public ResponseEntity<Map<String, Object>> syncAllTeamDetails(
+            @RequestParam @Min(2000) @Max(2100) Integer seasonYear
+    ) {
+        teamIngestionService.ingestAllTeamDetails(seasonYear);
         return ResponseEntity.accepted().body(accepted("allTeamDetailsSync"));
     }
 
     @PostMapping("/sync/teams/{teamEspnId}")
     public ResponseEntity<Map<String, Object>> syncTeamDetail(
-            @PathVariable @NotBlank @Pattern(regexp = ESPN_ID_PATTERN) String teamEspnId
+            @PathVariable @NotBlank @Pattern(regexp = ESPN_ID_PATTERN) String teamEspnId,
+            @RequestParam @Min(2000) @Max(2100) Integer seasonYear
     ) {
-        teamIngestionService.ingestTeamDetail(teamEspnId);
+        teamIngestionService.ingestTeamDetail(teamEspnId, seasonYear);
         return ResponseEntity.accepted().body(accepted("teamDetailSync"));
     }
 
@@ -74,6 +78,23 @@ public class TeamIngestionController {
             @PathVariable @NotBlank @Pattern(regexp = ESPN_ID_PATTERN) String teamEspnId
     ) {
         return ResponseEntity.ok(teamIngestionService.getTeamByEspnId(teamEspnId));
+    }
+
+    @GetMapping("/teams/{teamEspnId}/records")
+    public ResponseEntity<List<TeamRecord>> listTeamRecords(
+            @PathVariable @NotBlank @Pattern(regexp = ESPN_ID_PATTERN) String teamEspnId,
+            @RequestParam @Min(2000) @Max(2100) Integer seasonYear
+    ) {
+        return ResponseEntity.ok(teamIngestionService.listRecordsByTeam(teamEspnId, seasonYear));
+    }
+
+    @GetMapping("/teams/{teamEspnId}/records/{recordType}")
+    public ResponseEntity<TeamRecord> getTeamRecord(
+            @PathVariable @NotBlank @Pattern(regexp = ESPN_ID_PATTERN) String teamEspnId,
+            @PathVariable @NotBlank String recordType,
+            @RequestParam @Min(2000) @Max(2100) Integer seasonYear
+    ) {
+        return ResponseEntity.ok(teamIngestionService.getRecord(teamEspnId, seasonYear, recordType));
     }
 
     private Map<String, Object> accepted(String jobName) {
