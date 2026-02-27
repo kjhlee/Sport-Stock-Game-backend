@@ -8,13 +8,19 @@ import com.sportstock.ingestion.exception.EntityNotFoundException;
 import com.sportstock.ingestion.exception.IngestionException;
 import com.sportstock.ingestion.mapper.JsonNodeUtils;
 import com.sportstock.ingestion.repo.AthleteRepository;
-import com.sportstock.ingestion.util.RateLimiter;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static com.sportstock.ingestion.mapper.JsonNodeUtils.textOrNull;
 
@@ -23,10 +29,12 @@ import static com.sportstock.ingestion.mapper.JsonNodeUtils.textOrNull;
 @Slf4j
 public class AthleteIngestionService {
 
+    private static final int DB_BATCH_SIZE = 500;
+
     private final EspnApiClient espnApiClient;
     private final AthleteRepository athleteRepository;
-    private final RateLimiter rateLimiter;
     private final EspnApiProperties espnApiProperties;
+    private final EntityManager entityManager;
 
 
     @Transactional
@@ -36,17 +44,31 @@ public class AthleteIngestionService {
             throw new IngestionException("Requested athlete sync exceeds max allowed rows");
         }
 
-        int totalIngested = 0;
+        long jobStartNanos = System.nanoTime();
+        long totalFetchNanos = 0L;
+        long totalDbNanos = 0L;
+
+        int totalSeen = 0;
+        int totalInserted = 0;
+        int totalUpdated = 0;
+        int totalUnchanged = 0;
 
         for (int page = 1; page <= pageCount; page++) {
+            long pageStartNanos = System.nanoTime();
+
+            long fetchStartNanos = System.nanoTime();
             String json = espnApiClient.fetchAthletes(pageSize, page);
             JsonNode root = JsonNodeUtils.parseJson(json);
+            long pageFetchNanos = System.nanoTime() - fetchStartNanos;
+            totalFetchNanos += pageFetchNanos;
+
             JsonNode items = root.path("items");
 
             if (!items.isArray()) {
                 throw new IngestionException("Unexpected ESPN athletes response structure on page " + page);
             }
 
+            LinkedHashSet<String> espnIds = new LinkedHashSet<>();
             for (JsonNode item : items) {
                 String ref = textOrNull(item, "$ref");
                 if (ref == null) {
@@ -56,24 +78,89 @@ public class AthleteIngestionService {
                 if (espnId == null) {
                     continue;
                 }
-
-                Athlete athlete = athleteRepository.findByEspnId(espnId).orElseGet(() -> {
-                    Athlete a = new Athlete();
-                    a.setEspnId(espnId);
-                    a.setFullName(espnId);
-                    return a;
-                });
-
-                if (athlete.getIngestedAt() == null) {
-                    athlete.setIngestedAt(java.time.Instant.now());
-                }
-                athlete.setUpdatedAt(java.time.Instant.now());
-                athleteRepository.save(athlete);
-                totalIngested++;
+                espnIds.add(espnId);
             }
-            rateLimiter.pause();
+
+            totalSeen += espnIds.size();
+            if (espnIds.isEmpty()) {
+                log.info("Athlete page {} processed: seen=0 inserted=0 updated=0 unchanged=0 durationMs={}",
+                        page, millisSince(pageStartNanos));
+                continue;
+            }
+
+            long dbStartNanos = System.nanoTime();
+            Map<String, Athlete> existingByEspnId = athleteRepository.findByEspnIdIn(espnIds).stream()
+                    .collect(Collectors.toMap(Athlete::getEspnId, Function.identity()));
+
+            List<Athlete> toSave = new ArrayList<>(espnIds.size());
+            int pageInserted = 0;
+            int pageUpdated = 0;
+            int pageUnchanged = 0;
+
+            for (String espnId : espnIds) {
+                Athlete existing = existingByEspnId.get(espnId);
+                if (existing == null) {
+                    Instant now = Instant.now();
+                    Athlete athlete = new Athlete();
+                    athlete.setEspnId(espnId);
+                    athlete.setFullName(espnId);
+                    athlete.setIngestedAt(now);
+                    athlete.setUpdatedAt(now);
+                    toSave.add(athlete);
+                    pageInserted++;
+                    continue;
+                }
+
+                boolean changed = false;
+                if (existing.getIngestedAt() == null) {
+                    existing.setIngestedAt(Instant.now());
+                    changed = true;
+                }
+                if (existing.getFullName() == null || existing.getFullName().isBlank()) {
+                    existing.setFullName(espnId);
+                    changed = true;
+                }
+
+                if (changed) {
+                    existing.setUpdatedAt(Instant.now());
+                    toSave.add(existing);
+                    pageUpdated++;
+                } else {
+                    pageUnchanged++;
+                }
+            }
+
+            saveInChunks(toSave);
+            long pageDbNanos = System.nanoTime() - dbStartNanos;
+            totalDbNanos += pageDbNanos;
+
+            totalInserted += pageInserted;
+            totalUpdated += pageUpdated;
+            totalUnchanged += pageUnchanged;
+
+            log.info(
+                    "Athlete page {} processed: seen={} inserted={} updated={} unchanged={} fetchMs={} dbMs={} durationMs={}",
+                    page,
+                    espnIds.size(),
+                    pageInserted,
+                    pageUpdated,
+                    pageUnchanged,
+                    nanosToMillis(pageFetchNanos),
+                    nanosToMillis(pageDbNanos),
+                    millisSince(pageStartNanos)
+            );
         }
-        log.info("Ingested {} athlete references across {} pages", totalIngested, pageCount);
+        log.info(
+                "Athlete sync complete: pages={} seen={} inserted={} updated={} unchanged={} totalFetchMs={} totalDbMs={} totalDurationMs={}",
+                pageCount,
+                totalSeen,
+                totalInserted,
+                totalUpdated,
+                totalUnchanged,
+                nanosToMillis(totalFetchNanos),
+                nanosToMillis(totalDbNanos),
+                millisSince(jobStartNanos)
+        );
     }
 
     public List<Athlete> listAthletes(String positionAbbreviation) {
@@ -96,6 +183,26 @@ public class AthleteIngestionService {
         String tail = ref.substring(idx + "/athletes/".length());
         int q = tail.indexOf('?');
         return q > 0 ? tail.substring(0, q) : tail;
+    }
+
+    private void saveInChunks(List<Athlete> athletes) {
+        if (athletes.isEmpty()) {
+            return;
+        }
+        for (int start = 0; start < athletes.size(); start += DB_BATCH_SIZE) {
+            int end = Math.min(start + DB_BATCH_SIZE, athletes.size());
+            athleteRepository.saveAll(athletes.subList(start, end));
+            entityManager.flush();
+            entityManager.clear();
+        }
+    }
+
+    private long millisSince(long startNanos) {
+        return nanosToMillis(System.nanoTime() - startNanos);
+    }
+
+    private long nanosToMillis(long nanos) {
+        return nanos / 1_000_000L;
     }
 
 }

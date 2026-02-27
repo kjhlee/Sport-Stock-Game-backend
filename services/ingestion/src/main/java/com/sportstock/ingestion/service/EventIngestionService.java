@@ -35,11 +35,11 @@ public class EventIngestionService {
 
     @Transactional
     public void ingestScoreboard(Integer seasonYear, Integer seasonType, Integer week) {
-        seasonIngestionService.ingestSeasonAndWeeks(seasonYear, seasonType, week);
-
         String json = espnApiClient.fetchScoreboard(seasonYear, seasonType, week);
         JsonNode root = JsonNodeUtils.parseJson(json);
         JsonNode events = root.path("events");
+
+        seasonIngestionService.ingestSeasonAndWeeksFromScoreboard(seasonYear, seasonType, root);
 
         if (!events.isArray()) {
             throw new IngestionException("Unexpected ESPN scoreboard response structure");

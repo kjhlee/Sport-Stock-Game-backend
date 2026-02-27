@@ -11,15 +11,29 @@ import org.springframework.stereotype.Component;
 public class RateLimiter {
 
     private final EspnApiProperties espnApiProperties;
+    private long nextAllowedAtMs = 0L;
 
-    public void pause() {
+    public synchronized void acquirePermit() {
         int delayMs = espnApiProperties.getRateLimitDelayMs();
-        if (delayMs > 0) {
-            try {
-                Thread.sleep(delayMs);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
+        if (delayMs <= 0) {
+            return;
+        }
+
+        long now = System.currentTimeMillis();
+        long waitMs = nextAllowedAtMs - now;
+        if (waitMs > 0) {
+            sleep(waitMs);
+            now = System.currentTimeMillis();
+        }
+        nextAllowedAtMs = now + delayMs;
+    }
+
+    private void sleep(long delayMs) {
+        try {
+            Thread.sleep(delayMs);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrupted while waiting for ESPN rate limit permit", e);
         }
     }
 }

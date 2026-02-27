@@ -1,6 +1,9 @@
 package com.sportstock.ingestion.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.sportstock.ingestion.client.EspnApiClient;
 import com.sportstock.ingestion.entity.Athlete;
 import com.sportstock.ingestion.entity.BoxscoreTeamStat;
@@ -28,6 +31,8 @@ import java.util.List;
 @RequiredArgsConstructor
 @Slf4j
 public class EventSummaryIngestionService {
+
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final EspnApiClient espnApiClient;
     private final EventRepository eventRepository;
@@ -160,16 +165,15 @@ public class EventSummaryIngestionService {
         if (!keys.isArray() || !values.isArray()) {
             return "{}";
         }
-        StringBuilder sb = new StringBuilder("{");
+        ObjectNode stats = OBJECT_MAPPER.createObjectNode();
         int len = Math.min(keys.size(), values.size());
         for (int i = 0; i < len; i++) {
-            if (i > 0) {
-                sb.append(",");
-            }
-            sb.append("\"").append(keys.get(i).asText()).append("\":");
-            sb.append("\"").append(values.get(i).asText()).append("\"");
+            stats.put(keys.get(i).asText(), values.get(i).asText());
         }
-        sb.append("}");
-        return sb.toString();
+        try {
+            return OBJECT_MAPPER.writeValueAsString(stats);
+        } catch (JsonProcessingException e) {
+            throw new IngestionException("Failed to serialize player stats JSON", e);
+        }
     }
 }

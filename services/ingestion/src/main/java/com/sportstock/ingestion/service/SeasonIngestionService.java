@@ -1,11 +1,9 @@
 package com.sportstock.ingestion.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.sportstock.ingestion.client.EspnApiClient;
 import com.sportstock.ingestion.entity.Season;
 import com.sportstock.ingestion.entity.SeasonWeek;
 import com.sportstock.ingestion.exception.IngestionException;
-import com.sportstock.ingestion.mapper.JsonNodeUtils;
 import com.sportstock.ingestion.mapper.SeasonMapper;
 import com.sportstock.ingestion.repo.SeasonRepository;
 import com.sportstock.ingestion.repo.SeasonWeekRepository;
@@ -19,15 +17,11 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 public class SeasonIngestionService {
 
-    private final EspnApiClient espnApiClient;
     private final SeasonRepository seasonRepository;
     private final SeasonWeekRepository seasonWeekRepository;
 
     @Transactional
-    public void ingestSeasonAndWeeks(Integer seasonYear, Integer seasonType, Integer week) {
-        String json = espnApiClient.fetchScoreboard(seasonYear, seasonType, week);
-        JsonNode root = JsonNodeUtils.parseJson(json);
-
+    public void ingestSeasonAndWeeksFromScoreboard(Integer seasonYear, Integer seasonType, JsonNode root) {
         JsonNode leagueNode = root.path("leagues").path(0);
         if (leagueNode.isMissingNode()) {
             throw new IngestionException("Unexpected ESPN scoreboard response structure");

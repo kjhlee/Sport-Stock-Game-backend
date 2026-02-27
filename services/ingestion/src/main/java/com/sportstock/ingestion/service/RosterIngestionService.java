@@ -14,7 +14,6 @@ import com.sportstock.ingestion.repo.AthleteRepository;
 import com.sportstock.ingestion.repo.CoachRepository;
 import com.sportstock.ingestion.repo.TeamRepository;
 import com.sportstock.ingestion.repo.TeamRosterEntryRepository;
-import com.sportstock.ingestion.util.RateLimiter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -32,7 +31,6 @@ public class RosterIngestionService {
     private final AthleteRepository athleteRepository;
     private final TeamRosterEntryRepository teamRosterEntryRepository;
     private final CoachRepository coachRepository;
-    private final RateLimiter rateLimiter;
 
     @Transactional
     public void ingestTeamRoster(String teamEspnId, Integer seasonYear, Integer rosterLimit) {
@@ -109,7 +107,6 @@ public class RosterIngestionService {
 
         for (Team team : teams) {
             ingestTeamRoster(team.getEspnId(), seasonYear, rosterLimit);
-            rateLimiter.pause();
         }
         log.info("Ingested rosters for {} teams", teams.size());
     }
