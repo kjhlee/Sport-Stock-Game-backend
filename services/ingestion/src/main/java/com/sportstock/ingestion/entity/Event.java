@@ -4,9 +4,6 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
-
 import java.math.BigDecimal;
 import java.time.Instant;
 
@@ -79,10 +76,6 @@ public class Event {
 
     @Column(name = "note_headline", length = 200)
     private String noteHeadline;
-
-    @Column(name = "raw_json", columnDefinition = "jsonb")
-    @JdbcTypeCode(SqlTypes.JSON)
-    private String rawJson;
 
     @Column(name = "ingested_at", nullable = false)
     private Instant ingestedAt;

@@ -14,15 +14,15 @@ import com.sportstock.ingestion.repo.AthleteRepository;
 import com.sportstock.ingestion.repo.CoachRepository;
 import com.sportstock.ingestion.repo.TeamRepository;
 import com.sportstock.ingestion.repo.TeamRosterEntryRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class RosterIngestionService {
 
@@ -32,9 +32,32 @@ public class RosterIngestionService {
     private final TeamRosterEntryRepository teamRosterEntryRepository;
     private final CoachRepository coachRepository;
     private final JsonPayloadCodec jsonPayloadCodec;
+    private final TransactionTemplate transactionTemplate;
+
+    public RosterIngestionService(
+            EspnApiClient espnApiClient,
+            TeamRepository teamRepository,
+            AthleteRepository athleteRepository,
+            TeamRosterEntryRepository teamRosterEntryRepository,
+            CoachRepository coachRepository,
+            JsonPayloadCodec jsonPayloadCodec,
+            TransactionTemplate transactionTemplate
+    ) {
+        this.espnApiClient = espnApiClient;
+        this.teamRepository = teamRepository;
+        this.athleteRepository = athleteRepository;
+        this.teamRosterEntryRepository = teamRosterEntryRepository;
+        this.coachRepository = coachRepository;
+        this.jsonPayloadCodec = jsonPayloadCodec;
+        this.transactionTemplate = transactionTemplate;
+    }
 
     @Transactional
     public void ingestTeamRoster(String teamEspnId, Integer seasonYear, Integer rosterLimit) {
+        ingestTeamRosterInternal(teamEspnId, seasonYear, rosterLimit);
+    }
+
+    private void ingestTeamRosterInternal(String teamEspnId, Integer seasonYear, Integer rosterLimit) {
         Team team = teamRepository.findByEspnId(teamEspnId)
                 .orElseThrow(() -> new EntityNotFoundException("Team not found with ESPN ID: " + teamEspnId));
 
@@ -94,7 +117,6 @@ public class RosterIngestionService {
         log.info("Ingested {} roster entries for team {} ({})", count, team.getDisplayName(), teamEspnId);
     }
 
-    @Transactional
     public void ingestAllRosters(Integer seasonYear, Integer rosterLimit, List<String> teamEspnIds) {
         List<Team> teams;
         if (teamEspnIds != null && !teamEspnIds.isEmpty()) {
@@ -106,10 +128,22 @@ public class RosterIngestionService {
             teams = teamRepository.findAllByOrderByDisplayNameAsc();
         }
 
-        for (Team team : teams) {
-            ingestTeamRoster(team.getEspnId(), seasonYear, rosterLimit);
-        }
-        log.info("Ingested rosters for {} teams", teams.size());
-    }
+        int success = 0;
+        int failed = 0;
+        List<String> failedIds = new ArrayList<>();
 
+        for (Team team : teams) {
+            try {
+                transactionTemplate.executeWithoutResult(status ->
+                        ingestTeamRosterInternal(team.getEspnId(), seasonYear, rosterLimit));
+                success++;
+            } catch (Exception e) {
+                failed++;
+                failedIds.add(team.getEspnId());
+                log.error("Failed to ingest roster for team {}: {}", team.getEspnId(), e.getMessage());
+            }
+        }
+        log.info("Ingested rosters for {} teams ({} failed{})",
+                success, failed, failedIds.isEmpty() ? "" : ", IDs: " + failedIds);
+    }
 }

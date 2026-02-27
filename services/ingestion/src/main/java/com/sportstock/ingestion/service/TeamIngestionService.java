@@ -10,15 +10,15 @@ import com.sportstock.ingestion.mapper.JsonPayloadCodec;
 import com.sportstock.ingestion.mapper.TeamMapper;
 import com.sportstock.ingestion.repo.TeamRecordRepository;
 import com.sportstock.ingestion.repo.TeamRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class TeamIngestionService {
 
@@ -26,6 +26,21 @@ public class TeamIngestionService {
     private final TeamRepository teamRepository;
     private final TeamRecordRepository teamRecordRepository;
     private final JsonPayloadCodec jsonPayloadCodec;
+    private final TransactionTemplate transactionTemplate;
+
+    public TeamIngestionService(
+            EspnApiClient espnApiClient,
+            TeamRepository teamRepository,
+            TeamRecordRepository teamRecordRepository,
+            JsonPayloadCodec jsonPayloadCodec,
+            TransactionTemplate transactionTemplate
+    ) {
+        this.espnApiClient = espnApiClient;
+        this.teamRepository = teamRepository;
+        this.teamRecordRepository = teamRecordRepository;
+        this.jsonPayloadCodec = jsonPayloadCodec;
+        this.transactionTemplate = transactionTemplate;
+    }
 
     @Transactional
     public void ingestTeams() {
@@ -54,6 +69,10 @@ public class TeamIngestionService {
 
     @Transactional
     public void ingestTeamDetail(String teamEspnId, Integer seasonYear) {
+        ingestTeamDetailInternal(teamEspnId, seasonYear);
+    }
+
+    private void ingestTeamDetailInternal(String teamEspnId, Integer seasonYear) {
         String json = espnApiClient.fetchTeamDetail(teamEspnId);
         JsonNode root = jsonPayloadCodec.parseJson(json);
         JsonNode teamNode = root.path("team");
@@ -70,13 +89,25 @@ public class TeamIngestionService {
         log.info("Ingested detail for team {} ({})", team.getDisplayName(), teamEspnId);
     }
 
-    @Transactional
     public void ingestAllTeamDetails(Integer seasonYear) {
         List<Team> teams = teamRepository.findAllByOrderByDisplayNameAsc();
+        int success = 0;
+        int failed = 0;
+        List<String> failedIds = new ArrayList<>();
+
         for (Team team : teams) {
-            ingestTeamDetail(team.getEspnId(), seasonYear);
+            try {
+                transactionTemplate.executeWithoutResult(status ->
+                        ingestTeamDetailInternal(team.getEspnId(), seasonYear));
+                success++;
+            } catch (Exception e) {
+                failed++;
+                failedIds.add(team.getEspnId());
+                log.error("Failed to ingest detail for team {}: {}", team.getEspnId(), e.getMessage());
+            }
         }
-        log.info("Ingested details for {} teams", teams.size());
+        log.info("Ingested {} team details ({} failed{})",
+                success, failed, failedIds.isEmpty() ? "" : ", IDs: " + failedIds);
     }
 
     public List<Team> listTeams() {
@@ -122,5 +153,4 @@ public class TeamIngestionService {
             teamRecordRepository.save(record);
         }
     }
-
 }

@@ -22,7 +22,6 @@ CREATE TABLE player_game_stats (
     team_id BIGINT NOT NULL,
     stat_category VARCHAR(30) NOT NULL,
     stats JSONB NOT NULL,
-    raw_json JSONB,
     ingested_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT fk_player_game_stats_event FOREIGN KEY (event_id) REFERENCES events (id),
     CONSTRAINT fk_player_game_stats_athlete FOREIGN KEY (athlete_id) REFERENCES athletes (id),

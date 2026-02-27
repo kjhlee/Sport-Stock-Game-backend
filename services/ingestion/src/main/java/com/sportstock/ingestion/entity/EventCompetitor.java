@@ -4,9 +4,6 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
-
 import java.time.Instant;
 
 @Entity
@@ -49,10 +46,6 @@ public class EventCompetitor {
 
     @Column(name = "road_record", length = 20)
     private String roadRecord;
-
-    @Column(name = "raw_json", columnDefinition = "jsonb")
-    @JdbcTypeCode(SqlTypes.JSON)
-    private String rawJson;
 
     @Column(name = "ingested_at", nullable = false)
     private Instant ingestedAt;

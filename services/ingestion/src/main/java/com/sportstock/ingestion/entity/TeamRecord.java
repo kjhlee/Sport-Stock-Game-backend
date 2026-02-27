@@ -4,9 +4,6 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
-
 import java.math.BigDecimal;
 import java.time.Instant;
 
@@ -85,10 +82,6 @@ public class TeamRecord {
 
     @Column(name = "league_win_percent", precision = 7, scale = 4)
     private BigDecimal leagueWinPercent;
-
-    @Column(name = "raw_json", columnDefinition = "jsonb")
-    @JdbcTypeCode(SqlTypes.JSON)
-    private String rawJson;
 
     @Column(name = "ingested_at", nullable = false)
     private Instant ingestedAt;

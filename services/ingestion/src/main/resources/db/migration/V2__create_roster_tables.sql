@@ -24,7 +24,6 @@ CREATE TABLE team_records (
     division_losses INTEGER,
     division_ties INTEGER,
     league_win_percent DECIMAL(7,4),
-    raw_json JSONB,
     ingested_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT fk_team_records_team FOREIGN KEY (team_id) REFERENCES teams (id),

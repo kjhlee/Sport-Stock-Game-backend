@@ -22,7 +22,6 @@ CREATE TABLE events (
     status_clock DECIMAL(10,1),
     broadcast VARCHAR(100),
     note_headline VARCHAR(200),
-    raw_json JSONB,
     ingested_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -38,7 +37,6 @@ CREATE TABLE event_competitors (
     record_summary VARCHAR(20),
     home_record VARCHAR(20),
     road_record VARCHAR(20),
-    raw_json JSONB,
     ingested_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT fk_event_competitors_event FOREIGN KEY (event_id) REFERENCES events (id),
     CONSTRAINT fk_event_competitors_team FOREIGN KEY (team_id) REFERENCES teams (id),

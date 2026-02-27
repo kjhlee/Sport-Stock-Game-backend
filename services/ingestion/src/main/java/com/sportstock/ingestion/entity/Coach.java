@@ -4,9 +4,6 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
-
 import java.time.Instant;
 
 @Entity
@@ -37,10 +34,6 @@ public class Coach {
 
     @Column(name = "season_year")
     private Integer seasonYear;
-
-    @Column(name = "raw_json", columnDefinition = "jsonb")
-    @JdbcTypeCode(SqlTypes.JSON)
-    private String rawJson;
 
     @Column(name = "ingested_at", nullable = false)
     private Instant ingestedAt;

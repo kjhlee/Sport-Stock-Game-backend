@@ -44,10 +44,6 @@ public class PlayerGameStat {
     @JdbcTypeCode(SqlTypes.JSON)
     private String stats;
 
-    @Column(name = "raw_json", columnDefinition = "jsonb")
-    @JdbcTypeCode(SqlTypes.JSON)
-    private String rawJson;
-
     @Column(name = "ingested_at", nullable = false)
     private Instant ingestedAt;
 }

@@ -4,7 +4,7 @@ SET search_path TO ingestion;
 CREATE TABLE teams
 (
     id                 BIGSERIAL PRIMARY KEY,
-    espn_id            VARCHAR(10)  NOT NULL UNIQUE,
+    espn_id            VARCHAR(15)  NOT NULL UNIQUE,
     espn_uid           VARCHAR(50),
     slug               VARCHAR(100),
     abbreviation       VARCHAR(10)  NOT NULL,
@@ -18,11 +18,10 @@ CREATE TABLE teams
     is_active          BOOLEAN,
     is_all_star        BOOLEAN,
     logo_url           VARCHAR(500),
-    franchise_id       VARCHAR(10),
-    division_id        VARCHAR(10),
-    conference_id      VARCHAR(10),
+    franchise_id       VARCHAR(15),
+    division_id        VARCHAR(15),
+    conference_id      VARCHAR(15),
     standing_summary   VARCHAR(50),
-    raw_json           JSONB,
     ingested_at        TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     updated_at         TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
@@ -37,7 +36,6 @@ CREATE TABLE seasons
     season_type_id           VARCHAR(5),
     season_type_name         VARCHAR(30),
     season_type_abbreviation VARCHAR(10),
-    raw_json                 JSONB,
     ingested_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at               TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT uk_seasons_year_type UNIQUE (year, season_type_id)
@@ -83,9 +81,9 @@ CREATE TABLE athletes
     position_parent_name         VARCHAR(50),
     position_parent_abbreviation VARCHAR(10),
     birth_city                   VARCHAR(100),
-    birth_state                  VARCHAR(10),
+    birth_state                  VARCHAR(15),
     birth_country                VARCHAR(50),
-    college_espn_id              VARCHAR(10),
+    college_espn_id              VARCHAR(20),
     college_name                 VARCHAR(100),
     college_abbreviation         VARCHAR(10),
     headshot_url                 VARCHAR(500),
@@ -95,7 +93,6 @@ CREATE TABLE athletes
     status_type                  VARCHAR(30),
     hand_type                    VARCHAR(10),
     alternate_ids_sdr            VARCHAR(20),
-    raw_json                     JSONB,
     ingested_at                  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     updated_at                   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
@@ -108,7 +105,6 @@ CREATE TABLE coaches
     last_name   VARCHAR(100),
     team_id     BIGINT,
     season_year INTEGER,
-    raw_json    JSONB,
     ingested_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT fk_coaches_team FOREIGN KEY (team_id) REFERENCES teams (id),
