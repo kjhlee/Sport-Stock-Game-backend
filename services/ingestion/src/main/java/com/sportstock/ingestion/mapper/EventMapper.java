@@ -58,8 +58,7 @@ public final class EventMapper {
             }
         }
 
-        JsonNode broadcasts = node.path("competitions");
-        if (broadcasts.isMissingNode() && competition != null) {
+        if (competition != null && !competition.isMissingNode()) {
             JsonNode broadcastArray = competition.path("broadcasts");
             if (broadcastArray.isArray() && !broadcastArray.isEmpty()) {
                 JsonNode firstBroadcast = broadcastArray.get(0);
