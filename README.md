@@ -5,5 +5,4 @@
 - 
 
 ## Nuke DB/ build from root
-- docker compose -f infra/docker-compose.yml down -v 
-- docker compose -f infra/docker-compose.yml up --build -d
+- docker compose -f infra/docker-compose.yml down -v && docker compose -f infra/docker-compose.yml up --build -d

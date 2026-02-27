@@ -1,0 +1,62 @@
+package com.sportstock.ingestion.service;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class IngestionOrchestrationService {
+
+    private final TeamIngestionService teamIngestionService;
+    private final RosterIngestionService rosterIngestionService;
+    private final AthleteIngestionService athleteIngestionService;
+    private final EventIngestionService eventIngestionService;
+    private final EventSummaryIngestionService eventSummaryIngestionService;
+
+    public void runFoundationSync(Integer seasonYear, Integer seasonType, Integer week) {
+        log.info("Starting foundation sync for season {} type {} week {}", seasonYear, seasonType, week);
+        eventIngestionService.ingestScoreboard(seasonYear, seasonType, week);
+        teamIngestionService.ingestTeams();
+        log.info("Foundation sync complete");
+    }
+
+    public void runWeeklySync(Integer seasonYear, Integer seasonType, Integer week) {
+        log.info("Starting weekly sync for season {} type {} week {}", seasonYear, seasonType, week);
+        eventIngestionService.ingestScoreboard(seasonYear, seasonType, week);
+
+        var events = eventIngestionService.listEvents(seasonYear, week);
+        for (var event : events) {
+            eventSummaryIngestionService.ingestEventSummary(event.getEspnId());
+        }
+        log.info("Weekly sync complete: processed {} events", events.size());
+    }
+
+    public void runFullSync(
+            Integer seasonYear,
+            Integer seasonType,
+            Integer week,
+            Integer rosterLimit,
+            Integer athletePageSize,
+            Integer athletePageCount,
+            List<String> teamEspnIds
+    ) {
+        log.info("Starting full sync for season {} type {} week {}", seasonYear, seasonType, week);
+
+        runFoundationSync(seasonYear, seasonType, week);
+
+        var teams = teamIngestionService.listTeams();
+        for (var team : teams) {
+            teamIngestionService.ingestTeamDetail(team.getEspnId());
+        }
+
+        rosterIngestionService.ingestAllRosters(seasonYear, rosterLimit, teamEspnIds);
+        athleteIngestionService.ingestAthletes(athletePageSize, athletePageCount);
+        runWeeklySync(seasonYear, seasonType, week);
+
+        log.info("Full sync complete");
+    }
+}
