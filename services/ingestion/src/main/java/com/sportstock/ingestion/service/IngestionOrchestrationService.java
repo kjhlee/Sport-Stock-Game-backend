@@ -7,6 +7,8 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 @RequiredArgsConstructor
@@ -19,36 +21,81 @@ public class IngestionOrchestrationService {
     private final EventIngestionService eventIngestionService;
     private final EventSummaryIngestionService eventSummaryIngestionService;
 
-    private final AtomicBoolean running = new AtomicBoolean(false);
+    private final AtomicBoolean fullSyncRunning = new AtomicBoolean(false);
+    private final AtomicInteger activeWindowJobs = new AtomicInteger(0);
+    private final ConcurrentHashMap<String, AtomicBoolean> seasonWindowLocks = new ConcurrentHashMap<>();
 
-    private boolean tryAcquire(String jobName) {
-        if (!running.compareAndSet(false, true)) {
-            log.warn("Skipping {} — a sync job is already running", jobName);
+    private boolean tryAcquireWindowJob(String jobName, String seasonWindowKey) {
+        if (fullSyncRunning.get()) {
+            log.warn("Skipping {} - fullSync is running", jobName);
+            return false;
+        }
+
+        AtomicBoolean lock = seasonWindowLocks.computeIfAbsent(seasonWindowKey, ignored -> new AtomicBoolean(false));
+        if (!lock.compareAndSet(false, true)) {
+            log.warn("Skipping {} - another window job is running for {}", jobName, seasonWindowKey);
+            return false;
+        }
+
+        if (fullSyncRunning.get()) {
+            lock.set(false);
+            seasonWindowLocks.remove(seasonWindowKey, lock);
+            log.warn("Skipping {} - fullSync started while acquiring {}", jobName, seasonWindowKey);
+            return false;
+        }
+
+        activeWindowJobs.incrementAndGet();
+        return true;
+    }
+
+    private void releaseWindowJob(String seasonWindowKey) {
+        AtomicBoolean lock = seasonWindowLocks.get(seasonWindowKey);
+        if (lock != null) {
+            lock.set(false);
+            seasonWindowLocks.remove(seasonWindowKey, lock);
+        }
+        activeWindowJobs.decrementAndGet();
+    }
+
+    private boolean tryAcquireFullSync() {
+        if (!fullSyncRunning.compareAndSet(false, true)) {
+            log.warn("Skipping fullSync - another fullSync is already running");
+            return false;
+        }
+        if (activeWindowJobs.get() > 0) {
+            fullSyncRunning.set(false);
+            log.warn("Skipping fullSync - window job(s) already running: {}", activeWindowJobs.get());
             return false;
         }
         return true;
     }
 
-    private void release() {
-        running.set(false);
+    private void releaseFullSync() {
+        fullSyncRunning.set(false);
+    }
+
+    private String seasonWindowKey(Integer seasonYear, Integer seasonType, Integer week) {
+        return seasonYear + "-" + seasonType + "-" + week;
     }
 
     @Async("ingestionExecutor")
     public void runFoundationSync(Integer seasonYear, Integer seasonType, Integer week) {
-        if (!tryAcquire("foundationSync")) return;
+        String windowKey = seasonWindowKey(seasonYear, seasonType, week);
+        if (!tryAcquireWindowJob("foundationSync", windowKey)) return;
         try {
             log.info("Starting foundation sync for season {} type {} week {}", seasonYear, seasonType, week);
             eventIngestionService.ingestScoreboard(seasonYear, seasonType, week);
             teamIngestionService.ingestTeams();
             log.info("Foundation sync complete");
         } finally {
-            release();
+            releaseWindowJob(windowKey);
         }
     }
 
     @Async("ingestionExecutor")
     public void runWeeklySync(Integer seasonYear, Integer seasonType, Integer week) {
-        if (!tryAcquire("weeklySync")) return;
+        String windowKey = seasonWindowKey(seasonYear, seasonType, week);
+        if (!tryAcquireWindowJob("weeklySync", windowKey)) return;
         try {
             log.info("Starting weekly sync for season {} type {} week {}", seasonYear, seasonType, week);
             eventIngestionService.ingestScoreboard(seasonYear, seasonType, week);
@@ -59,7 +106,7 @@ public class IngestionOrchestrationService {
             }
             log.info("Weekly sync complete: processed {} events", events.size());
         } finally {
-            release();
+            releaseWindowJob(windowKey);
         }
     }
 
@@ -73,7 +120,7 @@ public class IngestionOrchestrationService {
             Integer athletePageCount,
             List<String> teamEspnIds
     ) {
-        if (!tryAcquire("fullSync")) return;
+        if (!tryAcquireFullSync()) return;
         try {
             log.info("Starting full sync for season {} type {} week {}", seasonYear, seasonType, week);
 
@@ -101,7 +148,7 @@ public class IngestionOrchestrationService {
 
             log.info("Full sync complete");
         } finally {
-            release();
+            releaseFullSync();
         }
     }
 }

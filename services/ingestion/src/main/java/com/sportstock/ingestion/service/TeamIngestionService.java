@@ -6,7 +6,7 @@ import com.sportstock.ingestion.entity.Team;
 import com.sportstock.ingestion.entity.TeamRecord;
 import com.sportstock.ingestion.exception.EntityNotFoundException;
 import com.sportstock.ingestion.exception.IngestionException;
-import com.sportstock.ingestion.mapper.JsonNodeUtils;
+import com.sportstock.ingestion.mapper.JsonPayloadCodec;
 import com.sportstock.ingestion.mapper.TeamMapper;
 import com.sportstock.ingestion.repo.TeamRecordRepository;
 import com.sportstock.ingestion.repo.TeamRepository;
@@ -25,11 +25,12 @@ public class TeamIngestionService {
     private final EspnApiClient espnApiClient;
     private final TeamRepository teamRepository;
     private final TeamRecordRepository teamRecordRepository;
+    private final JsonPayloadCodec jsonPayloadCodec;
 
     @Transactional
     public void ingestTeams() {
         String json = espnApiClient.fetchTeams();
-        JsonNode root = JsonNodeUtils.parseJson(json);
+        JsonNode root = jsonPayloadCodec.parseJson(json);
 
         JsonNode teamsArray = root.path("sports").path(0)
                 .path("leagues").path(0)
@@ -54,7 +55,7 @@ public class TeamIngestionService {
     @Transactional
     public void ingestTeamDetail(String teamEspnId, Integer seasonYear) {
         String json = espnApiClient.fetchTeamDetail(teamEspnId);
-        JsonNode root = JsonNodeUtils.parseJson(json);
+        JsonNode root = jsonPayloadCodec.parseJson(json);
         JsonNode teamNode = root.path("team");
 
         if (teamNode.isMissingNode()) {

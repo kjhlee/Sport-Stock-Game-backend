@@ -6,13 +6,15 @@ import com.sportstock.ingestion.config.EspnApiProperties;
 import com.sportstock.ingestion.entity.Athlete;
 import com.sportstock.ingestion.exception.EntityNotFoundException;
 import com.sportstock.ingestion.exception.IngestionException;
-import com.sportstock.ingestion.mapper.JsonNodeUtils;
+import com.sportstock.ingestion.mapper.JsonPayloadCodec;
 import com.sportstock.ingestion.repo.AthleteRepository;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -35,9 +37,10 @@ public class AthleteIngestionService {
     private final AthleteRepository athleteRepository;
     private final EspnApiProperties espnApiProperties;
     private final EntityManager entityManager;
+    private final JsonPayloadCodec jsonPayloadCodec;
+    private final PlatformTransactionManager transactionManager;
 
 
-    @Transactional
     public void ingestAthletes(Integer pageSize, Integer pageCount) {
         long requestedRows = (long) pageSize * (long) pageCount;
         if (requestedRows > espnApiProperties.getMaxAthleteRowsPerSync()) {
@@ -53,12 +56,16 @@ public class AthleteIngestionService {
         int totalUpdated = 0;
         int totalUnchanged = 0;
 
+        TransactionTemplate pageWriteTransaction = new TransactionTemplate(transactionManager);
+        pageWriteTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        pageWriteTransaction.setTimeout(espnApiProperties.getAthletePageTransactionTimeoutSeconds());
+
         for (int page = 1; page <= pageCount; page++) {
             long pageStartNanos = System.nanoTime();
 
             long fetchStartNanos = System.nanoTime();
             String json = espnApiClient.fetchAthletes(pageSize, page);
-            JsonNode root = JsonNodeUtils.parseJson(json);
+            JsonNode root = jsonPayloadCodec.parseJson(json);
             long pageFetchNanos = System.nanoTime() - fetchStartNanos;
             totalFetchNanos += pageFetchNanos;
 
@@ -88,63 +95,25 @@ public class AthleteIngestionService {
                 continue;
             }
 
-            long dbStartNanos = System.nanoTime();
-            Map<String, Athlete> existingByEspnId = athleteRepository.findByEspnIdIn(espnIds).stream()
-                    .collect(Collectors.toMap(Athlete::getEspnId, Function.identity()));
-
-            List<Athlete> toSave = new ArrayList<>(espnIds.size());
-            int pageInserted = 0;
-            int pageUpdated = 0;
-            int pageUnchanged = 0;
-
-            for (String espnId : espnIds) {
-                Athlete existing = existingByEspnId.get(espnId);
-                if (existing == null) {
-                    Instant now = Instant.now();
-                    Athlete athlete = new Athlete();
-                    athlete.setEspnId(espnId);
-                    athlete.setFullName(espnId);
-                    athlete.setIngestedAt(now);
-                    athlete.setUpdatedAt(now);
-                    toSave.add(athlete);
-                    pageInserted++;
-                    continue;
-                }
-
-                boolean changed = false;
-                if (existing.getIngestedAt() == null) {
-                    existing.setIngestedAt(Instant.now());
-                    changed = true;
-                }
-                if (existing.getFullName() == null || existing.getFullName().isBlank()) {
-                    existing.setFullName(espnId);
-                    changed = true;
-                }
-
-                if (changed) {
-                    existing.setUpdatedAt(Instant.now());
-                    toSave.add(existing);
-                    pageUpdated++;
-                } else {
-                    pageUnchanged++;
-                }
+            PageWriteResult pageWriteResult = pageWriteTransaction.execute(status -> writeAthletePage(espnIds));
+            if (pageWriteResult == null) {
+                throw new IngestionException("Athlete page transaction returned no result for page " + page);
             }
 
-            saveInChunks(toSave);
-            long pageDbNanos = System.nanoTime() - dbStartNanos;
+            long pageDbNanos = pageWriteResult.dbNanos();
             totalDbNanos += pageDbNanos;
 
-            totalInserted += pageInserted;
-            totalUpdated += pageUpdated;
-            totalUnchanged += pageUnchanged;
+            totalInserted += pageWriteResult.inserted();
+            totalUpdated += pageWriteResult.updated();
+            totalUnchanged += pageWriteResult.unchanged();
 
             log.info(
                     "Athlete page {} processed: seen={} inserted={} updated={} unchanged={} fetchMs={} dbMs={} durationMs={}",
                     page,
                     espnIds.size(),
-                    pageInserted,
-                    pageUpdated,
-                    pageUnchanged,
+                    pageWriteResult.inserted(),
+                    pageWriteResult.updated(),
+                    pageWriteResult.unchanged(),
                     nanosToMillis(pageFetchNanos),
                     nanosToMillis(pageDbNanos),
                     millisSince(pageStartNanos)
@@ -185,6 +154,53 @@ public class AthleteIngestionService {
         return q > 0 ? tail.substring(0, q) : tail;
     }
 
+    private PageWriteResult writeAthletePage(LinkedHashSet<String> espnIds) {
+        long dbStartNanos = System.nanoTime();
+        Map<String, Athlete> existingByEspnId = athleteRepository.findByEspnIdIn(espnIds).stream()
+                .collect(Collectors.toMap(Athlete::getEspnId, Function.identity()));
+
+        List<Athlete> toSave = new ArrayList<>(espnIds.size());
+        int inserted = 0;
+        int updated = 0;
+        int unchanged = 0;
+
+        for (String espnId : espnIds) {
+            Athlete existing = existingByEspnId.get(espnId);
+            if (existing == null) {
+                Instant now = Instant.now();
+                Athlete athlete = new Athlete();
+                athlete.setEspnId(espnId);
+                athlete.setFullName(espnId);
+                athlete.setIngestedAt(now);
+                athlete.setUpdatedAt(now);
+                toSave.add(athlete);
+                inserted++;
+                continue;
+            }
+
+            boolean changed = false;
+            if (existing.getIngestedAt() == null) {
+                existing.setIngestedAt(Instant.now());
+                changed = true;
+            }
+            if (existing.getFullName() == null || existing.getFullName().isBlank()) {
+                existing.setFullName(espnId);
+                changed = true;
+            }
+
+            if (changed) {
+                existing.setUpdatedAt(Instant.now());
+                toSave.add(existing);
+                updated++;
+            } else {
+                unchanged++;
+            }
+        }
+
+        saveInChunks(toSave);
+        return new PageWriteResult(inserted, updated, unchanged, System.nanoTime() - dbStartNanos);
+    }
+
     private void saveInChunks(List<Athlete> athletes) {
         if (athletes.isEmpty()) {
             return;
@@ -203,6 +219,9 @@ public class AthleteIngestionService {
 
     private long nanosToMillis(long nanos) {
         return nanos / 1_000_000L;
+    }
+
+    private record PageWriteResult(int inserted, int updated, int unchanged, long dbNanos) {
     }
 
 }

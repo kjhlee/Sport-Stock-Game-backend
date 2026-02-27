@@ -1,8 +1,6 @@
 package com.sportstock.ingestion.mapper;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sportstock.ingestion.exception.IngestionException;
 
 import java.math.BigDecimal;
@@ -15,17 +13,7 @@ import java.time.format.DateTimeParseException;
 
 public final class JsonNodeUtils {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
-
     private JsonNodeUtils() {}
-
-    public static JsonNode parseJson(String json) {
-        try {
-            return MAPPER.readTree(json);
-        } catch (JsonProcessingException e) {
-            throw new IngestionException("Failed to parse ESPN JSON response", e);
-        }
-    }
 
     public static String textOrNull(JsonNode node, String field) {
         JsonNode child = node.path(field);

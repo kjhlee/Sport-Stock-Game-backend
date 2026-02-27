@@ -9,7 +9,7 @@ import com.sportstock.ingestion.entity.Team;
 import com.sportstock.ingestion.exception.EntityNotFoundException;
 import com.sportstock.ingestion.exception.IngestionException;
 import com.sportstock.ingestion.mapper.EventMapper;
-import com.sportstock.ingestion.mapper.JsonNodeUtils;
+import com.sportstock.ingestion.mapper.JsonPayloadCodec;
 import com.sportstock.ingestion.repo.EventCompetitorLinescoreRepository;
 import com.sportstock.ingestion.repo.EventCompetitorRepository;
 import com.sportstock.ingestion.repo.EventRepository;
@@ -32,11 +32,12 @@ public class EventIngestionService {
     private final EventCompetitorLinescoreRepository eventCompetitorLinescoreRepository;
     private final TeamRepository teamRepository;
     private final SeasonIngestionService seasonIngestionService;
+    private final JsonPayloadCodec jsonPayloadCodec;
 
     @Transactional
     public void ingestScoreboard(Integer seasonYear, Integer seasonType, Integer week) {
         String json = espnApiClient.fetchScoreboard(seasonYear, seasonType, week);
-        JsonNode root = JsonNodeUtils.parseJson(json);
+        JsonNode root = jsonPayloadCodec.parseJson(json);
         JsonNode events = root.path("events");
 
         seasonIngestionService.ingestSeasonAndWeeksFromScoreboard(seasonYear, seasonType, root);

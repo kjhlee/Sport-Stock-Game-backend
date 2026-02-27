@@ -51,4 +51,8 @@ public class EspnApiProperties {
     @Min(1)
     @Max(300)
     private int readTimeoutSeconds = 60;
+
+    @Min(5)
+    @Max(1800)
+    private int athletePageTransactionTimeoutSeconds = 120;
 }
