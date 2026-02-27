@@ -8,6 +8,7 @@ import com.sportstock.ingestion.exception.IngestionException;
 import com.sportstock.ingestion.mapper.AthleteMapper;
 import com.sportstock.ingestion.mapper.JsonNodeUtils;
 import com.sportstock.ingestion.repo.AthleteRepository;
+import com.sportstock.ingestion.util.RateLimiter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -24,6 +25,7 @@ public class AthleteIngestionService {
 
     private final EspnApiClient espnApiClient;
     private final AthleteRepository athleteRepository;
+    private final RateLimiter rateLimiter;
 
 
     @Transactional
@@ -63,6 +65,7 @@ public class AthleteIngestionService {
                 athleteRepository.save(athlete);
                 totalIngested++;
             }
+            rateLimiter.pause();
         }
         log.info("Ingested {} athlete references across {} pages", totalIngested, pageCount);
     }

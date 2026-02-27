@@ -36,6 +36,12 @@ public class TeamIngestionController {
         return ResponseEntity.accepted().body(accepted("teamsSync"));
     }
 
+    @PostMapping("/sync/teams/details")
+    public ResponseEntity<Map<String, Object>> syncAllTeamDetails() {
+        teamIngestionService.ingestAllTeamDetails();
+        return ResponseEntity.accepted().body(accepted("allTeamDetailsSync"));
+    }
+
     @PostMapping("/sync/teams/{teamEspnId}")
     public ResponseEntity<Map<String, Object>> syncTeamDetail(
             @PathVariable @NotBlank String teamEspnId

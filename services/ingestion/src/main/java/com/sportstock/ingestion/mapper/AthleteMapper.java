@@ -2,6 +2,7 @@ package com.sportstock.ingestion.mapper;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.sportstock.ingestion.entity.Athlete;
+import com.sportstock.ingestion.entity.Coach;
 import com.sportstock.ingestion.entity.TeamRosterEntry;
 import com.sportstock.ingestion.entity.Team;
 
@@ -97,6 +98,21 @@ public final class AthleteMapper {
             athlete.setIngestedAt(now);
         }
         athlete.setUpdatedAt(now);
+    }
+
+    public static void applyCoachFields(JsonNode node, Coach coach, Team team, Integer seasonYear) {
+        Instant now = Instant.now();
+
+        coach.setEspnId(node.path("id").asText());
+        coach.setFirstName(textOrNull(node, "firstName"));
+        coach.setLastName(textOrNull(node, "lastName"));
+        coach.setTeam(team);
+        coach.setSeasonYear(seasonYear);
+
+        if (coach.getIngestedAt() == null) {
+            coach.setIngestedAt(now);
+        }
+        coach.setUpdatedAt(now);
     }
 
     public static void applyRosterEntryFields(JsonNode node, TeamRosterEntry entry, Team team, Athlete athlete, Integer seasonYear, String rosterGroup) {

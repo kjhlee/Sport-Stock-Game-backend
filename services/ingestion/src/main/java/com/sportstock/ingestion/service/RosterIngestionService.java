@@ -2,8 +2,8 @@ package com.sportstock.ingestion.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.sportstock.ingestion.client.EspnApiClient;
-import com.sportstock.ingestion.config.EspnApiProperties;
 import com.sportstock.ingestion.entity.Athlete;
+import com.sportstock.ingestion.entity.Coach;
 import com.sportstock.ingestion.entity.Team;
 import com.sportstock.ingestion.entity.TeamRosterEntry;
 import com.sportstock.ingestion.exception.EntityNotFoundException;
@@ -11,8 +11,10 @@ import com.sportstock.ingestion.exception.IngestionException;
 import com.sportstock.ingestion.mapper.AthleteMapper;
 import com.sportstock.ingestion.mapper.JsonNodeUtils;
 import com.sportstock.ingestion.repo.AthleteRepository;
+import com.sportstock.ingestion.repo.CoachRepository;
 import com.sportstock.ingestion.repo.TeamRepository;
 import com.sportstock.ingestion.repo.TeamRosterEntryRepository;
+import com.sportstock.ingestion.util.RateLimiter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -26,10 +28,11 @@ import java.util.List;
 public class RosterIngestionService {
 
     private final EspnApiClient espnApiClient;
-    private final EspnApiProperties espnApiProperties;
     private final TeamRepository teamRepository;
     private final AthleteRepository athleteRepository;
     private final TeamRosterEntryRepository teamRosterEntryRepository;
+    private final CoachRepository coachRepository;
+    private final RateLimiter rateLimiter;
 
     @Transactional
     public void ingestTeamRoster(String teamEspnId, Integer seasonYear, Integer rosterLimit) {
@@ -73,6 +76,22 @@ public class RosterIngestionService {
                 break;
             }
         }
+        JsonNode coachArray = root.path("coach");
+        int seasonYearValue = root.path("season").path("year").asInt(0);
+        if (seasonYearValue == 0) {
+            seasonYearValue = seasonYear;
+        }
+        if (coachArray.isArray()) {
+            for (JsonNode coachNode : coachArray) {
+                String coachEspnId = coachNode.path("id").asText();
+                Coach coach = coachRepository
+                        .findByEspnIdAndTeamIdAndSeasonYear(coachEspnId, team.getId(), seasonYearValue)
+                        .orElseGet(Coach::new);
+                AthleteMapper.applyCoachFields(coachNode, coach, team, seasonYearValue);
+                coachRepository.save(coach);
+            }
+        }
+
         log.info("Ingested {} roster entries for team {} ({})", count, team.getDisplayName(), teamEspnId);
     }
 
@@ -90,19 +109,9 @@ public class RosterIngestionService {
 
         for (Team team : teams) {
             ingestTeamRoster(team.getEspnId(), seasonYear, rosterLimit);
-            rateLimitPause();
+            rateLimiter.pause();
         }
         log.info("Ingested rosters for {} teams", teams.size());
     }
 
-    private void rateLimitPause() {
-        int delayMs = espnApiProperties.getRateLimitDelayMs();
-        if (delayMs > 0) {
-            try {
-                Thread.sleep(delayMs);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        }
-    }
 }

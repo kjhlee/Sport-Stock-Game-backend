@@ -10,6 +10,7 @@ import com.sportstock.ingestion.mapper.JsonNodeUtils;
 import com.sportstock.ingestion.mapper.TeamMapper;
 import com.sportstock.ingestion.repo.TeamRecordRepository;
 import com.sportstock.ingestion.repo.TeamRepository;
+import com.sportstock.ingestion.util.RateLimiter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -26,6 +27,7 @@ public class TeamIngestionService {
     private final EspnApiClient espnApiClient;
     private final TeamRepository teamRepository;
     private final TeamRecordRepository teamRecordRepository;
+    private final RateLimiter rateLimiter;
 
     @Transactional
     public void ingestTeams() {
@@ -68,6 +70,16 @@ public class TeamIngestionService {
 
         upsertRecords(teamNode, team);
         log.info("Ingested detail for team {} ({})", team.getDisplayName(), teamEspnId);
+    }
+
+    @Transactional
+    public void ingestAllTeamDetails() {
+        List<Team> teams = teamRepository.findAllByOrderByDisplayNameAsc();
+        for (Team team : teams) {
+            ingestTeamDetail(team.getEspnId());
+            rateLimiter.pause();
+        }
+        log.info("Ingested details for {} teams", teams.size());
     }
 
     public List<Team> listTeams() {

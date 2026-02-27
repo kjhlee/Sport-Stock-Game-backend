@@ -1,5 +1,6 @@
 package com.sportstock.ingestion.service;
 
+import com.sportstock.ingestion.util.RateLimiter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -16,6 +17,7 @@ public class IngestionOrchestrationService {
     private final AthleteIngestionService athleteIngestionService;
     private final EventIngestionService eventIngestionService;
     private final EventSummaryIngestionService eventSummaryIngestionService;
+    private final RateLimiter rateLimiter;
 
     public void runFoundationSync(Integer seasonYear, Integer seasonType, Integer week) {
         log.info("Starting foundation sync for season {} type {} week {}", seasonYear, seasonType, week);
@@ -31,6 +33,7 @@ public class IngestionOrchestrationService {
         var events = eventIngestionService.listEvents(seasonYear, week);
         for (var event : events) {
             eventSummaryIngestionService.ingestEventSummary(event.getEspnId());
+            rateLimiter.pause();
         }
         log.info("Weekly sync complete: processed {} events", events.size());
     }
@@ -51,6 +54,7 @@ public class IngestionOrchestrationService {
         var teams = teamIngestionService.listTeams();
         for (var team : teams) {
             teamIngestionService.ingestTeamDetail(team.getEspnId());
+            rateLimiter.pause();
         }
 
         rosterIngestionService.ingestAllRosters(seasonYear, rosterLimit, teamEspnIds);
