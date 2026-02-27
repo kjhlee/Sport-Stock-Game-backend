@@ -60,13 +60,13 @@ public class Team {
     @Column(name = "logo_url", length = 500)
     private String logoUrl;
 
-    @Column(name = "franchise_id", length = 10)
+    @Column(name = "franchise_id", length = 15)
     private String franchiseId;
 
-    @Column(name = "division_id", length = 10)
+    @Column(name = "division_id", length = 15)
     private String divisionId;
 
-    @Column(name = "conference_id", length = 10)
+    @Column(name = "conference_id", length = 15)
     private String conferenceId;
 
     @Column(name = "standing_summary", length = 50)
