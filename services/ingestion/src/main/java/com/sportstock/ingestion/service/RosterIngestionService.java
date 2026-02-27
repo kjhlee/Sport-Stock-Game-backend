@@ -31,6 +31,7 @@ public class RosterIngestionService {
     private final AthleteRepository athleteRepository;
     private final TeamRosterEntryRepository teamRosterEntryRepository;
     private final CoachRepository coachRepository;
+    private final JsonNodeUtils jsonNodeUtils;
 
     @Transactional
     public void ingestTeamRoster(String teamEspnId, Integer seasonYear, Integer rosterLimit) {
@@ -38,7 +39,7 @@ public class RosterIngestionService {
                 .orElseThrow(() -> new EntityNotFoundException("Team not found with ESPN ID: " + teamEspnId));
 
         String json = espnApiClient.fetchTeamRoster(teamEspnId);
-        JsonNode root = JsonNodeUtils.parseJson(json);
+        JsonNode root = jsonNodeUtils.parseJson(json);
         JsonNode athleteGroups = root.path("athletes");
 
         if (!athleteGroups.isArray()) {

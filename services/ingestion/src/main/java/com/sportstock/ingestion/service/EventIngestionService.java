@@ -32,11 +32,12 @@ public class EventIngestionService {
     private final EventCompetitorLinescoreRepository eventCompetitorLinescoreRepository;
     private final TeamRepository teamRepository;
     private final SeasonIngestionService seasonIngestionService;
+    private final JsonNodeUtils jsonNodeUtils;
 
     @Transactional
     public void ingestScoreboard(Integer seasonYear, Integer seasonType, Integer week) {
         String json = espnApiClient.fetchScoreboard(seasonYear, seasonType, week);
-        JsonNode root = JsonNodeUtils.parseJson(json);
+        JsonNode root = jsonNodeUtils.parseJson(json);
         JsonNode events = root.path("events");
 
         seasonIngestionService.ingestSeasonAndWeeksFromScoreboard(seasonYear, seasonType, root);

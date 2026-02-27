@@ -35,6 +35,7 @@ public class AthleteIngestionService {
     private final AthleteRepository athleteRepository;
     private final EspnApiProperties espnApiProperties;
     private final EntityManager entityManager;
+    private final JsonNodeUtils jsonNodeUtils;
 
 
     @Transactional
@@ -58,7 +59,7 @@ public class AthleteIngestionService {
 
             long fetchStartNanos = System.nanoTime();
             String json = espnApiClient.fetchAthletes(pageSize, page);
-            JsonNode root = JsonNodeUtils.parseJson(json);
+            JsonNode root = jsonNodeUtils.parseJson(json);
             long pageFetchNanos = System.nanoTime() - fetchStartNanos;
             totalFetchNanos += pageFetchNanos;
 

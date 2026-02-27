@@ -4,6 +4,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sportstock.ingestion.exception.IngestionException;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -13,15 +15,15 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeParseException;
 
+@Component
+@RequiredArgsConstructor
 public final class JsonNodeUtils {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private final ObjectMapper objectMapper;
 
-    private JsonNodeUtils() {}
-
-    public static JsonNode parseJson(String json) {
+    public JsonNode parseJson(String json) {
         try {
-            return MAPPER.readTree(json);
+            return objectMapper.readTree(json);
         } catch (JsonProcessingException e) {
             throw new IngestionException("Failed to parse ESPN JSON response", e);
         }

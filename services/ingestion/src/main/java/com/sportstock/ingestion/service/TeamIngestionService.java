@@ -25,11 +25,12 @@ public class TeamIngestionService {
     private final EspnApiClient espnApiClient;
     private final TeamRepository teamRepository;
     private final TeamRecordRepository teamRecordRepository;
+    private final JsonNodeUtils jsonNodeUtils;
 
     @Transactional
     public void ingestTeams() {
         String json = espnApiClient.fetchTeams();
-        JsonNode root = JsonNodeUtils.parseJson(json);
+        JsonNode root = jsonNodeUtils.parseJson(json);
 
         JsonNode teamsArray = root.path("sports").path(0)
                 .path("leagues").path(0)
@@ -54,7 +55,7 @@ public class TeamIngestionService {
     @Transactional
     public void ingestTeamDetail(String teamEspnId, Integer seasonYear) {
         String json = espnApiClient.fetchTeamDetail(teamEspnId);
-        JsonNode root = JsonNodeUtils.parseJson(json);
+        JsonNode root = jsonNodeUtils.parseJson(json);
         JsonNode teamNode = root.path("team");
 
         if (teamNode.isMissingNode()) {

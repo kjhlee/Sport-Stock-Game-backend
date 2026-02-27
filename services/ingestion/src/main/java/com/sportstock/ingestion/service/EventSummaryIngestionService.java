@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+
 import com.sportstock.ingestion.client.EspnApiClient;
 import com.sportstock.ingestion.entity.Athlete;
 import com.sportstock.ingestion.entity.BoxscoreTeamStat;
@@ -32,14 +33,14 @@ import java.util.List;
 @Slf4j
 public class EventSummaryIngestionService {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-
     private final EspnApiClient espnApiClient;
     private final EventRepository eventRepository;
     private final TeamRepository teamRepository;
     private final BoxscoreTeamStatRepository boxscoreTeamStatRepository;
     private final PlayerGameStatRepository playerGameStatRepository;
     private final AthleteRepository athleteRepository;
+    private final JsonNodeUtils jsonNodeUtils;
+    private final ObjectMapper objectMapper;
 
     @Transactional
     public void ingestEventSummary(String eventEspnId) {
@@ -47,7 +48,7 @@ public class EventSummaryIngestionService {
                 .orElseThrow(() -> new EntityNotFoundException("Event not found with ESPN ID: " + eventEspnId));
 
         String json = espnApiClient.fetchEventSummary(eventEspnId);
-        JsonNode root = JsonNodeUtils.parseJson(json);
+        JsonNode root = jsonNodeUtils.parseJson(json);
 
         upsertTeamStats(root, event);
         upsertPlayerStats(root, event);
@@ -165,13 +166,13 @@ public class EventSummaryIngestionService {
         if (!keys.isArray() || !values.isArray()) {
             return "{}";
         }
-        ObjectNode stats = OBJECT_MAPPER.createObjectNode();
+        ObjectNode stats = objectMapper.createObjectNode();
         int len = Math.min(keys.size(), values.size());
         for (int i = 0; i < len; i++) {
             stats.put(keys.get(i).asText(), values.get(i).asText());
         }
         try {
-            return OBJECT_MAPPER.writeValueAsString(stats);
+            return objectMapper.writeValueAsString(stats);
         } catch (JsonProcessingException e) {
             throw new IngestionException("Failed to serialize player stats JSON", e);
         }
