@@ -5,7 +5,6 @@ import com.sportstock.ingestion.client.EspnApiClient;
 import com.sportstock.ingestion.entity.Athlete;
 import com.sportstock.ingestion.exception.EntityNotFoundException;
 import com.sportstock.ingestion.exception.IngestionException;
-import com.sportstock.ingestion.mapper.AthleteMapper;
 import com.sportstock.ingestion.mapper.JsonNodeUtils;
 import com.sportstock.ingestion.repo.AthleteRepository;
 import com.sportstock.ingestion.util.RateLimiter;
