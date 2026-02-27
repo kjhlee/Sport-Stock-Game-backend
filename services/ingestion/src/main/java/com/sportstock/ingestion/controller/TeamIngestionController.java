@@ -6,6 +6,8 @@ import com.sportstock.ingestion.service.TeamIngestionService;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -27,6 +29,8 @@ import java.util.Map;
 @RequestMapping("/api/v1/ingestion")
 public class TeamIngestionController {
 
+    private static final String ESPN_ID_PATTERN = "\\d{1,15}";
+
     private final TeamIngestionService teamIngestionService;
     private final RosterIngestionService rosterIngestionService;
 
@@ -44,7 +48,7 @@ public class TeamIngestionController {
 
     @PostMapping("/sync/teams/{teamEspnId}")
     public ResponseEntity<Map<String, Object>> syncTeamDetail(
-            @PathVariable @NotBlank String teamEspnId
+            @PathVariable @NotBlank @Pattern(regexp = ESPN_ID_PATTERN) String teamEspnId
     ) {
         teamIngestionService.ingestTeamDetail(teamEspnId);
         return ResponseEntity.accepted().body(accepted("teamDetailSync"));
@@ -54,7 +58,7 @@ public class TeamIngestionController {
     public ResponseEntity<Map<String, Object>> syncRosters(
             @RequestParam @Min(2000) @Max(2100) Integer seasonYear,
             @RequestParam(defaultValue = "200") @Min(1) @Max(500) Integer rosterLimit,
-            @RequestParam(required = false) List<String> teamEspnIds
+            @RequestParam(required = false) @Size(max = 32) List<@Pattern(regexp = ESPN_ID_PATTERN) String> teamEspnIds
     ) {
         rosterIngestionService.ingestAllRosters(seasonYear, rosterLimit, teamEspnIds);
         return ResponseEntity.accepted().body(accepted("rostersSync"));
@@ -67,7 +71,7 @@ public class TeamIngestionController {
 
     @GetMapping("/teams/{teamEspnId}")
     public ResponseEntity<Team> getTeam(
-            @PathVariable @NotBlank String teamEspnId
+            @PathVariable @NotBlank @Pattern(regexp = ESPN_ID_PATTERN) String teamEspnId
     ) {
         return ResponseEntity.ok(teamIngestionService.getTeamByEspnId(teamEspnId));
     }

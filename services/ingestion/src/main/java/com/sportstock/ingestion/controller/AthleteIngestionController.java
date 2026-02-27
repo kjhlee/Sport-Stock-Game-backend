@@ -5,6 +5,7 @@ import com.sportstock.ingestion.service.AthleteIngestionService;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -26,6 +27,8 @@ import java.util.Map;
 @RequestMapping("/api/v1/ingestion")
 public class AthleteIngestionController {
 
+    private static final String ESPN_ID_PATTERN = "\\d{1,15}";
+
     private final AthleteIngestionService athleteIngestionService;
 
     @PostMapping("/sync/athletes")
@@ -46,7 +49,7 @@ public class AthleteIngestionController {
 
     @GetMapping("/athletes/{athleteEspnId}")
     public ResponseEntity<Athlete> getAthlete(
-            @PathVariable @NotBlank String athleteEspnId
+            @PathVariable @NotBlank @Pattern(regexp = ESPN_ID_PATTERN) String athleteEspnId
     ) {
         return ResponseEntity.ok(athleteIngestionService.getAthleteByEspnId(athleteEspnId));
     }

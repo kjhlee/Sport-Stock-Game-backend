@@ -4,6 +4,9 @@ import com.sportstock.ingestion.config.EspnApiProperties;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.util.UriComponentsBuilder;
+
+import java.net.URI;
 
 @Component
 public class EspnRestClient implements EspnApiClient {
@@ -18,43 +21,81 @@ public class EspnRestClient implements EspnApiClient {
 
     @Override
     public String fetchTeams() {
-        String url = "%s/sports/%s/%s/teams".formatted(props.getSiteBaseUrl(), props.getSport(), props.getLeague());
-        return get(url);
+        URI uri = site()
+                .pathSegment("sports", props.getSport(), props.getLeague(), "teams")
+                .build()
+                .encode()
+                .toUri();
+        return get(uri);
     }
 
     @Override
     public String fetchTeamDetail(String teamEspnId) {
-        String url = "%s/sports/%s/%s/teams/%s".formatted(props.getSiteBaseUrl(), props.getSport(), props.getLeague(), teamEspnId);
-        return get(url);
+        URI uri = site()
+                .pathSegment("sports", props.getSport(), props.getLeague(), "teams", teamEspnId)
+                .build()
+                .encode()
+                .toUri();
+        return get(uri);
     }
 
     @Override
     public String fetchTeamRoster(String teamEspnId) {
-        String url = "%s/sports/%s/%s/teams/%s/roster".formatted(props.getSiteBaseUrl(), props.getSport(), props.getLeague(), teamEspnId);
-        return get(url);
+        URI uri = site()
+                .pathSegment("sports", props.getSport(), props.getLeague(), "teams", teamEspnId, "roster")
+                .build()
+                .encode()
+                .toUri();
+        return get(uri);
     }
 
     @Override
     public String fetchScoreboard(Integer seasonYear, Integer seasonType, Integer week) {
-        String url = "%s/sports/%s/%s/scoreboard?dates=%d&seasontype=%d&week=%d".formatted(props.getSiteBaseUrl(), props.getSport(), props.getLeague(), seasonYear, seasonType, week);
-        return get(url);
+        URI uri = site()
+                .pathSegment("sports", props.getSport(), props.getLeague(), "scoreboard")
+                .queryParam("dates", seasonYear)
+                .queryParam("seasontype", seasonType)
+                .queryParam("week", week)
+                .build()
+                .encode()
+                .toUri();
+        return get(uri);
     }
 
     @Override
     public String fetchEventSummary(String eventEspnId) {
-        String url = "%s/sports/%s/%s/summary?event=%s".formatted(props.getSiteBaseUrl(), props.getSport(), props.getLeague(), eventEspnId);
-        return get(url);
+        URI uri = site()
+                .pathSegment("sports", props.getSport(), props.getLeague(), "summary")
+                .queryParam("event", eventEspnId)
+                .build()
+                .encode()
+                .toUri();
+        return get(uri);
     }
 
     @Override
     public String fetchAthletes(Integer pageSize, Integer page) {
-        String url = "%s/sports/%s/leagues/%s/athletes?limit=%d&page=%d".formatted(props.getCoreBaseUrl(), props.getSport(), props.getLeague(), pageSize, page);
-        return get(url);
+        URI uri = core()
+                .pathSegment("sports", props.getSport(), "leagues", props.getLeague(), "athletes")
+                .queryParam("limit", pageSize)
+                .queryParam("page", page)
+                .build()
+                .encode()
+                .toUri();
+        return get(uri);
     }
 
-    private String get(String url) {
+    private UriComponentsBuilder site() {
+        return UriComponentsBuilder.fromUriString(props.getSiteBaseUrl());
+    }
+
+    private UriComponentsBuilder core() {
+        return UriComponentsBuilder.fromUriString(props.getCoreBaseUrl());
+    }
+
+    private String get(URI uri) {
         return http.get()
-                .uri(url)
+                .uri(uri)
                 .retrieve()
                 .body(String.class);
     }

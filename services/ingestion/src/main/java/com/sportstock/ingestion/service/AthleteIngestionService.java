@@ -2,6 +2,7 @@ package com.sportstock.ingestion.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.sportstock.ingestion.client.EspnApiClient;
+import com.sportstock.ingestion.config.EspnApiProperties;
 import com.sportstock.ingestion.entity.Athlete;
 import com.sportstock.ingestion.exception.EntityNotFoundException;
 import com.sportstock.ingestion.exception.IngestionException;
@@ -25,10 +26,16 @@ public class AthleteIngestionService {
     private final EspnApiClient espnApiClient;
     private final AthleteRepository athleteRepository;
     private final RateLimiter rateLimiter;
+    private final EspnApiProperties espnApiProperties;
 
 
     @Transactional
     public void ingestAthletes(Integer pageSize, Integer pageCount) {
+        long requestedRows = (long) pageSize * (long) pageCount;
+        if (requestedRows > espnApiProperties.getMaxAthleteRowsPerSync()) {
+            throw new IngestionException("Requested athlete sync exceeds max allowed rows");
+        }
+
         int totalIngested = 0;
 
         for (int page = 1; page <= pageCount; page++) {

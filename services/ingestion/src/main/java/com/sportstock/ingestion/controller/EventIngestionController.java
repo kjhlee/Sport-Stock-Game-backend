@@ -8,6 +8,7 @@ import com.sportstock.ingestion.service.EventSummaryIngestionService;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -29,6 +30,8 @@ import java.util.Map;
 @RequestMapping("/api/v1/ingestion")
 public class EventIngestionController {
 
+    private static final String ESPN_ID_PATTERN = "\\d{1,15}";
+
     private final EventIngestionService eventIngestionService;
     private final EventSummaryIngestionService eventSummaryIngestionService;
 
@@ -44,7 +47,7 @@ public class EventIngestionController {
 
     @PostMapping("/sync/events/{eventEspnId}/summary")
     public ResponseEntity<Map<String, Object>> syncEventSummary(
-            @PathVariable @NotBlank String eventEspnId
+            @PathVariable @NotBlank @Pattern(regexp = ESPN_ID_PATTERN) String eventEspnId
     ) {
         eventSummaryIngestionService.ingestEventSummary(eventEspnId);
         return ResponseEntity.accepted().body(accepted("eventSummarySync"));
@@ -60,22 +63,22 @@ public class EventIngestionController {
 
     @GetMapping("/events/{eventEspnId}")
     public ResponseEntity<Event> getEvent(
-            @PathVariable @NotBlank String eventEspnId
+            @PathVariable @NotBlank @Pattern(regexp = ESPN_ID_PATTERN) String eventEspnId
     ) {
         return ResponseEntity.ok(eventIngestionService.getEventByEspnId(eventEspnId));
     }
 
     @GetMapping("/events/{eventEspnId}/team-stats")
     public ResponseEntity<List<BoxscoreTeamStat>> getEventTeamStats(
-            @PathVariable @NotBlank String eventEspnId
+            @PathVariable @NotBlank @Pattern(regexp = ESPN_ID_PATTERN) String eventEspnId
     ) {
         return ResponseEntity.ok(eventSummaryIngestionService.getTeamStats(eventEspnId));
     }
 
     @GetMapping("/events/{eventEspnId}/player-stats")
     public ResponseEntity<List<PlayerGameStat>> getEventPlayerStats(
-            @PathVariable @NotBlank String eventEspnId,
-            @RequestParam(required = false) String teamEspnId
+            @PathVariable @NotBlank @Pattern(regexp = ESPN_ID_PATTERN) String eventEspnId,
+            @RequestParam(required = false) @Pattern(regexp = ESPN_ID_PATTERN) String teamEspnId
     ) {
         return ResponseEntity.ok(eventSummaryIngestionService.getPlayerStats(eventEspnId, teamEspnId));
     }
