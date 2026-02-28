@@ -171,3 +171,8 @@ All errors follow a consistent shape:
 - **Upsert semantics**: all sync operations are safe to re-run. They update existing rows rather than duplicating.
 - **Rate limiting**: the service throttles ESPN calls internally — don't worry about it from the outside, but long-running syncs (especially full sync) take time.
 - **Async jobs don't push notifications** when they complete — if you need to know when a background sync finishes, poll the relevant GET endpoint or check logs.
+
+setup env in infra/
+Reset and build db: docker compose -f infra/docker-compose.yml down -v && docker compose -f infra/docker-compose.yml up --build -d
+Build and run: ./mvnw -pl services/ingestion clean package && ./mvnw -pl services/ingestion spring-boot:run 
+
