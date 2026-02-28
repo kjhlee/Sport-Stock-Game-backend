@@ -14,7 +14,7 @@ import lombok.NoArgsConstructor;
 @Data
 @Entity
 @NoArgsConstructor
-public class RegisterDetails {
+public class UserDetails {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private UUID Id;
