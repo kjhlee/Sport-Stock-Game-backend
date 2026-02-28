@@ -15,7 +15,11 @@
 
   <modules>
     <!-- services go here later -->
+<<<<<<< HEAD
     <module>stock-market</module>
+=======
+    <module>ingestion</module>
+>>>>>>> feature/ethan/ingestion
   </modules>
 
 </project>

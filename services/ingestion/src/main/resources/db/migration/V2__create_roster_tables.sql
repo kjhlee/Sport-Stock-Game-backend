@@ -1,0 +1,49 @@
+SET search_path TO ingestion;
+
+CREATE TABLE team_records (
+    id BIGSERIAL PRIMARY KEY,
+    team_id BIGINT NOT NULL,
+    season_year INTEGER NOT NULL,
+    record_type VARCHAR(20) NOT NULL,
+    summary VARCHAR(20),
+    wins INTEGER,
+    losses INTEGER,
+    ties INTEGER,
+    win_percent DECIMAL(7,4),
+    ot_wins INTEGER,
+    ot_losses INTEGER,
+    points_for INTEGER,
+    points_against INTEGER,
+    point_differential INTEGER,
+    avg_points_for DECIMAL(7,2),
+    avg_points_against DECIMAL(7,2),
+    playoff_seed INTEGER,
+    streak INTEGER,
+    games_played INTEGER,
+    division_wins INTEGER,
+    division_losses INTEGER,
+    division_ties INTEGER,
+    league_win_percent DECIMAL(7,4),
+    ingested_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT fk_team_records_team FOREIGN KEY (team_id) REFERENCES teams (id),
+    CONSTRAINT uk_team_records_team_season_record_type UNIQUE (team_id, season_year, record_type)
+);
+
+CREATE TABLE team_roster_entries (
+    id BIGSERIAL PRIMARY KEY,
+    team_id BIGINT NOT NULL,
+    athlete_id BIGINT NOT NULL,
+    season_year INTEGER NOT NULL,
+    roster_group VARCHAR(30) NOT NULL,
+    jersey VARCHAR(5),
+    position_abbreviation VARCHAR(10),
+    status_type VARCHAR(30),
+    injury_status VARCHAR(30),
+    injury_date TIMESTAMPTZ,
+    ingested_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT fk_team_roster_entries_team FOREIGN KEY (team_id) REFERENCES teams (id),
+    CONSTRAINT fk_team_roster_entries_athlete FOREIGN KEY (athlete_id) REFERENCES athletes (id),
+    CONSTRAINT uk_team_roster_entries_team_athlete_season UNIQUE (team_id, athlete_id, season_year)
+);
