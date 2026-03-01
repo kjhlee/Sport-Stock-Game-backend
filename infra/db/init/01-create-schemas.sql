@@ -1,0 +1,7 @@
+CREATE SCHEMA IF NOT EXISTS ingestion;
+CREATE SCHEMA IF NOT EXISTS market;
+CREATE SCHEMA IF NOT EXISTS users;
+
+GRANT ALL ON SCHEMA ingestion TO sportstock;
+GRANT ALL ON SCHEMA market TO sportstock;
+GRANT ALL ON SCHEMA users TO sportstock;
