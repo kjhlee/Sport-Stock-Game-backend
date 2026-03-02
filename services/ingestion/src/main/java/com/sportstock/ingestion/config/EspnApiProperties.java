@@ -32,7 +32,7 @@ public class EspnApiProperties {
     private String league;
 
     @Min(1)
-    private int defaultAthletePageSize = 250;
+    private int defaultAthletePageSize = 100;
 
     @Min(1)
     private int defaultRosterLimit = 200;

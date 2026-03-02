@@ -168,7 +168,6 @@ public class AthleteIngestionService {
         int inserted = 0;
         int updated = 0;
         int unchanged = 0;
-        int skippedDuplicates = 0;
         List<Athlete> newAthletes = new ArrayList<>();
 
         for (String espnId : espnIds) {
@@ -203,31 +202,21 @@ public class AthleteIngestionService {
             }
         }
 
-        // Batch insert new athletes (fast path)
+        // Flush pending updates to existing athletes before batch-inserting new ones
+        entityManager.flush();
+
+        // Batch insert new athletes
         try {
             athleteRepository.saveAll(newAthletes);
             inserted = newAthletes.size();
         } catch (DataIntegrityViolationException e) {
-            log.info("Batch insert failed with duplicate, falling back to individual saves");
-            entityManager.clear();
-            for (Athlete athlete : newAthletes) {
-                try {
-                    athleteRepository.saveAndFlush(athlete);
-                    inserted++;
-                } catch (DataIntegrityViolationException ex) {
-                    log.debug("Athlete {} already exists, skipping insert", athlete.getEspnId());
-                    entityManager.clear();
-                    skippedDuplicates++;
-                }
-            }
+            throw new IngestionException(
+                    "Failed to insert athletes due to data integrity violation", e);
         }
 
         entityManager.flush();
         entityManager.clear();
 
-        if (skippedDuplicates > 0) {
-            log.info("Skipped {} duplicate athlete inserts", skippedDuplicates);
-        }
         return new PageWriteResult(inserted, updated, unchanged, System.nanoTime() - dbStartNanos);
     }
 
