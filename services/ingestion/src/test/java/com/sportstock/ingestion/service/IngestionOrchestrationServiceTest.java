@@ -123,7 +123,7 @@ class IngestionOrchestrationServiceTest {
 
         Event eventOne = event("100");
         Event eventTwo = event("200");
-        when(eventIngestionService.listEvents(2025, 1)).thenReturn(List.of(eventOne, eventTwo));
+        when(eventIngestionService.listEvents(2025, 2, 1)).thenReturn(List.of(eventOne, eventTwo));
         doThrow(new RuntimeException("event summary failed"))
                 .when(eventSummaryIngestionService).ingestEventSummary("100");
 
@@ -145,7 +145,7 @@ class IngestionOrchestrationServiceTest {
 
         Event eventOne = event("100");
         Event eventTwo = event("200");
-        when(eventIngestionService.listEvents(2025, 1)).thenReturn(List.of(eventOne, eventTwo));
+        when(eventIngestionService.listEvents(2025, 2, 1)).thenReturn(List.of(eventOne, eventTwo));
 
         doThrow(new RuntimeException("team detail failed"))
                 .when(teamIngestionService).ingestTeamDetail("1", 2025);
@@ -161,7 +161,7 @@ class IngestionOrchestrationServiceTest {
         verify(eventSummaryIngestionService).ingestEventSummary("200");
         verify(rosterIngestionService).ingestAllRosters(2025, 100, null);
         verify(athleteIngestionService).ingestAthletes(100, 1);
-        verify(eventIngestionService).listEvents(2025, 1);
+        verify(eventIngestionService).listEvents(2025, 2, 1);
 
         assertTrue(service.tryStartFullSync());
         assertFalse(service.tryStartFoundationSync(2025, 2, 1));

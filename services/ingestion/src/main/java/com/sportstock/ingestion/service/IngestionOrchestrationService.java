@@ -73,8 +73,8 @@ public class IngestionOrchestrationService {
         String windowKey = seasonWindowKey(seasonYear, seasonType, week);
         try {
             log.info("Starting foundation sync for season {} type {} week {}", seasonYear, seasonType, week);
-            eventIngestionService.ingestScoreboard(seasonYear, seasonType, week);
             teamIngestionService.ingestTeams();
+            eventIngestionService.ingestScoreboard(seasonYear, seasonType, week);
             log.info("Foundation sync complete");
         } finally {
             releaseWindowJob(windowKey);
@@ -88,7 +88,7 @@ public class IngestionOrchestrationService {
             log.info("Starting weekly sync for season {} type {} week {}", seasonYear, seasonType, week);
             eventIngestionService.ingestScoreboard(seasonYear, seasonType, week);
 
-            var events = eventIngestionService.listEvents(seasonYear, week);
+            var events = eventIngestionService.listEvents(seasonYear, seasonType, week);
             int success = 0;
             int failed = 0;
             List<String> failedIds = new ArrayList<>();
@@ -123,9 +123,8 @@ public class IngestionOrchestrationService {
     ) {
         try {
             log.info("Starting full sync for season {} type {} week {}", seasonYear, seasonType, week);
-
-            eventIngestionService.ingestScoreboard(seasonYear, seasonType, week);
             teamIngestionService.ingestTeams();
+            eventIngestionService.ingestScoreboard(seasonYear, seasonType, week);
 
             var teams = (teamEspnIds != null && !teamEspnIds.isEmpty())
                     ? teamEspnIds.stream().map(teamIngestionService::getTeamByEspnId).toList()
@@ -151,10 +150,10 @@ public class IngestionOrchestrationService {
             rosterIngestionService.ingestAllRosters(seasonYear, rosterLimit, teamEspnIds);
             athleteIngestionService.ingestAthletes(athletePageSize, athletePageCount);
 
-            var events = eventIngestionService.listEvents(seasonYear, week);
+            var events = eventIngestionService.listEvents(seasonYear, seasonType, week);
             if (events.isEmpty()) {
                 eventIngestionService.ingestScoreboard(seasonYear, seasonType, week);
-                events = eventIngestionService.listEvents(seasonYear, week);
+                events = eventIngestionService.listEvents(seasonYear, seasonType, week);
             }
 
             int eventSuccess = 0;
