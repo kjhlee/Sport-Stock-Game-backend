@@ -27,6 +27,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.List;
 
+import static com.sportstock.ingestion.mapper.JsonNodeUtils.truncate;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -130,7 +132,11 @@ public class EventSummaryIngestionService {
             }
 
             for (JsonNode category : categories) {
-                String categoryName = category.path("name").asText();
+                String rawCategoryName = category.path("name").asText();
+                String categoryName = truncate(rawCategoryName, 30);
+                if (!rawCategoryName.equals(categoryName)) {
+                    log.warn("Truncated stat category '{}' to '{}'", rawCategoryName, categoryName);
+                }
                 JsonNode keys = category.path("keys");
                 JsonNode athletes = category.path("athletes");
                 if (!athletes.isArray()) {

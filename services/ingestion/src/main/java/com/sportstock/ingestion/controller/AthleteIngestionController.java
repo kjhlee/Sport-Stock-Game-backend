@@ -42,9 +42,10 @@ public class AthleteIngestionController {
 
     @GetMapping("/athletes")
     public ResponseEntity<List<Athlete>> listAthletes(
-            @RequestParam(required = false) String positionAbbreviation
+            @RequestParam(required = false) String positionAbbreviation,
+            @RequestParam(defaultValue = "false") boolean includeStubs
     ) {
-        return ResponseEntity.ok(athleteIngestionService.listAthletes(positionAbbreviation));
+        return ResponseEntity.ok(athleteIngestionService.listAthletes(positionAbbreviation, includeStubs));
     }
 
     @GetMapping("/athletes/{athleteEspnId}")

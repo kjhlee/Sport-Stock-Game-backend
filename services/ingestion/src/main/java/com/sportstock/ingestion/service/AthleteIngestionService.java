@@ -11,7 +11,6 @@ import com.sportstock.ingestion.repo.AthleteRepository;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
@@ -138,11 +137,18 @@ public class AthleteIngestionService {
         );
     }
 
-    public List<Athlete> listAthletes(String positionAbbreviation) {
-        if (positionAbbreviation != null && !positionAbbreviation.isBlank()) {
-            return athleteRepository.findByPositionAbbreviationOrderByFullNameAsc(positionAbbreviation);
+    public List<Athlete> listAthletes(String positionAbbreviation, boolean includeStubs) {
+        if (includeStubs) {
+            if (positionAbbreviation != null && !positionAbbreviation.isBlank()) {
+                return athleteRepository.findByPositionAbbreviationOrderByFullNameAsc(positionAbbreviation);
+            }
+            return athleteRepository.findAllByOrderByFullNameAsc();
         }
-        return athleteRepository.findAllByOrderByFullNameAsc();
+
+        if (positionAbbreviation != null && !positionAbbreviation.isBlank()) {
+            return athleteRepository.findByPositionAbbreviationAndStubFalseOrderByFullNameAsc(positionAbbreviation);
+        }
+        return athleteRepository.findByStubFalseOrderByFullNameAsc();
     }
 
     public Athlete getAthleteByEspnId(String athleteEspnId) {
@@ -168,7 +174,6 @@ public class AthleteIngestionService {
         int inserted = 0;
         int updated = 0;
         int unchanged = 0;
-        int skippedDuplicates = 0;
         List<Athlete> newAthletes = new ArrayList<>();
 
         for (String espnId : espnIds) {
@@ -178,6 +183,7 @@ public class AthleteIngestionService {
                 Athlete athlete = new Athlete();
                 athlete.setEspnId(espnId);
                 athlete.setFullName(espnId);
+                athlete.setStub(true);
                 athlete.setIngestedAt(now);
                 athlete.setUpdatedAt(now);
                 newAthletes.add(athlete);
@@ -203,24 +209,8 @@ public class AthleteIngestionService {
             }
         }
 
-        // Batch insert new athletes (fast path)
-        try {
-            athleteRepository.saveAll(newAthletes);
-            inserted = newAthletes.size();
-        } catch (DataIntegrityViolationException e) {
-            log.info("Batch insert failed with duplicate, falling back to individual saves");
-            entityManager.clear();
-            for (Athlete athlete : newAthletes) {
-                try {
-                    athleteRepository.saveAndFlush(athlete);
-                    inserted++;
-                } catch (DataIntegrityViolationException ex) {
-                    log.debug("Athlete {} already exists, skipping insert", athlete.getEspnId());
-                    entityManager.clear();
-                    skippedDuplicates++;
-                }
-            }
-        }
+        inserted = insertPlaceholderAthletes(newAthletes);
+        int skippedDuplicates = newAthletes.size() - inserted;
 
         entityManager.flush();
         entityManager.clear();
@@ -229,6 +219,24 @@ public class AthleteIngestionService {
             log.info("Skipped {} duplicate athlete inserts", skippedDuplicates);
         }
         return new PageWriteResult(inserted, updated, unchanged, System.nanoTime() - dbStartNanos);
+    }
+
+    private int insertPlaceholderAthletes(List<Athlete> newAthletes) {
+        int inserted = 0;
+        for (Athlete athlete : newAthletes) {
+            inserted += entityManager.createNativeQuery("""
+                    INSERT INTO ingestion.athletes (espn_id, full_name, stub, ingested_at, updated_at)
+                    VALUES (:espnId, :fullName, :stub, :ingestedAt, :updatedAt)
+                    ON CONFLICT (espn_id) DO NOTHING
+                    """)
+                    .setParameter("espnId", athlete.getEspnId())
+                    .setParameter("fullName", athlete.getFullName())
+                    .setParameter("stub", athlete.getStub())
+                    .setParameter("ingestedAt", athlete.getIngestedAt())
+                    .setParameter("updatedAt", athlete.getUpdatedAt())
+                    .executeUpdate();
+        }
+        return inserted;
     }
 
     private long millisSince(long startNanos) {

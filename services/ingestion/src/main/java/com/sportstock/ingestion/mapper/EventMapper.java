@@ -5,6 +5,7 @@ import com.sportstock.ingestion.entity.Event;
 import com.sportstock.ingestion.entity.EventCompetitor;
 import com.sportstock.ingestion.entity.EventCompetitorLinescore;
 import com.sportstock.ingestion.entity.Team;
+import com.sportstock.ingestion.exception.IngestionException;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -15,20 +16,27 @@ public final class EventMapper {
 
     private EventMapper() {}
 
-    public static void applyFields(JsonNode node, JsonNode competition, Event event) {
+    public static void applyFields(JsonNode node, JsonNode competition, Event event, Integer requestedSeasonType) {
         Instant now = Instant.now();
 
         event.setEspnId(node.path("id").asText());
         event.setEspnUid(textOrNull(node, "uid"));
         event.setName(textOrNull(node, "name"));
         event.setShortName(textOrNull(node, "shortName"));
-        event.setDate(parseInstantOrNull(node.path("date").asText()));
+
+        String rawDate = node.path("date").asText(null);
+        if (rawDate == null || rawDate.isBlank()) {
+            throw new IngestionException("Event " + node.path("id").asText() + " is missing a parseable date");
+        }
+        event.setDate(parseInstantOrNull(rawDate));
 
         JsonNode season = node.path("season");
         if (!season.isMissingNode()) {
             event.setSeasonYear(season.path("year").asInt());
-            event.setSeasonType(intOrNull(season, "type"));
+            event.setSeasonType(resolveSeasonType(season, requestedSeasonType));
             event.setSeasonSlug(textOrNull(season, "slug"));
+        } else if (requestedSeasonType != null) {
+            event.setSeasonType(requestedSeasonType);
         }
 
         JsonNode week = node.path("week");
@@ -78,6 +86,30 @@ public final class EventMapper {
             event.setIngestedAt(now);
         }
         event.setUpdatedAt(now);
+    }
+
+    private static Integer resolveSeasonType(JsonNode seasonNode, Integer requestedSeasonType) {
+        JsonNode typeNode = seasonNode.path("type");
+        if (typeNode.isMissingNode() || typeNode.isNull()) {
+            return requestedSeasonType;
+        }
+
+        if (typeNode.isObject()) {
+            return parseSeasonTypeValue(textOrNull(typeNode, "id"), requestedSeasonType);
+        }
+
+        return parseSeasonTypeValue(typeNode.asText(null), requestedSeasonType);
+    }
+
+    private static Integer parseSeasonTypeValue(String rawValue, Integer requestedSeasonType) {
+        if (rawValue == null || rawValue.isBlank()) {
+            return requestedSeasonType;
+        }
+        try {
+            return Integer.valueOf(rawValue);
+        } catch (NumberFormatException e) {
+            throw new IngestionException("Failed to parse season type value: " + rawValue, e);
+        }
     }
 
     public static void applyCompetitorFields(JsonNode node, EventCompetitor competitor, Event event, Team team) {

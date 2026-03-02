@@ -116,6 +116,9 @@ public class Athlete {
     @Column(name = "alternate_ids_sdr", length = 20)
     private String alternateIdsSdr;
 
+    @Column(nullable = false)
+    private Boolean stub = false;
+
     @Column(name = "ingested_at", nullable = false)
     private Instant ingestedAt;
 
