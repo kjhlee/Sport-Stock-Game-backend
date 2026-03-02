@@ -202,10 +202,8 @@ public class AthleteIngestionService {
             }
         }
 
-        // Flush pending updates to existing athletes before batch-inserting new ones
         entityManager.flush();
 
-        // Batch insert new athletes
         try {
             athleteRepository.saveAll(newAthletes);
             inserted = newAthletes.size();
