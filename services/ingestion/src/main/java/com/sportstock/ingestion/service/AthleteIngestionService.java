@@ -207,12 +207,11 @@ public class AthleteIngestionService {
         try {
             athleteRepository.saveAll(newAthletes);
             inserted = newAthletes.size();
+            entityManager.flush();
         } catch (DataIntegrityViolationException e) {
             throw new IngestionException(
                     "Failed to insert athletes due to data integrity violation", e);
         }
-
-        entityManager.flush();
         entityManager.clear();
 
         return new PageWriteResult(inserted, updated, unchanged, System.nanoTime() - dbStartNanos);
