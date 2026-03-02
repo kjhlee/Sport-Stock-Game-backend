@@ -96,7 +96,7 @@ public class AthleteIngestionService {
 
             totalSeen += espnIds.size();
             if (espnIds.isEmpty()) {
-                log.info("Athlete page {} processed: seen=0 inserted=0 updated=0 unchanged=0 durationMs={}",
+                log.info("Athlete page {} processed: uniqueSeen=0 inserted=0 updated=0 unchanged=0 durationMs={}",
                         page, millisSince(pageStartNanos));
                 continue;
             }
