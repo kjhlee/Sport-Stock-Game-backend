@@ -73,6 +73,12 @@ public class EventSummaryIngestionService {
         return playerGameStatRepository.findByEventId(event.getId());
     }
 
+    public List<PlayerGameStat> getPlayerStatsByAthlete(String eventEspnId, String athleteEspnId) {
+        Event event = eventRepository.findByEspnId(eventEspnId)
+                .orElseThrow(() -> new EntityNotFoundException("Event not found with ESPN ID: " + eventEspnId));
+        return playerGameStatRepository.findByEventIdAndAthleteEspnId(event.getId(), athleteEspnId);
+    }
+
     private void upsertTeamStats(JsonNode root, Event event) {
         JsonNode teams = root.path("boxscore").path("teams");
         if (!teams.isArray()) {

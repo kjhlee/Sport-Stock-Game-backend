@@ -15,4 +15,6 @@ public interface PlayerGameStatRepository extends JpaRepository<PlayerGameStat, 
     List<PlayerGameStat> findByAthleteId(Long athleteId);
 
     List<PlayerGameStat> findByEventIdAndTeamId(Long eventId, Long teamId);
+
+    List<PlayerGameStat> findByEventIdAndAthleteEspnId(Long eventId, String athleteEspnId);
 }

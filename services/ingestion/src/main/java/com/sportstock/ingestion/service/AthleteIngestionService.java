@@ -11,16 +11,18 @@ import com.sportstock.ingestion.repo.AthleteRepository;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Instant;
-import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -30,8 +32,6 @@ import static com.sportstock.ingestion.mapper.JsonNodeUtils.textOrNull;
 @RequiredArgsConstructor
 @Slf4j
 public class AthleteIngestionService {
-
-    private static final int DB_BATCH_SIZE = 500;
 
     private final EspnApiClient espnApiClient;
     private final AthleteRepository athleteRepository;
@@ -55,6 +55,8 @@ public class AthleteIngestionService {
         int totalInserted = 0;
         int totalUpdated = 0;
         int totalUnchanged = 0;
+
+        Set<String> seenEspnIds = new HashSet<>();
 
         TransactionTemplate pageWriteTransaction = new TransactionTemplate(transactionManager);
         pageWriteTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
@@ -87,6 +89,9 @@ public class AthleteIngestionService {
                 }
                 espnIds.add(espnId);
             }
+
+            espnIds.removeAll(seenEspnIds);
+            seenEspnIds.addAll(espnIds);
 
             totalSeen += espnIds.size();
             if (espnIds.isEmpty()) {
@@ -159,13 +164,16 @@ public class AthleteIngestionService {
         Map<String, Athlete> existingByEspnId = athleteRepository.findByEspnIdIn(espnIds).stream()
                 .collect(Collectors.toMap(Athlete::getEspnId, Function.identity()));
 
-        List<Athlete> toSave = new ArrayList<>(espnIds.size());
         int inserted = 0;
         int updated = 0;
         int unchanged = 0;
+        int skippedDuplicates = 0;
 
         for (String espnId : espnIds) {
             Athlete existing = existingByEspnId.get(espnId);
+            if (existing == null) {
+                existing = athleteRepository.findByEspnId(espnId).orElse(null);
+            }
             if (existing == null) {
                 Instant now = Instant.now();
                 Athlete athlete = new Athlete();
@@ -173,8 +181,14 @@ public class AthleteIngestionService {
                 athlete.setFullName(espnId);
                 athlete.setIngestedAt(now);
                 athlete.setUpdatedAt(now);
-                toSave.add(athlete);
-                inserted++;
+                try {
+                    athleteRepository.saveAndFlush(athlete);
+                    inserted++;
+                } catch (DataIntegrityViolationException e) {
+                    log.debug("Athlete {} already exists, skipping insert", espnId);
+                    entityManager.clear();
+                    skippedDuplicates++;
+                }
                 continue;
             }
 
@@ -190,27 +204,20 @@ public class AthleteIngestionService {
 
             if (changed) {
                 existing.setUpdatedAt(Instant.now());
-                toSave.add(existing);
+                athleteRepository.save(existing);
                 updated++;
             } else {
                 unchanged++;
             }
         }
 
-        saveInChunks(toSave);
-        return new PageWriteResult(inserted, updated, unchanged, System.nanoTime() - dbStartNanos);
-    }
+        entityManager.flush();
+        entityManager.clear();
 
-    private void saveInChunks(List<Athlete> athletes) {
-        if (athletes.isEmpty()) {
-            return;
+        if (skippedDuplicates > 0) {
+            log.info("Skipped {} duplicate athlete inserts", skippedDuplicates);
         }
-        for (int start = 0; start < athletes.size(); start += DB_BATCH_SIZE) {
-            int end = Math.min(start + DB_BATCH_SIZE, athletes.size());
-            athleteRepository.saveAll(athletes.subList(start, end));
-            entityManager.flush();
-            entityManager.clear();
-        }
+        return new PageWriteResult(inserted, updated, unchanged, System.nanoTime() - dbStartNanos);
     }
 
     private long millisSince(long startNanos) {

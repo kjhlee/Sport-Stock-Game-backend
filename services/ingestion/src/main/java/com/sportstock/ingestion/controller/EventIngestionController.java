@@ -82,6 +82,13 @@ public class EventIngestionController {
     ) {
         return ResponseEntity.ok(eventSummaryIngestionService.getPlayerStats(eventEspnId, teamEspnId));
     }
+    @GetMapping("/events/{eventEspnId}/player-stats/{athleteEspnId}")
+    public ResponseEntity<List<PlayerGameStat>> getEventPlayerStatsByAthlete(
+            @PathVariable @NotBlank @Pattern(regexp = ESPN_ID_PATTERN) String eventEspnId,
+            @PathVariable @NotBlank @Pattern(regexp = ESPN_ID_PATTERN) String athleteEspnId
+    ) {
+        return ResponseEntity.ok(eventSummaryIngestionService.getPlayerStatsByAthlete(eventEspnId, athleteEspnId));
+    }
 
     private Map<String, Object> accepted(String jobName) {
         Map<String, Object> response = new HashMap<>();

@@ -33,8 +33,8 @@ public class AthleteIngestionController {
 
     @PostMapping("/sync/athletes")
     public ResponseEntity<Map<String, Object>> syncAthletes(
-            @RequestParam(defaultValue = "300") @Min(1) @Max(1000) Integer pageSize,
-            @RequestParam(defaultValue = "20") @Min(1) @Max(10000) Integer pageCount
+            @RequestParam(defaultValue = "500") @Min(1) @Max(1000) Integer pageSize,
+            @RequestParam(defaultValue = "40") @Min(1) @Max(10000) Integer pageCount
     ) {
         athleteIngestionService.ingestAthletes(pageSize, pageCount);
         return ResponseEntity.accepted().body(accepted("athletesSync"));
