@@ -195,7 +195,6 @@ public class AthleteIngestionService {
 
             if (changed) {
                 existing.setUpdatedAt(Instant.now());
-                athleteRepository.save(existing);
                 updated++;
             } else {
                 unchanged++;
