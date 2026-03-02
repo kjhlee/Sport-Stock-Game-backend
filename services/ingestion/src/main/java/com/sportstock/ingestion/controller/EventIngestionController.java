@@ -82,6 +82,7 @@ public class EventIngestionController {
     ) {
         return ResponseEntity.ok(eventSummaryIngestionService.getPlayerStats(eventEspnId, teamEspnId));
     }
+
     @GetMapping("/events/{eventEspnId}/player-stats/{athleteEspnId}")
     public ResponseEntity<List<PlayerGameStat>> getEventPlayerStatsByAthlete(
             @PathVariable @NotBlank @Pattern(regexp = ESPN_ID_PATTERN) String eventEspnId,

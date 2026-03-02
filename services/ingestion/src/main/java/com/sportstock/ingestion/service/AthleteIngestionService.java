@@ -18,6 +18,7 @@ import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -168,12 +169,10 @@ public class AthleteIngestionService {
         int updated = 0;
         int unchanged = 0;
         int skippedDuplicates = 0;
+        List<Athlete> newAthletes = new ArrayList<>();
 
         for (String espnId : espnIds) {
             Athlete existing = existingByEspnId.get(espnId);
-            if (existing == null) {
-                existing = athleteRepository.findByEspnId(espnId).orElse(null);
-            }
             if (existing == null) {
                 Instant now = Instant.now();
                 Athlete athlete = new Athlete();
@@ -181,14 +180,7 @@ public class AthleteIngestionService {
                 athlete.setFullName(espnId);
                 athlete.setIngestedAt(now);
                 athlete.setUpdatedAt(now);
-                try {
-                    athleteRepository.saveAndFlush(athlete);
-                    inserted++;
-                } catch (DataIntegrityViolationException e) {
-                    log.debug("Athlete {} already exists, skipping insert", espnId);
-                    entityManager.clear();
-                    skippedDuplicates++;
-                }
+                newAthletes.add(athlete);
                 continue;
             }
 
@@ -208,6 +200,25 @@ public class AthleteIngestionService {
                 updated++;
             } else {
                 unchanged++;
+            }
+        }
+
+        // Batch insert new athletes (fast path)
+        try {
+            athleteRepository.saveAll(newAthletes);
+            inserted = newAthletes.size();
+        } catch (DataIntegrityViolationException e) {
+            log.info("Batch insert failed with duplicate, falling back to individual saves");
+            entityManager.clear();
+            for (Athlete athlete : newAthletes) {
+                try {
+                    athleteRepository.saveAndFlush(athlete);
+                    inserted++;
+                } catch (DataIntegrityViolationException ex) {
+                    log.debug("Athlete {} already exists, skipping insert", athlete.getEspnId());
+                    entityManager.clear();
+                    skippedDuplicates++;
+                }
             }
         }
 
