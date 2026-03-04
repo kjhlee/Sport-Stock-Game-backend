@@ -29,7 +29,7 @@ public class TeamRecord {
     @Column(name = "season_year", nullable = false)
     private Integer seasonYear;
 
-    @Column(name = "record_type", nullable = false, length = 20)
+    @Column(name = "record_type", nullable = false, length = 100)
     private String recordType;
 
     @Column(length = 20)

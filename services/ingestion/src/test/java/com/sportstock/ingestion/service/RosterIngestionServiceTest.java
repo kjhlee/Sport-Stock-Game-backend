@@ -11,6 +11,7 @@ import com.sportstock.ingestion.repo.AthleteRepository;
 import com.sportstock.ingestion.repo.CoachRepository;
 import com.sportstock.ingestion.repo.TeamRepository;
 import com.sportstock.ingestion.repo.TeamRosterEntryRepository;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -52,6 +53,8 @@ class RosterIngestionServiceTest {
     private JsonPayloadCodec jsonPayloadCodec;
     @Mock
     private TransactionTemplate transactionTemplate;
+    @Mock
+    private EntityManager entityManager;
 
     private RosterIngestionService service;
     private JsonNode rosterNode;
@@ -65,7 +68,8 @@ class RosterIngestionServiceTest {
                 teamRosterEntryRepository,
                 coachRepository,
                 jsonPayloadCodec,
-                transactionTemplate
+                transactionTemplate,
+                entityManager
         );
         rosterNode = OBJECT_MAPPER.readTree("""
                 {
@@ -154,6 +158,7 @@ class RosterIngestionServiceTest {
 
         verify(athleteRepository, times(2)).findByEspnId("4911851");
         verify(athleteRepository, times(2)).save(any(Athlete.class));
+        verify(entityManager).detach(any(Athlete.class));
         verify(teamRosterEntryRepository).findByTeamIdAndAthleteIdAndSeasonYear(30L, 99L, 2025);
         verify(teamRosterEntryRepository).save(any(TeamRosterEntry.class));
     }
