@@ -15,6 +15,7 @@ import com.sportstock.ingestion.repo.CoachRepository;
 import com.sportstock.ingestion.repo.TeamRepository;
 import com.sportstock.ingestion.repo.TeamRosterEntryRepository;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -82,10 +83,7 @@ public class RosterIngestionService {
                     break;
                 }
 
-                String espnId = athleteNode.path("id").asText();
-                Athlete athlete = athleteRepository.findByEspnId(espnId).orElseGet(Athlete::new);
-                AthleteMapper.applyFields(athleteNode, athlete);
-                athlete = athleteRepository.save(athlete);
+                Athlete athlete = upsertAthlete(athleteNode);
 
                 TeamRosterEntry entry = teamRosterEntryRepository
                         .findByTeamIdAndAthleteIdAndSeasonYear(team.getId(), athlete.getId(), seasonYear)
@@ -115,6 +113,22 @@ public class RosterIngestionService {
         }
 
         log.info("Ingested {} roster entries for team {} ({})", count, team.getDisplayName(), teamEspnId);
+    }
+
+    private Athlete upsertAthlete(JsonNode athleteNode) {
+        String espnId = athleteNode.path("id").asText();
+        Athlete athlete = athleteRepository.findByEspnId(espnId).orElseGet(Athlete::new);
+        AthleteMapper.applyFields(athleteNode, athlete);
+
+        try {
+            return athleteRepository.save(athlete);
+        } catch (DataIntegrityViolationException ex) {
+            log.warn("Athlete {} was inserted concurrently during roster sync; reloading existing row", espnId);
+            Athlete existing = athleteRepository.findByEspnId(espnId)
+                    .orElseThrow(() -> ex);
+            AthleteMapper.applyFields(athleteNode, existing);
+            return athleteRepository.save(existing);
+        }
     }
 
     public void ingestAllRosters(Integer seasonYear, Integer rosterLimit, List<String> teamEspnIds) {

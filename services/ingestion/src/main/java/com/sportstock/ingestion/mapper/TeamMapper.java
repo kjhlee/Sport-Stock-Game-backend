@@ -60,7 +60,7 @@ public final class TeamMapper {
 
         record.setTeam(team);
         record.setSeasonYear(seasonYear);
-        record.setRecordType(item.path("type").asText());
+        record.setRecordType(truncate(item.path("type").asText(), 20));
         record.setSummary(textOrNull(item, "summary"));
 
         JsonNode stats = item.path("stats");

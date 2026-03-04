@@ -48,6 +48,13 @@ public final class JsonNodeUtils {
         return logos.get(0).path("href").asText(null);
     }
 
+    public static String truncate(String value, int maxLength) {
+        if (value == null || value.length() <= maxLength) {
+            return value;
+        }
+        return value.substring(0, maxLength);
+    }
+
     public static Instant parseInstantOrNull(String value) {
         if (value == null || value.isBlank()) {
             return null;

@@ -18,4 +18,8 @@ public interface AthleteRepository extends JpaRepository<Athlete, Long> {
     List<Athlete> findAllByOrderByFullNameAsc();
 
     List<Athlete> findByPositionAbbreviationOrderByFullNameAsc(String positionAbbreviation);
+
+    List<Athlete> findByStubFalseOrderByFullNameAsc();
+
+    List<Athlete> findByPositionAbbreviationAndStubFalseOrderByFullNameAsc(String positionAbbreviation);
 }

@@ -33,8 +33,8 @@ public class AthleteIngestionController {
 
     @PostMapping("/sync/athletes")
     public ResponseEntity<Map<String, Object>> syncAthletes(
-            @RequestParam(defaultValue = "100") @Min(1) @Max(1000) Integer pageSize,
-            @RequestParam(defaultValue = "1") @Min(1) @Max(10000) Integer pageCount
+            @RequestParam(defaultValue = "500") @Min(1) @Max(1000) Integer pageSize,
+            @RequestParam(defaultValue = "40") @Min(1) @Max(10000) Integer pageCount
     ) {
         athleteIngestionService.ingestAthletes(pageSize, pageCount);
         return ResponseEntity.accepted().body(accepted("athletesSync"));
@@ -42,9 +42,10 @@ public class AthleteIngestionController {
 
     @GetMapping("/athletes")
     public ResponseEntity<List<Athlete>> listAthletes(
-            @RequestParam(required = false) String positionAbbreviation
+            @RequestParam(required = false) String positionAbbreviation,
+            @RequestParam(defaultValue = "false") boolean includeStubs
     ) {
-        return ResponseEntity.ok(athleteIngestionService.listAthletes(positionAbbreviation));
+        return ResponseEntity.ok(athleteIngestionService.listAthletes(positionAbbreviation, includeStubs));
     }
 
     @GetMapping("/athletes/{athleteEspnId}")

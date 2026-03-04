@@ -18,9 +18,11 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -30,8 +32,6 @@ import static com.sportstock.ingestion.mapper.JsonNodeUtils.textOrNull;
 @RequiredArgsConstructor
 @Slf4j
 public class AthleteIngestionService {
-
-    private static final int DB_BATCH_SIZE = 500;
 
     private final EspnApiClient espnApiClient;
     private final AthleteRepository athleteRepository;
@@ -55,6 +55,8 @@ public class AthleteIngestionService {
         int totalInserted = 0;
         int totalUpdated = 0;
         int totalUnchanged = 0;
+
+        Set<String> seenEspnIds = new HashSet<>();
 
         TransactionTemplate pageWriteTransaction = new TransactionTemplate(transactionManager);
         pageWriteTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
@@ -87,6 +89,9 @@ public class AthleteIngestionService {
                 }
                 espnIds.add(espnId);
             }
+
+            espnIds.removeAll(seenEspnIds);
+            seenEspnIds.addAll(espnIds);
 
             totalSeen += espnIds.size();
             if (espnIds.isEmpty()) {
@@ -132,11 +137,18 @@ public class AthleteIngestionService {
         );
     }
 
-    public List<Athlete> listAthletes(String positionAbbreviation) {
-        if (positionAbbreviation != null && !positionAbbreviation.isBlank()) {
-            return athleteRepository.findByPositionAbbreviationOrderByFullNameAsc(positionAbbreviation);
+    public List<Athlete> listAthletes(String positionAbbreviation, boolean includeStubs) {
+        if (includeStubs) {
+            if (positionAbbreviation != null && !positionAbbreviation.isBlank()) {
+                return athleteRepository.findByPositionAbbreviationOrderByFullNameAsc(positionAbbreviation);
+            }
+            return athleteRepository.findAllByOrderByFullNameAsc();
         }
-        return athleteRepository.findAllByOrderByFullNameAsc();
+
+        if (positionAbbreviation != null && !positionAbbreviation.isBlank()) {
+            return athleteRepository.findByPositionAbbreviationAndStubFalseOrderByFullNameAsc(positionAbbreviation);
+        }
+        return athleteRepository.findByStubFalseOrderByFullNameAsc();
     }
 
     public Athlete getAthleteByEspnId(String athleteEspnId) {
@@ -159,10 +171,10 @@ public class AthleteIngestionService {
         Map<String, Athlete> existingByEspnId = athleteRepository.findByEspnIdIn(espnIds).stream()
                 .collect(Collectors.toMap(Athlete::getEspnId, Function.identity()));
 
-        List<Athlete> toSave = new ArrayList<>(espnIds.size());
         int inserted = 0;
         int updated = 0;
         int unchanged = 0;
+        List<Athlete> newAthletes = new ArrayList<>();
 
         for (String espnId : espnIds) {
             Athlete existing = existingByEspnId.get(espnId);
@@ -171,10 +183,10 @@ public class AthleteIngestionService {
                 Athlete athlete = new Athlete();
                 athlete.setEspnId(espnId);
                 athlete.setFullName(espnId);
+                athlete.setStub(true);
                 athlete.setIngestedAt(now);
                 athlete.setUpdatedAt(now);
-                toSave.add(athlete);
-                inserted++;
+                newAthletes.add(athlete);
                 continue;
             }
 
@@ -190,27 +202,41 @@ public class AthleteIngestionService {
 
             if (changed) {
                 existing.setUpdatedAt(Instant.now());
-                toSave.add(existing);
+                athleteRepository.save(existing);
                 updated++;
             } else {
                 unchanged++;
             }
         }
 
-        saveInChunks(toSave);
+        inserted = insertPlaceholderAthletes(newAthletes);
+        int skippedDuplicates = newAthletes.size() - inserted;
+
+        entityManager.flush();
+        entityManager.clear();
+
+        if (skippedDuplicates > 0) {
+            log.info("Skipped {} duplicate athlete inserts", skippedDuplicates);
+        }
         return new PageWriteResult(inserted, updated, unchanged, System.nanoTime() - dbStartNanos);
     }
 
-    private void saveInChunks(List<Athlete> athletes) {
-        if (athletes.isEmpty()) {
-            return;
+    private int insertPlaceholderAthletes(List<Athlete> newAthletes) {
+        int inserted = 0;
+        for (Athlete athlete : newAthletes) {
+            inserted += entityManager.createNativeQuery("""
+                    INSERT INTO ingestion.athletes (espn_id, full_name, stub, ingested_at, updated_at)
+                    VALUES (:espnId, :fullName, :stub, :ingestedAt, :updatedAt)
+                    ON CONFLICT (espn_id) DO NOTHING
+                    """)
+                    .setParameter("espnId", athlete.getEspnId())
+                    .setParameter("fullName", athlete.getFullName())
+                    .setParameter("stub", athlete.getStub())
+                    .setParameter("ingestedAt", athlete.getIngestedAt())
+                    .setParameter("updatedAt", athlete.getUpdatedAt())
+                    .executeUpdate();
         }
-        for (int start = 0; start < athletes.size(); start += DB_BATCH_SIZE) {
-            int end = Math.min(start + DB_BATCH_SIZE, athletes.size());
-            athleteRepository.saveAll(athletes.subList(start, end));
-            entityManager.flush();
-            entityManager.clear();
-        }
+        return inserted;
     }
 
     private long millisSince(long startNanos) {

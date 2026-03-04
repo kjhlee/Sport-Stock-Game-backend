@@ -12,7 +12,11 @@ public interface EventRepository extends JpaRepository<Event, Long> {
 
     List<Event> findBySeasonYearOrderByDateAsc(Integer seasonYear);
 
-    List<Event> findBySeasonYearAndWeekNumber(Integer seasonYear, Integer weekNumber);
+    List<Event> findBySeasonYearAndSeasonTypeAndWeekNumberOrderByDateAsc(
+            Integer seasonYear,
+            Integer seasonType,
+            Integer weekNumber
+    );
 
     List<Event> findBySeasonYearAndStatusCompletedTrue(Integer seasonYear);
 }

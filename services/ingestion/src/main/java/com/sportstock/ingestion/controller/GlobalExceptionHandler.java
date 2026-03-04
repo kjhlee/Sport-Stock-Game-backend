@@ -36,6 +36,11 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", errors);
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException ex) {
+        return build(HttpStatus.BAD_REQUEST, "BAD_REQUEST", ex.getMessage());
+    }
+
     @ExceptionHandler(UnsupportedOperationException.class)
     public ResponseEntity<Map<String, Object>> handleUnsupported(UnsupportedOperationException ex) {
         return build(HttpStatus.NOT_IMPLEMENTED, "NOT_IMPLEMENTED", ex.getMessage());

@@ -52,7 +52,7 @@ public class EventIngestionService {
 
             Event event = eventRepository.findByEspnId(eventNode.path("id").asText())
                     .orElseGet(Event::new);
-            EventMapper.applyFields(eventNode, competition, event);
+            EventMapper.applyFields(eventNode, competition, event, seasonType);
             event = eventRepository.save(event);
 
             if (!competition.isMissingNode()) {
@@ -63,9 +63,16 @@ public class EventIngestionService {
         log.info("Ingested {} events for season {} type {} week {}", eventCount, seasonYear, seasonType, week);
     }
 
-    public List<Event> listEvents(Integer seasonYear, Integer weekNumber) {
+    public List<Event> listEvents(Integer seasonYear, Integer seasonType, Integer weekNumber) {
         if (weekNumber != null) {
-            return eventRepository.findBySeasonYearAndWeekNumber(seasonYear, weekNumber);
+            if (seasonType == null) {
+                throw new IllegalArgumentException("seasonType is required when weekNumber is provided");
+            }
+            return eventRepository.findBySeasonYearAndSeasonTypeAndWeekNumberOrderByDateAsc(
+                    seasonYear,
+                    seasonType,
+                    weekNumber
+            );
         }
         return eventRepository.findBySeasonYearOrderByDateAsc(seasonYear);
     }

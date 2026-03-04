@@ -94,6 +94,8 @@ public final class AthleteMapper {
             athlete.setAlternateIdsSdr(textOrNull(altIds, "sdr"));
         }
 
+        athlete.setStub(false);
+
         if (athlete.getIngestedAt() == null) {
             athlete.setIngestedAt(now);
         }

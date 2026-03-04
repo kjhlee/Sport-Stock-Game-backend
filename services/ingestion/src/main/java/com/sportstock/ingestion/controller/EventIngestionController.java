@@ -56,9 +56,13 @@ public class EventIngestionController {
     @GetMapping("/events")
     public ResponseEntity<List<Event>> listEvents(
             @RequestParam @Min(2000) @Max(2100) Integer seasonYear,
+            @RequestParam(required = false) @Min(1) @Max(4) Integer seasonType,
             @RequestParam(required = false) @Min(1) @Max(25) Integer weekNumber
     ) {
-        return ResponseEntity.ok(eventIngestionService.listEvents(seasonYear, weekNumber));
+        if (weekNumber != null && seasonType == null) {
+            throw new IllegalArgumentException("seasonType is required when weekNumber is provided");
+        }
+        return ResponseEntity.ok(eventIngestionService.listEvents(seasonYear, seasonType, weekNumber));
     }
 
     @GetMapping("/events/{eventEspnId}")
@@ -81,6 +85,14 @@ public class EventIngestionController {
             @RequestParam(required = false) @Pattern(regexp = ESPN_ID_PATTERN) String teamEspnId
     ) {
         return ResponseEntity.ok(eventSummaryIngestionService.getPlayerStats(eventEspnId, teamEspnId));
+    }
+
+    @GetMapping("/events/{eventEspnId}/player-stats/{athleteEspnId}")
+    public ResponseEntity<List<PlayerGameStat>> getEventPlayerStatsByAthlete(
+            @PathVariable @NotBlank @Pattern(regexp = ESPN_ID_PATTERN) String eventEspnId,
+            @PathVariable @NotBlank @Pattern(regexp = ESPN_ID_PATTERN) String athleteEspnId
+    ) {
+        return ResponseEntity.ok(eventSummaryIngestionService.getPlayerStatsByAthlete(eventEspnId, athleteEspnId));
     }
 
     private Map<String, Object> accepted(String jobName) {
