@@ -3,6 +3,7 @@ package com.sportstock.ingestion.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sportstock.ingestion.client.EspnApiClient;
+import com.sportstock.ingestion.dto.response.TeamRecordResponse;
 import com.sportstock.ingestion.entity.Team;
 import com.sportstock.ingestion.entity.TeamRecord;
 import com.sportstock.ingestion.mapper.JsonPayloadCodec;
@@ -225,14 +226,15 @@ class TeamIngestionServiceTest {
         existingTeam.setId(1L);
         TeamRecord existingRecord = new TeamRecord();
         existingRecord.setRecordType(longRecordType);
+        existingRecord.setTeam(existingTeam);
 
         when(teamRepository.findByEspnId("1")).thenReturn(Optional.of(existingTeam));
         when(teamRecordRepository.findByTeamIdAndSeasonYearAndRecordType(1L, 2025, longRecordType))
                 .thenReturn(Optional.of(existingRecord));
 
-        TeamRecord result = service.getRecord("1", 2025, longRecordType);
+        TeamRecordResponse result = service.getRecord("1", 2025, longRecordType);
 
-        assertSame(existingRecord, result);
+        org.junit.jupiter.api.Assertions.assertEquals(longRecordType, result.recordType());
         verify(teamRecordRepository).findByTeamIdAndSeasonYearAndRecordType(1L, 2025, longRecordType);
         verify(teamRecordRepository, never()).save(any(TeamRecord.class));
     }

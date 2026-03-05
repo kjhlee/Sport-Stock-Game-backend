@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.sportstock.ingestion.client.EspnApiClient;
+import com.sportstock.ingestion.dto.response.BoxscoreTeamStatResponse;
+import com.sportstock.ingestion.dto.response.PlayerGameStatResponse;
 import com.sportstock.ingestion.entity.Athlete;
 import com.sportstock.ingestion.entity.BoxscoreTeamStat;
 import com.sportstock.ingestion.entity.Event;
@@ -45,7 +47,7 @@ public class EventSummaryIngestionService {
 
     @Transactional
     public void ingestEventSummary(String eventEspnId) {
-        Event event = eventRepository.findByEspnId(eventEspnId)
+        Event event = eventRepository.findByEspnIdWithLock(eventEspnId)
                 .orElseThrow(() -> new EntityNotFoundException("Event not found with ESPN ID: " + eventEspnId));
 
         String json = espnApiClient.fetchEventSummary(eventEspnId);
@@ -57,28 +59,35 @@ public class EventSummaryIngestionService {
         log.info("Ingested summary for event {}", eventEspnId);
     }
 
-    public List<BoxscoreTeamStat> getTeamStats(String eventEspnId) {
+    @Transactional(readOnly = true)
+    public List<BoxscoreTeamStatResponse> getTeamStats(String eventEspnId) {
         Event event = eventRepository.findByEspnId(eventEspnId)
                 .orElseThrow(() -> new EntityNotFoundException("Event not found with ESPN ID: " + eventEspnId));
-        return boxscoreTeamStatRepository.findByEventId(event.getId());
+        return boxscoreTeamStatRepository.findByEventId(event.getId())
+                .stream().map(BoxscoreTeamStatResponse::from).toList();
     }
 
-    public List<PlayerGameStat> getPlayerStats(String eventEspnId, String teamEspnId) {
+    @Transactional(readOnly = true)
+    public List<PlayerGameStatResponse> getPlayerStats(String eventEspnId, String teamEspnId) {
         Event event = eventRepository.findByEspnId(eventEspnId)
                 .orElseThrow(() -> new EntityNotFoundException("Event not found with ESPN ID: " + eventEspnId));
 
         if (teamEspnId != null && !teamEspnId.isBlank()) {
             Team team = teamRepository.findByEspnId(teamEspnId)
                     .orElseThrow(() -> new EntityNotFoundException("Team not found with ESPN ID: " + teamEspnId));
-            return playerGameStatRepository.findByEventIdAndTeamId(event.getId(), team.getId());
+            return playerGameStatRepository.findByEventIdAndTeamId(event.getId(), team.getId())
+                    .stream().map(e -> PlayerGameStatResponse.from(e, objectMapper)).toList();
         }
-        return playerGameStatRepository.findByEventId(event.getId());
+        return playerGameStatRepository.findByEventId(event.getId())
+                .stream().map(e -> PlayerGameStatResponse.from(e, objectMapper)).toList();
     }
 
-    public List<PlayerGameStat> getPlayerStatsByAthlete(String eventEspnId, String athleteEspnId) {
+    @Transactional(readOnly = true)
+    public List<PlayerGameStatResponse> getPlayerStatsByAthlete(String eventEspnId, String athleteEspnId) {
         Event event = eventRepository.findByEspnId(eventEspnId)
                 .orElseThrow(() -> new EntityNotFoundException("Event not found with ESPN ID: " + eventEspnId));
-        return playerGameStatRepository.findByEventIdAndAthleteEspnId(event.getId(), athleteEspnId);
+        return playerGameStatRepository.findByEventIdAndAthleteEspnId(event.getId(), athleteEspnId)
+                .stream().map(e -> PlayerGameStatResponse.from(e, objectMapper)).toList();
     }
 
     private void upsertTeamStats(JsonNode root, Event event) {

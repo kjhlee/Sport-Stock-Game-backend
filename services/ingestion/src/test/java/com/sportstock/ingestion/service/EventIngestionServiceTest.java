@@ -1,6 +1,7 @@
 package com.sportstock.ingestion.service;
 
 import com.sportstock.ingestion.client.EspnApiClient;
+import com.sportstock.ingestion.dto.response.EventResponse;
 import com.sportstock.ingestion.entity.Event;
 import com.sportstock.ingestion.mapper.JsonPayloadCodec;
 import com.sportstock.ingestion.repo.EventCompetitorLinescoreRepository;
@@ -15,7 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -59,9 +60,9 @@ class EventIngestionServiceTest {
         List<Event> expected = List.of(new Event());
         when(eventRepository.findBySeasonYearOrderByDateAsc(2025)).thenReturn(expected);
 
-        List<Event> result = service.listEvents(2025, null, null);
+        List<EventResponse> result = service.listEvents(2025, null, null);
 
-        assertSame(expected, result);
+        assertEquals(1, result.size());
         verify(eventRepository).findBySeasonYearOrderByDateAsc(2025);
     }
 
@@ -71,9 +72,9 @@ class EventIngestionServiceTest {
         when(eventRepository.findBySeasonYearAndSeasonTypeAndWeekNumberOrderByDateAsc(2025, 2, 1))
                 .thenReturn(expected);
 
-        List<Event> result = service.listEvents(2025, 2, 1);
+        List<EventResponse> result = service.listEvents(2025, 2, 1);
 
-        assertSame(expected, result);
+        assertEquals(1, result.size());
         verify(eventRepository).findBySeasonYearAndSeasonTypeAndWeekNumberOrderByDateAsc(2025, 2, 1);
     }
 

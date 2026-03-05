@@ -96,12 +96,12 @@ public class IngestionOrchestrationService {
             for (var event : events) {
                 try {
                     transactionTemplate.executeWithoutResult(status ->
-                            eventSummaryIngestionService.ingestEventSummary(event.getEspnId()));
+                            eventSummaryIngestionService.ingestEventSummary(event.espnId()));
                     success++;
                 } catch (Exception e) {
                     failed++;
-                    failedIds.add(event.getEspnId());
-                    log.error("Failed to ingest event summary for event {}: {}", event.getEspnId(), e.getMessage());
+                    failedIds.add(event.espnId());
+                    log.error("Failed to ingest event summary for event {}: {}", event.espnId(), e.getMessage());
                 }
             }
             log.info("Weekly sync complete: {} events succeeded, {} failed{}",
@@ -136,12 +136,12 @@ public class IngestionOrchestrationService {
             for (var team : teams) {
                 try {
                     transactionTemplate.executeWithoutResult(status ->
-                            teamIngestionService.ingestTeamDetail(team.getEspnId(), seasonYear));
+                            teamIngestionService.ingestTeamDetail(team.espnId(), seasonYear));
                     teamSuccess++;
                 } catch (Exception e) {
                     teamFailed++;
-                    teamFailedIds.add(team.getEspnId());
-                    log.error("Failed to ingest team detail for {}: {}", team.getEspnId(), e.getMessage());
+                    teamFailedIds.add(team.espnId());
+                    log.error("Failed to ingest team detail for {}: {}", team.espnId(), e.getMessage());
                 }
             }
             log.info("Ingested {} team details ({} failed{})",
@@ -162,12 +162,12 @@ public class IngestionOrchestrationService {
             for (var event : events) {
                 try {
                     transactionTemplate.executeWithoutResult(status ->
-                            eventSummaryIngestionService.ingestEventSummary(event.getEspnId()));
+                            eventSummaryIngestionService.ingestEventSummary(event.espnId()));
                     eventSuccess++;
                 } catch (Exception e) {
                     eventFailed++;
-                    eventFailedIds.add(event.getEspnId());
-                    log.error("Failed to ingest event summary for event {}: {}", event.getEspnId(), e.getMessage());
+                    eventFailedIds.add(event.espnId());
+                    log.error("Failed to ingest event summary for event {}: {}", event.espnId(), e.getMessage());
                 }
             }
             log.info("Ingested {} event summaries ({} failed{})",

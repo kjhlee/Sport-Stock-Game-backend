@@ -1,6 +1,6 @@
 package com.sportstock.ingestion.controller;
 
-import com.sportstock.ingestion.entity.Athlete;
+import com.sportstock.ingestion.dto.response.AthleteResponse;
 import com.sportstock.ingestion.service.AthleteIngestionService;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -41,7 +41,7 @@ public class AthleteIngestionController {
     }
 
     @GetMapping("/athletes")
-    public ResponseEntity<List<Athlete>> listAthletes(
+    public ResponseEntity<List<AthleteResponse>> listAthletes(
             @RequestParam(required = false) String positionAbbreviation,
             @RequestParam(defaultValue = "false") boolean includeStubs
     ) {
@@ -49,7 +49,7 @@ public class AthleteIngestionController {
     }
 
     @GetMapping("/athletes/{athleteEspnId}")
-    public ResponseEntity<Athlete> getAthlete(
+    public ResponseEntity<AthleteResponse> getAthlete(
             @PathVariable @NotBlank @Pattern(regexp = ESPN_ID_PATTERN) String athleteEspnId
     ) {
         return ResponseEntity.ok(athleteIngestionService.getAthleteByEspnId(athleteEspnId));
