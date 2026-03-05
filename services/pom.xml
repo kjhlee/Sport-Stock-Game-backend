@@ -16,6 +16,7 @@
   <modules>
     <!-- services go here later -->
     <module>ingestion</module>
+    <module>league</module>
   </modules>
 
 </project>
