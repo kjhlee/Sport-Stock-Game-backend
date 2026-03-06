@@ -8,7 +8,6 @@ public record LeagueMemberResponse(
         Long id,
         Long userId,
         String role,
-        String status,
         OffsetDateTime joinedAt
 ) {
     public static LeagueMemberResponse from(LeagueMember entity) {
@@ -16,7 +15,6 @@ public record LeagueMemberResponse(
                 entity.getId(),
                 entity.getUserId(),
                 entity.getRole(),
-                entity.getStatus(),
                 entity.getJoinedAt()
         );
     }

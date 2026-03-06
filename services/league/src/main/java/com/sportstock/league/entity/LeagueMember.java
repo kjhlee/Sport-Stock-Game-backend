@@ -34,23 +34,10 @@ public class LeagueMember {
     @Column(name = "role", nullable = false, length = 16)
     private String role;
 
-    @Pattern(regexp = "^(ACTIVE|INACTIVE)$")
-    @Size(max = 16)
-    @NotNull
-    @ColumnDefault("'ACTIVE'")
-    @Column(name = "status", nullable = false, length = 16)
-    private String status;
-
     @NotNull
     @ColumnDefault("now()")
     @Column(name = "joined_at", nullable = false)
     private OffsetDateTime joinedAt;
-
-    @Column(name = "left_at")
-    private OffsetDateTime leftAt;
-
-    @Column(name = "removed_at")
-    private OffsetDateTime removedAt;
 
     @NotNull
     @ColumnDefault("now()")

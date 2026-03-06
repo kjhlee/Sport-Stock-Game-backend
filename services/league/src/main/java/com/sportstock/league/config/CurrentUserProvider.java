@@ -10,6 +10,7 @@ public class CurrentUserProvider {
 
     private static final String USER_ID_HEADER = "X-User-Id";
 
+    //Right now gets user id from header but once oauth is implemented switch to read from SecurityContext and add Spring Security dependency + config class (SecurityFilterChain bean)
     public Long getCurrentUserId() {
         ServletRequestAttributes attrs =
                 (ServletRequestAttributes) RequestContextHolder.currentRequestAttributes();
