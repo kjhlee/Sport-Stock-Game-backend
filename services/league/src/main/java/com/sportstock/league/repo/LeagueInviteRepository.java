@@ -16,4 +16,6 @@ public interface LeagueInviteRepository extends JpaRepository<LeagueInvite, Long
     List<LeagueInvite> findByRevokedAtIsNull();
 
     List<LeagueInvite> findByExpiresAtBeforeAndRevokedAtIsNull(OffsetDateTime cutoff);
+
+    Optional<LeagueInvite> findByCodeAndRevokedAtIsNull(String code);
 }

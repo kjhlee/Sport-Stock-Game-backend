@@ -15,4 +15,12 @@ public interface LeagueMemberRepository extends JpaRepository<LeagueMember, Long
     List<LeagueMember> findByStatus(String status);
 
     List<LeagueMember> findByRoleAndStatus(String role, String status);
+
+    Optional<LeagueMember> findByLeagueIdAndUserId(Long leagueId, Long userId);
+
+    List<LeagueMember> findByLeagueIdAndStatus(Long leagueId, String status);
+
+    List<LeagueMember> findByUserIdAndStatus(Long userId, String status);
+
+    long countByLeagueIdAndStatus(Long leagueId, String status);
 }

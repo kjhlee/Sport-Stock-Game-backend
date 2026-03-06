@@ -11,14 +11,18 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter
 @Setter
+@NoArgsConstructor
 @Entity
 @Table(name = "leagues", schema = "league")
 public class League {
@@ -90,12 +94,30 @@ public class League {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
+    @OneToMany(mappedBy = "league", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<LeagueMember> members = new ArrayList<>();
+
+    @OneToMany(mappedBy = "league", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<LeagueInvite> invites = new ArrayList<>();
+
     @AssertTrue(message = "seasonEndAt must be after seasonStartAt")
     private boolean isSeasonRangeValid() {
         if (seasonStartAt == null || seasonEndAt == null) {
             return true;
         }
         return seasonEndAt.isAfter(seasonStartAt);
+    }
+
+    @PrePersist
+    protected void onCreate() {
+        OffsetDateTime now = OffsetDateTime.now();
+        if (createdAt == null) createdAt = now;
+        if (updatedAt == null) updatedAt = now;
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = OffsetDateTime.now();
     }
 
 }
