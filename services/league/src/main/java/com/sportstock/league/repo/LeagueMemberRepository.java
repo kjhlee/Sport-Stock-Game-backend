@@ -16,5 +16,5 @@ public interface LeagueMemberRepository extends JpaRepository<LeagueMember, Long
 
     List<LeagueMember> findAllByLeagueId(Long leagueId);
 
-    long countByLeagueId(Long leagueId);
+    int countByLeagueId(Long leagueId);
 }

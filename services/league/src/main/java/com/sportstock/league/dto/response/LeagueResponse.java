@@ -25,7 +25,7 @@ public record LeagueResponse(
                 entity.getId(),
                 entity.getOwnerUserId(),
                 entity.getName(),
-                entity.getStatus(),
+                entity.getStatus().name(),
                 entity.getMaxMembers(),
                 entity.getSeasonStartAt(),
                 entity.getSeasonEndAt(),

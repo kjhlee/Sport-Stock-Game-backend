@@ -1,5 +1,6 @@
 package com.sportstock.league.entity;
 
+import com.sportstock.league.enums.LeagueStatus;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.DecimalMin;
@@ -7,7 +8,6 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
@@ -42,12 +42,11 @@ public class League {
     @Column(name = "name", nullable = false)
     private String name;
 
-    @Pattern(regexp = "^(INACTIVE|ACTIVE|ARCHIVED)$")
-    @Size(max = 16)
     @NotNull
+    @Enumerated(EnumType.STRING)
     @ColumnDefault("'INACTIVE'")
     @Column(name = "status", nullable = false, length = 16)
-    private String status;
+    private LeagueStatus status;
 
     @Min(2)
     @NotNull
@@ -120,4 +119,7 @@ public class League {
         updatedAt = OffsetDateTime.now();
     }
 
+    public boolean isEmpty() {
+        return false;
+    }
 }
