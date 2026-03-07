@@ -1,8 +1,8 @@
 package com.sportstock.ingestion.controller;
 
-import com.sportstock.ingestion.entity.BoxscoreTeamStat;
-import com.sportstock.ingestion.entity.Event;
-import com.sportstock.ingestion.entity.PlayerGameStat;
+import com.sportstock.ingestion.dto.response.BoxscoreTeamStatResponse;
+import com.sportstock.ingestion.dto.response.EventResponse;
+import com.sportstock.ingestion.dto.response.PlayerGameStatResponse;
 import com.sportstock.ingestion.service.EventIngestionService;
 import com.sportstock.ingestion.service.EventSummaryIngestionService;
 import jakarta.validation.constraints.Max;
@@ -54,33 +54,45 @@ public class EventIngestionController {
     }
 
     @GetMapping("/events")
-    public ResponseEntity<List<Event>> listEvents(
+    public ResponseEntity<List<EventResponse>> listEvents(
             @RequestParam @Min(2000) @Max(2100) Integer seasonYear,
+            @RequestParam(required = false) @Min(1) @Max(4) Integer seasonType,
             @RequestParam(required = false) @Min(1) @Max(25) Integer weekNumber
     ) {
-        return ResponseEntity.ok(eventIngestionService.listEvents(seasonYear, weekNumber));
+        if (weekNumber != null && seasonType == null) {
+            throw new IllegalArgumentException("seasonType is required when weekNumber is provided");
+        }
+        return ResponseEntity.ok(eventIngestionService.listEvents(seasonYear, seasonType, weekNumber));
     }
 
     @GetMapping("/events/{eventEspnId}")
-    public ResponseEntity<Event> getEvent(
+    public ResponseEntity<EventResponse> getEvent(
             @PathVariable @NotBlank @Pattern(regexp = ESPN_ID_PATTERN) String eventEspnId
     ) {
         return ResponseEntity.ok(eventIngestionService.getEventByEspnId(eventEspnId));
     }
 
     @GetMapping("/events/{eventEspnId}/team-stats")
-    public ResponseEntity<List<BoxscoreTeamStat>> getEventTeamStats(
+    public ResponseEntity<List<BoxscoreTeamStatResponse>> getEventTeamStats(
             @PathVariable @NotBlank @Pattern(regexp = ESPN_ID_PATTERN) String eventEspnId
     ) {
         return ResponseEntity.ok(eventSummaryIngestionService.getTeamStats(eventEspnId));
     }
 
     @GetMapping("/events/{eventEspnId}/player-stats")
-    public ResponseEntity<List<PlayerGameStat>> getEventPlayerStats(
+    public ResponseEntity<List<PlayerGameStatResponse>> getEventPlayerStats(
             @PathVariable @NotBlank @Pattern(regexp = ESPN_ID_PATTERN) String eventEspnId,
             @RequestParam(required = false) @Pattern(regexp = ESPN_ID_PATTERN) String teamEspnId
     ) {
         return ResponseEntity.ok(eventSummaryIngestionService.getPlayerStats(eventEspnId, teamEspnId));
+    }
+
+    @GetMapping("/events/{eventEspnId}/player-stats/{athleteEspnId}")
+    public ResponseEntity<List<PlayerGameStatResponse>> getEventPlayerStatsByAthlete(
+            @PathVariable @NotBlank @Pattern(regexp = ESPN_ID_PATTERN) String eventEspnId,
+            @PathVariable @NotBlank @Pattern(regexp = ESPN_ID_PATTERN) String athleteEspnId
+    ) {
+        return ResponseEntity.ok(eventSummaryIngestionService.getPlayerStatsByAthlete(eventEspnId, athleteEspnId));
     }
 
     private Map<String, Object> accepted(String jobName) {

@@ -1,5 +1,6 @@
 package com.sportstock.ingestion.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -22,12 +23,13 @@ public class TeamRecord {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "team_id", nullable = false)
+    @JsonIgnore
     private Team team;
 
     @Column(name = "season_year", nullable = false)
     private Integer seasonYear;
 
-    @Column(name = "record_type", nullable = false, length = 20)
+    @Column(name = "record_type", nullable = false, length = 100)
     private String recordType;
 
     @Column(length = 20)

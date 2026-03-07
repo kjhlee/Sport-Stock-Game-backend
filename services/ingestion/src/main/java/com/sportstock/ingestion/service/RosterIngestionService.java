@@ -14,7 +14,9 @@ import com.sportstock.ingestion.repo.AthleteRepository;
 import com.sportstock.ingestion.repo.CoachRepository;
 import com.sportstock.ingestion.repo.TeamRepository;
 import com.sportstock.ingestion.repo.TeamRosterEntryRepository;
+import jakarta.persistence.EntityManager;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -33,6 +35,7 @@ public class RosterIngestionService {
     private final CoachRepository coachRepository;
     private final JsonPayloadCodec jsonPayloadCodec;
     private final TransactionTemplate transactionTemplate;
+    private final EntityManager entityManager;
 
     public RosterIngestionService(
             EspnApiClient espnApiClient,
@@ -41,7 +44,8 @@ public class RosterIngestionService {
             TeamRosterEntryRepository teamRosterEntryRepository,
             CoachRepository coachRepository,
             JsonPayloadCodec jsonPayloadCodec,
-            TransactionTemplate transactionTemplate
+            TransactionTemplate transactionTemplate,
+            EntityManager entityManager
     ) {
         this.espnApiClient = espnApiClient;
         this.teamRepository = teamRepository;
@@ -50,6 +54,7 @@ public class RosterIngestionService {
         this.coachRepository = coachRepository;
         this.jsonPayloadCodec = jsonPayloadCodec;
         this.transactionTemplate = transactionTemplate;
+        this.entityManager = entityManager;
     }
 
     @Transactional
@@ -82,10 +87,7 @@ public class RosterIngestionService {
                     break;
                 }
 
-                String espnId = athleteNode.path("id").asText();
-                Athlete athlete = athleteRepository.findByEspnId(espnId).orElseGet(Athlete::new);
-                AthleteMapper.applyFields(athleteNode, athlete);
-                athlete = athleteRepository.save(athlete);
+                Athlete athlete = upsertAthlete(athleteNode);
 
                 TeamRosterEntry entry = teamRosterEntryRepository
                         .findByTeamIdAndAthleteIdAndSeasonYear(team.getId(), athlete.getId(), seasonYear)
@@ -115,6 +117,23 @@ public class RosterIngestionService {
         }
 
         log.info("Ingested {} roster entries for team {} ({})", count, team.getDisplayName(), teamEspnId);
+    }
+
+    private Athlete upsertAthlete(JsonNode athleteNode) {
+        String espnId = athleteNode.path("id").asText();
+        Athlete athlete = athleteRepository.findByEspnId(espnId).orElseGet(Athlete::new);
+        AthleteMapper.applyFields(athleteNode, athlete);
+
+        try {
+            return athleteRepository.save(athlete);
+        } catch (DataIntegrityViolationException ex) {
+            log.warn("Athlete {} was inserted concurrently during roster sync; reloading existing row", espnId);
+            entityManager.detach(athlete);
+            Athlete existing = athleteRepository.findByEspnId(espnId)
+                    .orElseThrow(() -> ex);
+            AthleteMapper.applyFields(athleteNode, existing);
+            return athleteRepository.save(existing);
+        }
     }
 
     public void ingestAllRosters(Integer seasonYear, Integer rosterLimit, List<String> teamEspnIds) {

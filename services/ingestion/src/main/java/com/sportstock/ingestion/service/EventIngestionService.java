@@ -2,6 +2,7 @@ package com.sportstock.ingestion.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.sportstock.ingestion.client.EspnApiClient;
+import com.sportstock.ingestion.dto.response.EventResponse;
 import com.sportstock.ingestion.entity.Event;
 import com.sportstock.ingestion.entity.EventCompetitor;
 import com.sportstock.ingestion.entity.EventCompetitorLinescore;
@@ -52,7 +53,7 @@ public class EventIngestionService {
 
             Event event = eventRepository.findByEspnId(eventNode.path("id").asText())
                     .orElseGet(Event::new);
-            EventMapper.applyFields(eventNode, competition, event);
+            EventMapper.applyFields(eventNode, competition, event, seasonType);
             event = eventRepository.save(event);
 
             if (!competition.isMissingNode()) {
@@ -63,15 +64,24 @@ public class EventIngestionService {
         log.info("Ingested {} events for season {} type {} week {}", eventCount, seasonYear, seasonType, week);
     }
 
-    public List<Event> listEvents(Integer seasonYear, Integer weekNumber) {
+    public List<EventResponse> listEvents(Integer seasonYear, Integer seasonType, Integer weekNumber) {
         if (weekNumber != null) {
-            return eventRepository.findBySeasonYearAndWeekNumber(seasonYear, weekNumber);
+            if (seasonType == null) {
+                throw new IllegalArgumentException("seasonType is required when weekNumber is provided");
+            }
+            return eventRepository.findBySeasonYearAndSeasonTypeAndWeekNumberOrderByDateAsc(
+                    seasonYear,
+                    seasonType,
+                    weekNumber
+            ).stream().map(EventResponse::from).toList();
         }
-        return eventRepository.findBySeasonYearOrderByDateAsc(seasonYear);
+        return eventRepository.findBySeasonYearOrderByDateAsc(seasonYear)
+                .stream().map(EventResponse::from).toList();
     }
 
-    public Event getEventByEspnId(String eventEspnId) {
+    public EventResponse getEventByEspnId(String eventEspnId) {
         return eventRepository.findByEspnId(eventEspnId)
+                .map(EventResponse::from)
                 .orElseThrow(() -> new EntityNotFoundException("Event not found with ESPN ID: " + eventEspnId));
     }
 

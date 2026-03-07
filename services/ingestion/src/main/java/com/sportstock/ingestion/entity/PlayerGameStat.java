@@ -1,5 +1,6 @@
 package com.sportstock.ingestion.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -24,10 +25,12 @@ public class PlayerGameStat {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "event_id", nullable = false)
+    @JsonIgnore
     private Event event;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "athlete_id", nullable = false)
+    @JsonIgnore
     private Athlete athlete;
 
     @Column(name = "athlete_espn_id", nullable = false, length = 15)
@@ -35,6 +38,7 @@ public class PlayerGameStat {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "team_id", nullable = false)
+    @JsonIgnore
     private Team team;
 
     @Column(name = "stat_category", nullable = false, length = 30)

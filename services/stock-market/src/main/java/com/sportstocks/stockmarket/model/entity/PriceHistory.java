@@ -14,9 +14,16 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name = "price_history", schema="market")
+@Getter
+@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED) // JPA requires a no-arg constructor
 public class PriceHistory {
 
     @Id
@@ -54,27 +61,4 @@ public class PriceHistory {
         this.recordedAt = Instant.now();
     }
 
-    protected PriceHistory() {}
-
-    // --- Getters and setters ---
-
-    public UUID getId() { return id; }
-
-    public PlayerStock getPlayerStock() { return playerStock; }
-    public void setPlayerStock(PlayerStock playerStock) { this.playerStock = playerStock; }
-
-    public int getSeasonYear() { return seasonYear; }
-    public void setSeasonYear(int seasonYear) { this.seasonYear = seasonYear; }
-
-    public int getSeasonType() { return seasonType; }
-    public void setSeasonType(int seasonType) { this.seasonType = seasonType; }
-
-    public int getWeek() { return week; }
-    public void setWeek(int week) { this.week = week; }
-
-    public BigDecimal getPrice() { return price; }
-    public void setPrice(BigDecimal price) { this.price = price; }
-
-    public Instant getRecordedAt() { return recordedAt; }
-    
 }

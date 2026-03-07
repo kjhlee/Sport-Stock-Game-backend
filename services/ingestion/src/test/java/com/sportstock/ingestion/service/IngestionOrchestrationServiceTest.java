@@ -1,7 +1,7 @@
 package com.sportstock.ingestion.service;
 
-import com.sportstock.ingestion.entity.Event;
-import com.sportstock.ingestion.entity.Team;
+import com.sportstock.ingestion.dto.response.EventResponse;
+import com.sportstock.ingestion.dto.response.TeamResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -121,9 +121,9 @@ class IngestionOrchestrationServiceTest {
         runTransactionTemplateCallbacks();
         assertTrue(service.tryStartWeeklySync(2025, 2, 1));
 
-        Event eventOne = event("100");
-        Event eventTwo = event("200");
-        when(eventIngestionService.listEvents(2025, 1)).thenReturn(List.of(eventOne, eventTwo));
+        EventResponse eventOne = eventResponse("100");
+        EventResponse eventTwo = eventResponse("200");
+        when(eventIngestionService.listEvents(2025, 2, 1)).thenReturn(List.of(eventOne, eventTwo));
         doThrow(new RuntimeException("event summary failed"))
                 .when(eventSummaryIngestionService).ingestEventSummary("100");
 
@@ -139,13 +139,13 @@ class IngestionOrchestrationServiceTest {
         runTransactionTemplateCallbacks();
         assertTrue(service.tryStartFullSync());
 
-        Team teamOne = team("1");
-        Team teamTwo = team("2");
+        TeamResponse teamOne = teamResponse("1");
+        TeamResponse teamTwo = teamResponse("2");
         when(teamIngestionService.listTeams()).thenReturn(List.of(teamOne, teamTwo));
 
-        Event eventOne = event("100");
-        Event eventTwo = event("200");
-        when(eventIngestionService.listEvents(2025, 1)).thenReturn(List.of(eventOne, eventTwo));
+        EventResponse eventOne = eventResponse("100");
+        EventResponse eventTwo = eventResponse("200");
+        when(eventIngestionService.listEvents(2025, 2, 1)).thenReturn(List.of(eventOne, eventTwo));
 
         doThrow(new RuntimeException("team detail failed"))
                 .when(teamIngestionService).ingestTeamDetail("1", 2025);
@@ -161,7 +161,7 @@ class IngestionOrchestrationServiceTest {
         verify(eventSummaryIngestionService).ingestEventSummary("200");
         verify(rosterIngestionService).ingestAllRosters(2025, 100, null);
         verify(athleteIngestionService).ingestAthletes(100, 1);
-        verify(eventIngestionService).listEvents(2025, 1);
+        verify(eventIngestionService).listEvents(2025, 2, 1);
 
         assertTrue(service.tryStartFullSync());
         assertFalse(service.tryStartFoundationSync(2025, 2, 1));
@@ -175,15 +175,11 @@ class IngestionOrchestrationServiceTest {
         }).when(transactionTemplate).executeWithoutResult(any());
     }
 
-    private Team team(String espnId) {
-        Team team = new Team();
-        team.setEspnId(espnId);
-        return team;
+    private TeamResponse teamResponse(String espnId) {
+        return new TeamResponse(espnId, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
     }
 
-    private Event event(String espnId) {
-        Event event = new Event();
-        event.setEspnId(espnId);
-        return event;
+    private EventResponse eventResponse(String espnId) {
+        return new EventResponse(espnId, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
     }
 }

@@ -1,7 +1,7 @@
 package com.sportstock.ingestion.controller;
 
-import com.sportstock.ingestion.entity.Team;
-import com.sportstock.ingestion.entity.TeamRecord;
+import com.sportstock.ingestion.dto.response.TeamRecordResponse;
+import com.sportstock.ingestion.dto.response.TeamResponse;
 import com.sportstock.ingestion.service.RosterIngestionService;
 import com.sportstock.ingestion.service.TeamIngestionService;
 import jakarta.validation.constraints.Max;
@@ -69,19 +69,19 @@ public class TeamIngestionController {
     }
 
     @GetMapping("/teams")
-    public ResponseEntity<List<Team>> listTeams() {
+    public ResponseEntity<List<TeamResponse>> listTeams() {
         return ResponseEntity.ok(teamIngestionService.listTeams());
     }
 
     @GetMapping("/teams/{teamEspnId}")
-    public ResponseEntity<Team> getTeam(
+    public ResponseEntity<TeamResponse> getTeam(
             @PathVariable @NotBlank @Pattern(regexp = ESPN_ID_PATTERN) String teamEspnId
     ) {
         return ResponseEntity.ok(teamIngestionService.getTeamByEspnId(teamEspnId));
     }
 
     @GetMapping("/teams/{teamEspnId}/records")
-    public ResponseEntity<List<TeamRecord>> listTeamRecords(
+    public ResponseEntity<List<TeamRecordResponse>> listTeamRecords(
             @PathVariable @NotBlank @Pattern(regexp = ESPN_ID_PATTERN) String teamEspnId,
             @RequestParam @Min(2000) @Max(2100) Integer seasonYear
     ) {
@@ -89,7 +89,7 @@ public class TeamIngestionController {
     }
 
     @GetMapping("/teams/{teamEspnId}/records/{recordType}")
-    public ResponseEntity<TeamRecord> getTeamRecord(
+    public ResponseEntity<TeamRecordResponse> getTeamRecord(
             @PathVariable @NotBlank @Pattern(regexp = ESPN_ID_PATTERN) String teamEspnId,
             @PathVariable @NotBlank String recordType,
             @RequestParam @Min(2000) @Max(2100) Integer seasonYear

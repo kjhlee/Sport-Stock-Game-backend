@@ -71,9 +71,9 @@ public class IngestionOrchestrationController {
             @RequestParam @Min(2000) @Max(2100) Integer seasonYear,
             @RequestParam @Min(1) @Max(4) Integer seasonType,
             @RequestParam @Min(1) @Max(25) Integer week,
-            @RequestParam(defaultValue = "200") @Min(1) @Max(500) Integer rosterLimit,
-            @RequestParam(defaultValue = "100") @Min(1) @Max(1000) Integer athletePageSize,
-            @RequestParam(defaultValue = "1") @Min(1) @Max(10000) Integer athletePageCount,
+            @RequestParam(defaultValue = "500") @Min(1) @Max(500) Integer rosterLimit,
+            @RequestParam(defaultValue = "250") @Min(1) @Max(1000) Integer athletePageSize,
+            @RequestParam(defaultValue = "10") @Min(1) @Max(10000) Integer athletePageCount,
             @RequestParam(required = false) @Size(max = 32) List<@Pattern(regexp = ESPN_ID_PATTERN) String> teamEspnIds
     ) {
         if (!ingestionOrchestrationService.tryStartFullSync()) {

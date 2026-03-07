@@ -114,12 +114,12 @@ These are the endpoints other services will call most frequently to consume inge
 | `GET /athletes/{athleteEspnId}` | Get one athlete by ESPN ID |
 
 ### Teams
-| Endpoint | Description |
-|---|---|
-| `GET /teams` | List all teams (alphabetical) |
-| `GET /teams/{teamEspnId}` | Get one team by ESPN ID |
-| `GET /teams/{teamEspnId}/records?seasonYear=` | Get all win/loss records for a team + season |
-| `GET /teams/{teamEspnId}/records/{recordType}?seasonYear=` | Get a specific record type (`total`, `home`, `away`) |
+| Endpoint | Description                                        |
+|---|----------------------------------------------------|
+| `GET /teams` | List all teams (alphabetical)                      |
+| `GET /teams/{teamEspnId}` | Get one team by ESPN ID                            |
+| `GET /teams/{teamEspnId}/records?seasonYear=` | Get all win/loss records for a team + season       |
+| `GET /teams/{teamEspnId}/records/{recordType}?seasonYear=` | Get a specific record type (`total`, `home`, `road`) |
 
 ### Events & Stats
 | Endpoint | Description |

@@ -16,9 +16,16 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name = "player_stock", schema="market")
+@Getter
+@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED) // JPA requires a no-arg constructor
 public class PlayerStock {
     
     @Id
@@ -76,36 +83,5 @@ public class PlayerStock {
     protected void onUpdate() {
         this.updatedAt = Instant.now();
     }
-
-    // Default constructor required by JPA. Not for application use.
-    protected PlayerStock() {}
-
-    // --- Getters and setters ---
-
-    public UUID getId() { return id; }
-
-    public String getAthleteEspnId() { return athleteEspnId; }
-    public void setAthleteEspnId(String athleteEspnId) { this.athleteEspnId = athleteEspnId; }
-
-    public String getFullName() { return fullName; }
-    public void setFullName(String fullName) { this.fullName = fullName; }
-
-    public String getPosition() { return position; }
-    public void setPosition(String position) { this.position = position; }
-
-    public String getTeamEspnId() { return teamEspnId; }
-    public void setTeamEspnId(String teamEspnId) { this.teamEspnId = teamEspnId; }
-
-    public BigDecimal getCurrentPrice() { return currentPrice; }
-    public void setCurrentPrice(BigDecimal currentPrice) { this.currentPrice = currentPrice; }
-
-    public StockStatus getStatus() { return status; }
-    public void setStatus(StockStatus status) { this.status = status; }
-
-    public Instant getPriceUpdatedAt() { return priceUpdatedAt; }
-    public void setPriceUpdatedAt(Instant priceUpdatedAt) { this.priceUpdatedAt = priceUpdatedAt; }
-
-    public Instant getCreatedAt() { return createdAt; }
-    public Instant getUpdatedAt() { return updatedAt; }
 
 }

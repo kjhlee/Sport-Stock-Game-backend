@@ -73,8 +73,8 @@ public class IngestionOrchestrationService {
         String windowKey = seasonWindowKey(seasonYear, seasonType, week);
         try {
             log.info("Starting foundation sync for season {} type {} week {}", seasonYear, seasonType, week);
-            eventIngestionService.ingestScoreboard(seasonYear, seasonType, week);
             teamIngestionService.ingestTeams();
+            eventIngestionService.ingestScoreboard(seasonYear, seasonType, week);
             log.info("Foundation sync complete");
         } finally {
             releaseWindowJob(windowKey);
@@ -88,7 +88,7 @@ public class IngestionOrchestrationService {
             log.info("Starting weekly sync for season {} type {} week {}", seasonYear, seasonType, week);
             eventIngestionService.ingestScoreboard(seasonYear, seasonType, week);
 
-            var events = eventIngestionService.listEvents(seasonYear, week);
+            var events = eventIngestionService.listEvents(seasonYear, seasonType, week);
             int success = 0;
             int failed = 0;
             List<String> failedIds = new ArrayList<>();
@@ -96,12 +96,12 @@ public class IngestionOrchestrationService {
             for (var event : events) {
                 try {
                     transactionTemplate.executeWithoutResult(status ->
-                            eventSummaryIngestionService.ingestEventSummary(event.getEspnId()));
+                            eventSummaryIngestionService.ingestEventSummary(event.espnId()));
                     success++;
                 } catch (Exception e) {
                     failed++;
-                    failedIds.add(event.getEspnId());
-                    log.error("Failed to ingest event summary for event {}: {}", event.getEspnId(), e.getMessage());
+                    failedIds.add(event.espnId());
+                    log.error("Failed to ingest event summary for event {}: {}", event.espnId(), e.getMessage());
                 }
             }
             log.info("Weekly sync complete: {} events succeeded, {} failed{}",
@@ -123,9 +123,8 @@ public class IngestionOrchestrationService {
     ) {
         try {
             log.info("Starting full sync for season {} type {} week {}", seasonYear, seasonType, week);
-
-            eventIngestionService.ingestScoreboard(seasonYear, seasonType, week);
             teamIngestionService.ingestTeams();
+            eventIngestionService.ingestScoreboard(seasonYear, seasonType, week);
 
             var teams = (teamEspnIds != null && !teamEspnIds.isEmpty())
                     ? teamEspnIds.stream().map(teamIngestionService::getTeamByEspnId).toList()
@@ -137,12 +136,12 @@ public class IngestionOrchestrationService {
             for (var team : teams) {
                 try {
                     transactionTemplate.executeWithoutResult(status ->
-                            teamIngestionService.ingestTeamDetail(team.getEspnId(), seasonYear));
+                            teamIngestionService.ingestTeamDetail(team.espnId(), seasonYear));
                     teamSuccess++;
                 } catch (Exception e) {
                     teamFailed++;
-                    teamFailedIds.add(team.getEspnId());
-                    log.error("Failed to ingest team detail for {}: {}", team.getEspnId(), e.getMessage());
+                    teamFailedIds.add(team.espnId());
+                    log.error("Failed to ingest team detail for {}: {}", team.espnId(), e.getMessage());
                 }
             }
             log.info("Ingested {} team details ({} failed{})",
@@ -151,10 +150,10 @@ public class IngestionOrchestrationService {
             rosterIngestionService.ingestAllRosters(seasonYear, rosterLimit, teamEspnIds);
             athleteIngestionService.ingestAthletes(athletePageSize, athletePageCount);
 
-            var events = eventIngestionService.listEvents(seasonYear, week);
+            var events = eventIngestionService.listEvents(seasonYear, seasonType, week);
             if (events.isEmpty()) {
                 eventIngestionService.ingestScoreboard(seasonYear, seasonType, week);
-                events = eventIngestionService.listEvents(seasonYear, week);
+                events = eventIngestionService.listEvents(seasonYear, seasonType, week);
             }
 
             int eventSuccess = 0;
@@ -163,12 +162,12 @@ public class IngestionOrchestrationService {
             for (var event : events) {
                 try {
                     transactionTemplate.executeWithoutResult(status ->
-                            eventSummaryIngestionService.ingestEventSummary(event.getEspnId()));
+                            eventSummaryIngestionService.ingestEventSummary(event.espnId()));
                     eventSuccess++;
                 } catch (Exception e) {
                     eventFailed++;
-                    eventFailedIds.add(event.getEspnId());
-                    log.error("Failed to ingest event summary for event {}: {}", event.getEspnId(), e.getMessage());
+                    eventFailedIds.add(event.espnId());
+                    log.error("Failed to ingest event summary for event {}: {}", event.espnId(), e.getMessage());
                 }
             }
             log.info("Ingested {} event summaries ({} failed{})",

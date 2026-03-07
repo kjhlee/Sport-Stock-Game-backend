@@ -93,6 +93,7 @@ CREATE TABLE athletes
     status_type                  VARCHAR(30),
     hand_type                    VARCHAR(10),
     alternate_ids_sdr            VARCHAR(20),
+    stub                         BOOLEAN      NOT NULL DEFAULT FALSE,
     ingested_at                  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     updated_at                   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );

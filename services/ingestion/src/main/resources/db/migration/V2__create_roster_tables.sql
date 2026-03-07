@@ -4,7 +4,7 @@ CREATE TABLE team_records (
     id BIGSERIAL PRIMARY KEY,
     team_id BIGINT NOT NULL,
     season_year INTEGER NOT NULL,
-    record_type VARCHAR(20) NOT NULL,
+    record_type VARCHAR(100) NOT NULL,
     summary VARCHAR(20),
     wins INTEGER,
     losses INTEGER,
