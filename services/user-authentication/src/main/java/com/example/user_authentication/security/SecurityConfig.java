@@ -1,15 +1,19 @@
 package com.example.user_authentication.security;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 public class SecurityConfig {
+
+    @Autowired
+    JwtAuthenticationFilter jwtAuthenticationFilter;
     @Bean
     public BCryptPasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -26,12 +30,10 @@ public class SecurityConfig {
 
             // authorize endpoints
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/register/**", "/api/login/**").permitAll()
+                .requestMatchers("/api/register/**", "/api/login/**", "/api/refresh/**").permitAll()
                 .anyRequest().authenticated()
             )
-
-            // during dev you can use basic auth (optional)
-            .httpBasic(Customizer.withDefaults());
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
