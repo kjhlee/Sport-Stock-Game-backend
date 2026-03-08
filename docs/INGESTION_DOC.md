@@ -221,5 +221,5 @@ Build and run:
 ./mvnw -pl services/ingestion clean package && ./mvnw -pl services/ingestion spring-boot:run
 ```
 
-Default port: `8081`. Connects to Postgres on `localhost:6432`, schema `ingestion`.
+Default port: `8090`. Connects to Postgres on `localhost:6432`, schema `ingestion`.
 

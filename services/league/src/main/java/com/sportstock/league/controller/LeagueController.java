@@ -32,7 +32,7 @@ public class LeagueController {
     private final LeagueService leagueService;
     private final CurrentUserProvider currentUserProvider;
 
-    @PostMapping("/")
+    @PostMapping("")
     @ResponseStatus(HttpStatus.CREATED)
     public LeagueResponse createLeague(@Valid @RequestBody CreateLeagueRequest request) {
         return leagueService.createLeague(currentUserProvider.getCurrentUserId(), request);

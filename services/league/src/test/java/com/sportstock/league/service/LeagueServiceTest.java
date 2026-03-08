@@ -326,14 +326,10 @@ class LeagueServiceTest {
         when(leagueInviteRepository.findByCodeAndRevokedAtIsNull("FULLUSEINV01")).thenReturn(Optional.of(invite));
         when(leagueMemberRepository.countByLeagueId(1L)).thenReturn(1);
         when(leagueMemberRepository.findByLeagueIdAndUserId(1L, 20L)).thenReturn(Optional.empty());
-        when(leagueMemberRepository.save(any(LeagueMember.class))).thenAnswer(inv -> {
-            LeagueMember member = inv.getArgument(0);
-            member.setId(403L);
-            return member;
-        });
         when(leagueInviteRepository.incrementUsesCount(503L)).thenReturn(0);
 
         assertThrows(InvalidInviteException.class, () -> service.joinLeague(20L, 1L, new JoinLeagueRequest("FULLUSEINV01")));
+        verify(leagueMemberRepository, never()).save(any(LeagueMember.class));
     }
 
     @Test
@@ -346,16 +342,12 @@ class LeagueServiceTest {
         when(leagueInviteRepository.findByCodeAndRevokedAtIsNull("RACECOND001")).thenReturn(Optional.of(invite));
         when(leagueMemberRepository.countByLeagueId(1L)).thenReturn(1);
         when(leagueMemberRepository.findByLeagueIdAndUserId(1L, 20L)).thenReturn(Optional.empty());
-        when(leagueMemberRepository.save(any(LeagueMember.class))).thenAnswer(inv -> {
-            LeagueMember member = inv.getArgument(0);
-            member.setId(404L);
-            return member;
-        });
         when(leagueInviteRepository.incrementUsesCount(504L)).thenReturn(0);
 
         InvalidInviteException ex = assertThrows(InvalidInviteException.class,
                 () -> service.joinLeague(20L, 1L, new JoinLeagueRequest("RACECOND001")));
         assertEquals("Invite code has reached maximum uses", ex.getMessage());
+        verify(leagueMemberRepository, never()).save(any(LeagueMember.class));
     }
 
     @Test
