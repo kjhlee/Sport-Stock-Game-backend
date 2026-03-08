@@ -1,4 +1,4 @@
-package com.sportstocks.stockmarket.client.dto;
+package com.sportstocks.stockmarket.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 

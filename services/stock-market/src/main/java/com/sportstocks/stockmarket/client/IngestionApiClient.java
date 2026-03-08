@@ -6,10 +6,10 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
-import com.sportstocks.stockmarket.client.dto.IngestionAthleteDto;
-import com.sportstocks.stockmarket.client.dto.IngestionEventDto;
-import com.sportstocks.stockmarket.client.dto.IngestionPlayerGameStatsDto;
-import com.sportstocks.stockmarket.client.dto.IngestionTeamDto;
+import com.sportstocks.stockmarket.dto.IngestionAthleteDto;
+import com.sportstocks.stockmarket.dto.IngestionEventDto;
+import com.sportstocks.stockmarket.dto.IngestionPlayerGameStatsDto;
+import com.sportstocks.stockmarket.dto.IngestionTeamDto;
 
 @Component
 public class IngestionApiClient {
@@ -30,14 +30,14 @@ public class IngestionApiClient {
     }
 
     /**
-     * GET /athletes or GET /athletes?positionAbbreviation={position}
+     * GET /athletes or GET /athletes?position={position}
      */
-    public List<IngestionAthleteDto> getAthletes(String position) {
+    public List<IngestionAthleteDto> getAthletes(String positionAbbreviation) {
         List<IngestionAthleteDto> body = restClient.get()
                 .uri(uriBuilder -> {
                     uriBuilder.path("/athletes");
-                    if (position != null && !position.isBlank()) {
-                        uriBuilder.queryParam("positionAbbreviation", position);
+                    if (positionAbbreviation != null && !positionAbbreviation.isBlank()) {
+                        uriBuilder.queryParam("position", positionAbbreviation);
                     }
                     return uriBuilder.build();
                 })

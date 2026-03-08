@@ -1,4 +1,4 @@
-package com.sportstocks.stockmarket.client.dto;
+package com.sportstocks.stockmarket.dto;
 
 import java.util.Map;
 

@@ -30,37 +30,42 @@ cp .env.example .env
 | `DB_PASSWORD` | `localdev` | Postgres password                |
 | `DB_PORT`     | `6432`     | Host port Postgres is exposed on |
 
-> Do not set `SERVER_PORT` in `.env` — each service has its own default port.
-
 ## Running locally
 
-Each step runs in a separate terminal.
-
-**1. Start the database**
-
+**1. start database**
 ```bash
-docker compose -f infra/docker-compose.yml up -d
+docker compose -f docker-compose.yml up -d
 ```
 
-This starts a single Postgres instance on port `6432`. Both the `ingestion` and `market` schemas are created automatically on first run.
-
-**2. Start the ingestion service**
-
+**2. start ingestion service**
 ```bash
 mvn -f services/ingestion/pom.xml spring-boot:run
 ```
 
-**3. Start the stock-market service**
+**3. populate ingestion database**
+```bash
+curl -X POST "http://localhost:8081/api/v1/ingestion/sync/full?seasonYear=2025&seasonType=2&week=1&rosterLimit=500&athletePageSize=250&athletePageCount=10"
+```
 
+**4. start stock-market service**
 ```bash
 mvn -f services/stock-market/pom.xml spring-boot:run
+```
+
+**5. populate market database**
+```bash
+curl -X POST "http://localhost:8082/api/v1/stocks/sync-athletes"
 ```
 
 ## Resetting the database
 
 ```bash
-docker compose -f infra/docker-compose.yml down -v
-docker compose -f infra/docker-compose.yml up -d
+docker compose -f docker-compose.yml down -v
+docker compose -f docker-compose.yml up -d
 ```
 
-The `-v` flag drops the volume, giving you a clean database. Flyway migrations re-run on the next service startup.
+
+## Accessing the DB from terminal 
+```bash
+psql -h localhost -p 6432 -U sportstock -d sportstock
+```
