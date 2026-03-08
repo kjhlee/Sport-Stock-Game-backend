@@ -78,9 +78,9 @@ Complete ingestion: scoreboard → teams → team details + records → all rost
 | `seasonYear` | int | ✅ | — | 2000–2100 | |
 | `seasonType` | int | ✅ | — | 1–4 | |
 | `week` | int | ✅ | — | 1–25 | |
-| `rosterLimit` | int | ❌ | `200` | 1–500 | Max players per team roster |
-| `athletePageSize` | int | ❌ | `100` | 1–1000 | Athletes per ESPN page |
-| `athletePageCount` | int | ❌ | `1` | 1–10000 | Number of pages to fetch |
+| `rosterLimit` | int | ❌ | `500` | 1–500 | Max players per team roster |
+| `athletePageSize` | int | ❌ | `250` | 1–1000 | Athletes per ESPN page |
+| `athletePageCount` | int | ❌ | `10` | 1–10000 | Number of pages to fetch |
 | `teamEspnIds` | list | ❌ | all teams | max 32 items | Restrict to specific teams (ESPN IDs) |
 
 **Responses** — same conflict/503 pattern; `409` if any window job is active or another full sync is running.
@@ -97,7 +97,7 @@ These run **synchronously** — the request blocks until complete. Useful for re
 | `POST /sync/teams/details?seasonYear=` | Re-sync details + records for all teams |
 | `POST /sync/teams/{teamEspnId}?seasonYear=` | Re-sync one team's detail + records |
 | `POST /sync/rosters?seasonYear=&rosterLimit=&teamEspnIds=` | Re-sync rosters (all or specific teams) |
-| `POST /sync/athletes?pageSize=&pageCount=` | Re-sync athlete list (paginated) |
+| `POST /sync/athletes?pageSize=&pageCount=` | Re-sync athlete list (paginated); defaults: `pageSize=500`, `pageCount=40` |
 | `POST /sync/scoreboard?seasonYear=&seasonType=&week=` | Re-sync scoreboard for one week |
 | `POST /sync/events/{eventEspnId}/summary` | Re-sync one game's boxscore + player stats |
 
@@ -110,7 +110,7 @@ These are the endpoints other services will call most frequently to consume inge
 ### Athletes
 | Endpoint | Description |
 |---|---|
-| `GET /athletes` | List all athletes. Optional `?positionAbbreviation=QB` filter |
+| `GET /athletes` | List all athletes. Optional `?positionAbbreviation=QB` and `?includeStubs=false` filters |
 | `GET /athletes/{athleteEspnId}` | Get one athlete by ESPN ID |
 
 ### Teams
@@ -124,12 +124,47 @@ These are the endpoints other services will call most frequently to consume inge
 ### Events & Stats
 | Endpoint | Description |
 |---|---|
-| `GET /events?seasonYear=&weekNumber=` | List events for a season (optionally filtered to a week) |
+| `GET /events?seasonYear=&seasonType=&weekNumber=` | List events for a season year. `seasonType` and `weekNumber` are optional; `seasonType` is required if `weekNumber` is provided |
 | `GET /events/{eventEspnId}` | Get one event by ESPN ID |
 | `GET /events/{eventEspnId}/team-stats` | Get boxscore team stats for a game |
 | `GET /events/{eventEspnId}/player-stats?teamEspnId=` | Get player game stats (optionally filtered by team) |
+| `GET /events/{eventEspnId}/player-stats/{athleteEspnId}` | Get all stat categories for a specific athlete in a game |
 
-**Note on player stats**: stats are stored as a JSON string in the `stats` field, keyed by stat name (e.g. `{"completions":"22","passingYards":"301","touchdowns":"2"}`). The stat keys vary by category (passing, rushing, receiving, etc.).
+**Note on player stats**: stats are returned as a `Map<String, String>` in the response, keyed by stat name (e.g. `{"completions":"22","passingYards":"301","touchdowns":"2"}`). The stat keys vary by category (passing, rushing, receiving, etc.). Stats are stored as JSONB in the database.
+
+---
+
+## Response Shapes
+
+### Async job accepted (`202`)
+Returned by all `POST /sync/*` endpoints when a job is accepted (orchestrated or individual).
+```json
+{
+  "jobName": "foundationSync",
+  "status": "ACCEPTED",
+  "requestedAt": "2025-10-01T12:00:00Z"
+}
+```
+
+### Conflict (`409`)
+```json
+{
+  "jobName": "foundationSync",
+  "status": "REJECTED_BUSY",
+  "reason": "Another sync job is already running for this season window or a full sync is in progress",
+  "requestedAt": "2025-10-01T12:00:00Z"
+}
+```
+
+### Service unavailable (`503`)
+```json
+{
+  "jobName": "foundationSync",
+  "status": "SERVICE_UNAVAILABLE",
+  "reason": "Ingestion thread pool is saturated, try again later",
+  "requestedAt": "2025-10-01T12:00:00Z"
+}
+```
 
 ---
 
@@ -172,7 +207,19 @@ All errors follow a consistent shape:
 - **Rate limiting**: the service throttles ESPN calls internally — don't worry about it from the outside, but long-running syncs (especially full sync) take time.
 - **Async jobs don't push notifications** when they complete — if you need to know when a background sync finishes, poll the relevant GET endpoint or check logs.
 
-setup env in infra/
-Reset and build db: docker compose -f infra/docker-compose.yml down -v && docker compose -f infra/docker-compose.yml up --build -d
-Build and run: ./mvnw -pl services/ingestion clean package && ./mvnw -pl services/ingestion spring-boot:run 
+## Dev Setup
+
+Set up environment in `infra/`.
+
+Reset and build DB:
+```bash
+docker compose down -v && docker compose up --build -d
+```
+
+Build and run:
+```bash
+./mvnw -pl services/ingestion clean package && ./mvnw -pl services/ingestion spring-boot:run
+```
+
+Default port: `8090`. Connects to Postgres on `localhost:6432`, schema `ingestion`.
 
