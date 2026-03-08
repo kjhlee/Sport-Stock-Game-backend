@@ -44,7 +44,7 @@ public class LeagueController {
         return leagueService.getLeague(currentUserProvider.getCurrentUserId(), leagueId);
     }
 
-    @GetMapping("/")
+    @GetMapping("")
     @ResponseStatus(HttpStatus.OK)
     public Page<LeagueResponse> listMyLeagues(
             @RequestParam(defaultValue = "0") int page,
