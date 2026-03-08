@@ -45,8 +45,4 @@ public class Wallet {
         updatedAt = OffsetDateTime.now();
     }
 
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = OffsetDateTime.now();
-    }
 }

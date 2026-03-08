@@ -2,6 +2,7 @@ package com.sportstock.transaction.entity;
 
 import com.sportstock.transaction.enums.TransactionType;
 import jakarta.persistence.*;
+
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;

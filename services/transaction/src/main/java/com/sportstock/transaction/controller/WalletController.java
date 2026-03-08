@@ -37,14 +37,14 @@ public class WalletController {
     @PostMapping("")
     @ResponseStatus(HttpStatus.CREATED)
     public WalletResponse createWallet(@Valid @RequestBody CreateWalletRequest request) {
-        return walletService.createWallet(request.userId(), request.leagueId());
+        Long userId = currentUserProvider.getCurrentUserId();
+        return walletService.createWallet(userId, request.leagueId());
     }
 
     @GetMapping("")
     @ResponseStatus(HttpStatus.OK)
-    public WalletResponse getWallet(
-            @RequestParam Long userId,
-            @RequestParam Long leagueId) {
+    public WalletResponse getWallet(@RequestParam Long leagueId) {
+        Long userId = currentUserProvider.getCurrentUserId();
         return walletService.getWallet(userId, leagueId);
     }
 
@@ -104,10 +104,10 @@ public class WalletController {
     @GetMapping("/transactions")
     @ResponseStatus(HttpStatus.OK)
     public Page<TransactionResponse> getTransactionHistory(
-            @RequestParam Long userId,
             @RequestParam Long leagueId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        Long userId = currentUserProvider.getCurrentUserId();
         return walletService.getTransactionHistory(
                 userId,
                 leagueId,

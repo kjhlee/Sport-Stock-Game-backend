@@ -30,7 +30,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(InsufficientFundsException.class)
     public ResponseEntity<Map<String, Object>> handleInsufficientFunds(InsufficientFundsException ex) {
-        return build(HttpStatus.UNPROCESSABLE_ENTITY, "INSUFFICIENT_FUNDS", ex.getMessage());
+        return build(HttpStatus.BAD_REQUEST, "INSUFFICIENT_FUNDS", ex.getMessage());
     }
 
     @ExceptionHandler(WalletAlreadyExistsException.class)
