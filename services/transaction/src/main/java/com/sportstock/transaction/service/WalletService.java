@@ -3,7 +3,11 @@ package com.sportstock.transaction.service;
 import com.sportstock.transaction.dto.response.StipendResultResponse;
 import com.sportstock.transaction.dto.response.TransactionResponse;
 import com.sportstock.transaction.dto.response.WalletResponse;
+import com.sportstock.transaction.entity.Transaction;
 import com.sportstock.transaction.entity.Wallet;
+import com.sportstock.transaction.enums.TransactionType;
+import com.sportstock.transaction.exception.WalletAlreadyExistsException;
+import com.sportstock.transaction.exception.WalletNotFoundException;
 import com.sportstock.transaction.repo.TransactionRepository;
 import com.sportstock.transaction.repo.WalletRepository;
 import lombok.RequiredArgsConstructor;
@@ -24,38 +28,88 @@ public class WalletService {
 
     @Transactional
     public WalletResponse createWallet(Long userId, Long leagueId) {
-        // TODO: Implement wallet creation
-        // - Check if wallet already exists, throw WalletAlreadyExistsException if so
-        // - Create new Wallet entity with balance 0
-        // - Save and return WalletResponse
-        throw new UnsupportedOperationException("TODO: Implement createWallet");
+        if (walletRepository.existsByUserIdAndLeagueId(userId, leagueId)) {
+            throw new WalletAlreadyExistsException(userId, leagueId);
+        }
+        Wallet wallet = new Wallet();
+        wallet.setUserId(userId);
+        wallet.setLeagueId(leagueId);
+        walletRepository.save(wallet);
+
+        return WalletResponse.from(wallet);
+
     }
 
     @Transactional
     public StipendResultResponse issueInitialStipends(Long leagueId, BigDecimal amount, List<Long> userIds) {
-        // TODO: Implement initial stipend issuance
-        // - For each user:
-        //   - Create wallet if it doesn't exist
-        //   - Generate idempotency key: "INITIAL_STIPEND:{leagueId}:{userId}"
-        //   - Check if stipend already issued (existsByIdempotencyKey)
-        //   - If not, lock wallet (findByUserIdAndLeagueIdForUpdate)
-        //   - Credit balance
-        //   - Create Transaction record with type INITIAL_STIPEND
-        // - Return StipendResultResponse with counts
-        throw new UnsupportedOperationException("TODO: Implement issueInitialStipends");
+        int walletsCreated = 0;
+        int stipendsIssued = 0;
+
+        for (Long userId : userIds) {
+            if (!walletRepository.existsByUserIdAndLeagueId(userId, leagueId)) {
+                createWallet(userId, leagueId);
+                walletsCreated++;
+            }
+
+            String idempotencyKey = "INITIAL_STIPEND:" + leagueId + ":" + userId;
+            if (transactionRepository.existsByIdempotencyKey(idempotencyKey)) {
+                continue;
+            }
+
+            Wallet wallet = walletRepository.findByUserIdAndLeagueIdForUpdate(userId, leagueId).orElseThrow(
+                    () -> new WalletNotFoundException("Wallet not found for user: " + userId)
+            );
+
+            BigDecimal balanceBefore = wallet.getBalance();
+            wallet.setBalance(balanceBefore.add(amount));
+
+            Transaction transaction = new Transaction();
+            transaction.setWallet(wallet);
+            transaction.setType(TransactionType.INITIAL_STIPEND);
+            transaction.setAmount(amount);
+            transaction.setBalanceBefore(balanceBefore);
+            transaction.setBalanceAfter(wallet.getBalance());
+            transaction.setLeagueId(leagueId);
+            transaction.setUserId(userId);
+            transaction.setIdempotencyKey(idempotencyKey);
+            transactionRepository.save(transaction);
+
+            stipendsIssued++;
+        }
+
+        return new StipendResultResponse(leagueId, walletsCreated, stipendsIssued, amount);
     }
 
     @Transactional
     public StipendResultResponse issueWeeklyStipends(Long leagueId, BigDecimal amount, List<Long> userIds, Integer weekNumber) {
-        // TODO: Implement weekly stipend issuance
-        // - For each user:
-        //   - Generate idempotency key: "WEEKLY_STIPEND:{leagueId}:{userId}:{weekNumber}"
-        //   - Check if stipend already issued (existsByIdempotencyKey)
-        //   - If not, lock wallet (findByUserIdAndLeagueIdForUpdate)
-        //   - Credit balance
-        //   - Create Transaction record with type WEEKLY_STIPEND
-        // - Return StipendResultResponse with counts
-        throw new UnsupportedOperationException("TODO: Implement issueWeeklyStipends");
+        int stipendsIssued = 0;
+        for (Long userId : userIds) {
+            String idempotencyKey = "WEEKLY_STIPEND:" + leagueId + ":" + userId + ":" + weekNumber;
+
+            if (transactionRepository.existsByIdempotencyKey(idempotencyKey)) {
+                continue;
+            }
+
+            Wallet wallet = walletRepository.findByUserIdAndLeagueIdForUpdate(userId, leagueId).orElseThrow(
+                    () -> new WalletNotFoundException("Wallet not found for user: " + userId)
+            );
+            BigDecimal balanceBefore = wallet.getBalance();
+            wallet.setBalance(balanceBefore.add(amount));
+
+            Transaction transaction = new Transaction();
+            transaction.setWallet(wallet);
+            transaction.setType(TransactionType.WEEKLY_STIPEND);
+            transaction.setAmount(amount);
+            transaction.setBalanceBefore(balanceBefore);
+            transaction.setBalanceAfter(wallet.getBalance());
+            transaction.setLeagueId(leagueId);
+            transaction.setUserId(userId);
+            transaction.setIdempotencyKey(idempotencyKey);
+            transactionRepository.save(transaction);
+
+            stipendsIssued++;
+        }
+        return new StipendResultResponse(leagueId, 0, stipendsIssued, amount);
     }
 
     @Transactional
