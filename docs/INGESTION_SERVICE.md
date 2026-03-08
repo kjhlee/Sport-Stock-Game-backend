@@ -2,7 +2,11 @@
 
 ## Overview
 
-The ingestion service is responsible for pulling NFL data from ESPN's public API and writing it into the shared Postgres database. Other services **do not call ESPN directly** — they consume data that this service has already written.
+The **Ingestion Service** is responsible for pulling NFL data from ESPN's public API and writing it into the shared PostgreSQL database (`ingestion` schema). Other services **do not call ESPN directly** — they consume data that this service has already written.
+
+**Tech Stack**: Spring Boot 4.0.3, Spring Data JPA, PostgreSQL, Flyway, Jackson, Java 21
+
+**Port**: `8090` (default, configurable via `INGESTION_SERVICE_PORT`)
 
 There are two categories of endpoints:
 - **Orchestrated sync endpoints** — multi-step bulk ingestion jobs that run asynchronously
@@ -204,8 +208,239 @@ All errors follow a consistent shape:
 
 - **ESPN IDs** are numeric strings (1–15 digits), used as the stable external identifier across all entities. Always reference things by `espnId` when calling these endpoints.
 - **Upsert semantics**: all sync operations are safe to re-run. They update existing rows rather than duplicating.
-- **Rate limiting**: the service throttles ESPN calls internally — don't worry about it from the outside, but long-running syncs (especially full sync) take time.
+- **Rate limiting**: the service throttles ESPN calls internally (200ms delay between requests) — don't worry about it from the outside, but long-running syncs (especially full sync) take time.
 - **Async jobs don't push notifications** when they complete — if you need to know when a background sync finishes, poll the relevant GET endpoint or check logs.
+- **Pessimistic locking**: Event updates during summary ingestion use `@Lock(PESSIMISTIC_WRITE)` to prevent concurrent modification.
+- **Transaction isolation**: Athlete ingestion uses `PROPAGATION_REQUIRES_NEW` with 120s timeout per page to handle large batches.
+- **Batch optimization**: Hibernate batching is enabled with batch size 500, ordered inserts/updates for maximum throughput.
+
+---
+
+## Architecture & Key Components
+
+### Data Model (12 JPA Entities)
+
+**Core Entities:**
+- **Team** - NFL teams with conference, division, colors, logos
+- **Athlete** - Players with position, physical attributes, college, status
+- **Event** - Games/matches with date, season, week, status, attendance
+- **Season** - Season metadata with start/end dates
+- **SeasonWeek** - Individual weeks within seasons
+
+**Relationship Entities:**
+- **TeamRecord** - Win/loss records by season and type (total, home, road, division)
+- **TeamRosterEntry** - Team-athlete relationships with jersey, position, injury status
+- **EventCompetitor** - Team participation in events (home/away, scores, winner)
+- **EventCompetitorLinescore** - Period-by-period scoring
+- **Coach** - Coaching staff per team per season
+
+**Statistics Entities:**
+- **BoxscoreTeamStat** - Team-level game statistics (yards, points, turnovers)
+- **PlayerGameStat** - Player statistics stored as JSONB (passing, rushing, receiving, defense)
+
+### Service Layer (7 Services)
+
+1. **IngestionOrchestrationService** - Coordinates multi-step sync jobs with concurrency control
+2. **EventIngestionService** - Scoreboard and event data ingestion
+3. **TeamIngestionService** - Team details and records
+4. **AthleteIngestionService** - Paginated athlete ingestion with deduplication
+5. **RosterIngestionService** - Team rosters and coaches
+6. **EventSummaryIngestionService** - Game statistics (team and player)
+7. **SeasonIngestionService** - Season and week data
+
+### Configuration
+
+**EspnApiProperties** bindings:
+```properties
+espn.api.site-base-url=https://site.api.espn.com/apis/site/v2
+espn.api.core-base-url=https://sports.core.api.espn.com/v2
+espn.api.sport=football
+espn.api.league=nfl
+espn.api.rate-limit-delay-ms=200
+espn.api.connect-timeout-seconds=5
+espn.api.read-timeout-seconds=60
+espn.api.max-athlete-rows-per-sync=50000
+```
+
+**AsyncConfig**: Thread pool executor with 2 core threads, 2 max threads, queue capacity 20
+
+### Database Schema (6 Flyway Migrations)
+
+- **V1**: Core tables (teams, athletes, coaches, seasons, season_weeks)
+- **V2**: Roster tables (team_records, team_roster_entries)
+- **V3**: Event tables (events, event_competitors, event_competitor_linescores)
+- **V4**: Statistics tables (boxscore_team_stats, player_game_stats with JSONB)
+- **V5**: Performance indexes (single-column on frequently queried fields)
+- **V6**: Query path indexes (composite indexes for common join patterns)
+
+**Total: 12 tables, 18+ optimized indexes**
+
+---
+
+## Example Requests & Responses
+
+### POST /api/v1/ingestion/sync/full
+
+**Request:**
+```http
+POST /api/v1/ingestion/sync/full?seasonYear=2024&seasonType=2&week=5&athletePageSize=250&athletePageCount=10
+```
+
+**Response (202 Accepted):**
+```json
+{
+  "jobName": "fullSync",
+  "status": "ACCEPTED",
+  "requestedAt": "2024-10-15T14:30:00Z"
+}
+```
+
+---
+
+### GET /api/v1/ingestion/athletes?positionAbbreviation=QB
+
+**Response (200 OK):**
+```json
+[
+  {
+    "espnId": "3139477",
+    "fullName": "Patrick Mahomes",
+    "firstName": "Patrick",
+    "lastName": "Mahomes",
+    "displayName": "Patrick Mahomes",
+    "shortName": "P. Mahomes",
+    "positionAbbreviation": "QB",
+    "positionDisplayName": "Quarterback",
+    "college": "Texas Tech",
+    "status": "active",
+    "height": 74,
+    "weight": 225,
+    "jersey": "15",
+    "experience": 7,
+    "dateOfBirth": "1995-09-17",
+    "debutYear": 2017,
+    "slug": "patrick-mahomes",
+    "headshot": "https://a.espncdn.com/i/headshots/nfl/players/full/3139477.png"
+  }
+]
+```
+
+---
+
+### GET /api/v1/ingestion/events?seasonYear=2024&seasonType=2&weekNumber=5
+
+**Response (200 OK):**
+```json
+[
+  {
+    "espnId": "401671754",
+    "name": "Kansas City Chiefs at New Orleans Saints",
+    "shortName": "KC @ NO",
+    "date": "2024-10-07T20:15:00Z",
+    "seasonYear": 2024,
+    "seasonType": 2,
+    "weekNumber": 5,
+    "statusTypeId": 3,
+    "statusCompleted": true,
+    "statusDetail": "Final",
+    "attendance": 70123,
+    "venueName": "Caesars Superdome",
+    "venueCity": "New Orleans",
+    "venueState": "LA",
+    "broadcast": "ESPN"
+  }
+]
+```
+
+---
+
+### GET /api/v1/ingestion/events/{eventEspnId}/player-stats/{athleteEspnId}
+
+**Response (200 OK):**
+```json
+[
+  {
+    "eventEspnId": "401671754",
+    "athleteEspnId": "3139477",
+    "teamEspnId": "12",
+    "statCategory": "passing",
+    "stats": {
+      "completions": "28",
+      "attempts": "39",
+      "yards": "331",
+      "touchdowns": "4",
+      "interceptions": "0",
+      "rating": "134.7",
+      "sacks": "2",
+      "sackYards": "14"
+    }
+  },
+  {
+    "eventEspnId": "401671754",
+    "athleteEspnId": "3139477",
+    "teamEspnId": "12",
+    "statCategory": "rushing",
+    "stats": {
+      "carries": "3",
+      "yards": "12",
+      "touchdowns": "0",
+      "long": "8"
+    }
+  }
+]
+```
+
+---
+
+### GET /api/v1/ingestion/teams/{teamEspnId}/records?seasonYear=2024
+
+**Response (200 OK):**
+```json
+[
+  {
+    "teamEspnId": "12",
+    "seasonYear": 2024,
+    "recordType": "total",
+    "wins": 8,
+    "losses": 1,
+    "ties": 0,
+    "winPercent": 0.889,
+    "pointsFor": 245,
+    "pointsAgainst": 178,
+    "pointDifferential": 67,
+    "divisionWins": 2,
+    "divisionLosses": 0,
+    "conferenceWins": 5,
+    "conferenceLosses": 1,
+    "streak": 3,
+    "divisionStanding": 1
+  },
+  {
+    "teamEspnId": "12",
+    "seasonYear": 2024,
+    "recordType": "home",
+    "wins": 4,
+    "losses": 0,
+    "ties": 0,
+    "winPercent": 1.000,
+    "pointsFor": 128,
+    "pointsAgainst": 82
+  },
+  {
+    "teamEspnId": "12",
+    "seasonYear": 2024,
+    "recordType": "road",
+    "wins": 4,
+    "losses": 1,
+    "ties": 0,
+    "winPercent": 0.800,
+    "pointsFor": 117,
+    "pointsAgainst": 96
+  }
+]
+```
+
+---
 
 ## Dev Setup
 
