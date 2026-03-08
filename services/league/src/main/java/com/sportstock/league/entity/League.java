@@ -119,7 +119,5 @@ public class League {
         updatedAt = OffsetDateTime.now();
     }
 
-    public boolean isEmpty() {
-        return false;
-    }
+
 }

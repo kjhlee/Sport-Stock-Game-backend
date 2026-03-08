@@ -83,6 +83,8 @@ class LeagueServiceTest {
         assertEquals(10L, savedLeague.getOwnerUserId());
         assertEquals(req.name(), savedLeague.getName());
         assertEquals(req.maxMembers(), savedLeague.getMaxMembers());
+        assertEquals(req.initialStipendAmount(), savedLeague.getInitialStipendAmount());
+        assertEquals(req.weeklyStipendAmount(), savedLeague.getWeeklyStipendAmount());
 
         ArgumentCaptor<LeagueMember> memberCaptor = ArgumentCaptor.forClass(LeagueMember.class);
         verify(leagueMemberRepository).save(memberCaptor.capture());

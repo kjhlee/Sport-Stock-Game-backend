@@ -45,6 +45,9 @@ public class LeagueService {
         league.setSeasonEndAt(req.seasonEndAt());
         league.setOwnerUserId(userId);
         league.setStatus(LeagueStatus.INACTIVE);
+        league.setInitialStipendAmount(req.initialStipendAmount());
+        league.setWeeklyStipendAmount(req.weeklyStipendAmount());
+        league.setWeeklyPayoutDowUtc(req.weeklyPayoutDowUtc());
         leagueRepository.save(league);
 
         LeagueMember member = new LeagueMember();
@@ -191,6 +194,7 @@ public class LeagueService {
 
     @Transactional(readOnly = true)
     public List<LeagueMemberResponse> listMembers(Long userId, Long leagueId) {
+        findLeagueOrThrow(leagueId);
         verifyMembership(leagueId, userId);
 
         return leagueMemberRepository.findAllByLeagueId(leagueId).stream()
