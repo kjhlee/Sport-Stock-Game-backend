@@ -6,6 +6,7 @@ import com.sportstock.league.exception.LeagueNotFoundException;
 import com.sportstock.league.exception.LeagueStateException;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -56,6 +57,13 @@ public class GlobalExceptionHandler {
                 .map(cv -> cv.getPropertyPath() + ": " + cv.getMessage())
                 .collect(Collectors.toList());
         return build(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", errors);
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleDataIntegrity(DataIntegrityViolationException ex) {
+        log.warn("Data integrity violation: {}", ex.getMostSpecificCause().getMessage());
+        return build(HttpStatus.CONFLICT, "CONFLICT",
+                "Operation could not be completed due to a data conflict. Please try again.");
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

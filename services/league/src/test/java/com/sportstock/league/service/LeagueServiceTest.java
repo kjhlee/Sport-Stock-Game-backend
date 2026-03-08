@@ -23,6 +23,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -32,10 +36,12 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -45,6 +51,7 @@ class LeagueServiceTest {
 
     private static final BigDecimal STIPEND = new BigDecimal("10000.00");
     private static final BigDecimal WEEKLY_STIPEND = new BigDecimal("500.00");
+    private static final Pageable DEFAULT_PAGE = PageRequest.of(0, 20);
 
     @Mock
     private LeagueRepository leagueRepository;
@@ -133,33 +140,37 @@ class LeagueServiceTest {
         League league2 = league(2L, 20L, LeagueStatus.ACTIVE, 5, 3, null);
         LeagueMember membership1 = newMember(30L, "MEMBER", league1);
         LeagueMember membership2 = newMember(30L, "MEMBER", league2);
-        when(leagueMemberRepository.findByUserId(30L)).thenReturn(List.of(membership1, membership2));
+
+        Page<LeagueMember> memberPage = new PageImpl<>(List.of(membership1, membership2), DEFAULT_PAGE, 2);
+        when(leagueMemberRepository.findByUserId(eq(30L), any(Pageable.class))).thenReturn(memberPage);
         when(leagueRepository.findAllById(List.of(1L, 2L))).thenReturn(List.of(league1, league2));
-        when(leagueMemberRepository.countByLeagueId(1L)).thenReturn(2);
-        when(leagueMemberRepository.countByLeagueId(2L)).thenReturn(3);
+        when(leagueMemberRepository.countByLeagueIds(List.of(1L, 2L)))
+                .thenReturn(List.of(new Object[]{1L, 2L}, new Object[]{2L, 3L}));
 
-        List<LeagueResponse> responses = service.listUserLeagues(30L);
+        Page<LeagueResponse> responses = service.listUserLeagues(30L, DEFAULT_PAGE);
 
-        assertEquals(2, responses.size());
-        assertEquals(List.of(1L, 2L), responses.stream().map(LeagueResponse::id).toList());
-        assertEquals(2, responses.get(0).memberCount());
-        assertEquals(3, responses.get(1).memberCount());
+        assertEquals(2, responses.getTotalElements());
+        List<LeagueResponse> content = responses.getContent();
+        assertEquals(List.of(1L, 2L), content.stream().map(LeagueResponse::id).toList());
+        assertEquals(2, content.get(0).memberCount());
+        assertEquals(3, content.get(1).memberCount());
     }
 
     @Test
     void listUserLeaguesReturnsEmptyWhenNoMemberships() {
-        when(leagueMemberRepository.findByUserId(9L)).thenReturn(List.of());
-        when(leagueRepository.findAllById(List.of())).thenReturn(List.of());
+        Page<LeagueMember> emptyPage = new PageImpl<>(List.of(), DEFAULT_PAGE, 0);
+        when(leagueMemberRepository.findByUserId(eq(9L), any(Pageable.class))).thenReturn(emptyPage);
 
-        List<LeagueResponse> responses = service.listUserLeagues(9L);
+        Page<LeagueResponse> responses = service.listUserLeagues(9L, DEFAULT_PAGE);
 
-        assertEquals(0, responses.size());
+        assertEquals(0, responses.getTotalElements());
     }
 
     @Test
     void createInviteRequiresOwnerAndPersistsInvite() {
         League league = league(1L, 10L, LeagueStatus.INACTIVE, 4, 1, null);
         when(leagueRepository.findById(1L)).thenReturn(Optional.of(league));
+        when(leagueInviteRepository.findByCode(any(String.class))).thenReturn(Optional.empty());
         when(leagueInviteRepository.save(any(LeagueInvite.class))).thenAnswer(inv -> {
             LeagueInvite invite = inv.getArgument(0);
             invite.setId(300L);
@@ -196,28 +207,35 @@ class LeagueServiceTest {
     }
 
     @Test
+    void createInviteRejectsIfLeagueNotInactive() {
+        League league = league(1L, 10L, LeagueStatus.ACTIVE, 4, 1, OffsetDateTime.now().minusMinutes(1));
+        when(leagueRepository.findById(1L)).thenReturn(Optional.of(league));
+
+        CreateInviteRequest req = new CreateInviteRequest(null, null);
+        assertThrows(LeagueStateException.class, () -> service.createInvite(10L, 1L, req));
+    }
+
+    @Test
     void joinLeagueSucceedsWithValidInvite() {
         League league = league(1L, 10L, LeagueStatus.INACTIVE, 3, 1, null);
         LeagueInvite invite = invite(league, "VALIDINVITE12", 10, 0, OffsetDateTime.now().plusDays(1));
+        invite.setId(500L);
 
-        when(leagueRepository.findById(1L)).thenReturn(Optional.of(league));
+        when(leagueRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(league));
         when(leagueInviteRepository.findByCodeAndRevokedAtIsNull("VALIDINVITE12"))
                 .thenReturn(Optional.of(invite));
+        when(leagueMemberRepository.countByLeagueId(1L)).thenReturn(1);
         when(leagueMemberRepository.findByLeagueIdAndUserId(1L, 20L)).thenReturn(Optional.empty());
         when(leagueMemberRepository.save(any(LeagueMember.class))).thenAnswer(inv -> {
             LeagueMember member = inv.getArgument(0);
             member.setId(400L);
             return member;
         });
-        when(leagueInviteRepository.save(any(LeagueInvite.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(leagueInviteRepository.incrementUsesCount(500L)).thenReturn(1);
 
         LeagueMemberResponse response = service.joinLeague(20L, 1L, new JoinLeagueRequest("VALIDINVITE12"));
 
-        ArgumentCaptor<LeagueInvite> inviteCaptor = ArgumentCaptor.forClass(LeagueInvite.class);
-        verify(leagueInviteRepository).save(inviteCaptor.capture());
-        assertEquals(1, inviteCaptor.getValue().getUsesCount());
-        assertEquals(LeagueStatus.INACTIVE.name(), invite.getLeague().getStatus().name());
-
+        verify(leagueInviteRepository).incrementUsesCount(500L);
         assertEquals(400L, response.id());
         assertEquals(20L, response.userId());
         assertEquals("MEMBER", response.role());
@@ -227,23 +245,43 @@ class LeagueServiceTest {
     void joinLeagueAllowsNullMaxUses() {
         League league = league(1L, 10L, LeagueStatus.INACTIVE, 5, 1, null);
         LeagueInvite invite = invite(league, "OPENINVITE01", null, 2, OffsetDateTime.now().plusDays(1));
+        invite.setId(501L);
 
-        when(leagueRepository.findById(1L)).thenReturn(Optional.of(league));
+        when(leagueRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(league));
         when(leagueInviteRepository.findByCodeAndRevokedAtIsNull("OPENINVITE01"))
                 .thenReturn(Optional.of(invite));
+        when(leagueMemberRepository.countByLeagueId(1L)).thenReturn(1);
         when(leagueMemberRepository.findByLeagueIdAndUserId(1L, 20L)).thenReturn(Optional.empty());
         when(leagueMemberRepository.save(any(LeagueMember.class))).thenAnswer(inv -> {
             LeagueMember member = inv.getArgument(0);
             member.setId(401L);
             return member;
         });
-        when(leagueInviteRepository.save(any(LeagueInvite.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(leagueInviteRepository.incrementUsesCount(501L)).thenReturn(1);
 
         assertDoesNotThrow(() -> service.joinLeague(20L, 1L, new JoinLeagueRequest("OPENINVITE01")));
+        verify(leagueInviteRepository).incrementUsesCount(501L);
+    }
 
-        ArgumentCaptor<LeagueInvite> inviteCaptor = ArgumentCaptor.forClass(LeagueInvite.class);
-        verify(leagueInviteRepository).save(inviteCaptor.capture());
-        assertEquals(3, inviteCaptor.getValue().getUsesCount());
+    @Test
+    void joinLeagueAcceptsInviteWithNullExpiresAt() {
+        League league = league(1L, 10L, LeagueStatus.INACTIVE, 5, 1, null);
+        LeagueInvite invite = invite(league, "NOEXPIRY001", 10, 0, null);
+        invite.setId(502L);
+
+        when(leagueRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(league));
+        when(leagueInviteRepository.findByCodeAndRevokedAtIsNull("NOEXPIRY001"))
+                .thenReturn(Optional.of(invite));
+        when(leagueMemberRepository.countByLeagueId(1L)).thenReturn(1);
+        when(leagueMemberRepository.findByLeagueIdAndUserId(1L, 20L)).thenReturn(Optional.empty());
+        when(leagueMemberRepository.save(any(LeagueMember.class))).thenAnswer(inv -> {
+            LeagueMember member = inv.getArgument(0);
+            member.setId(402L);
+            return member;
+        });
+        when(leagueInviteRepository.incrementUsesCount(502L)).thenReturn(1);
+
+        assertDoesNotThrow(() -> service.joinLeague(20L, 1L, new JoinLeagueRequest("NOEXPIRY001")));
     }
 
     @Test
@@ -252,7 +290,7 @@ class LeagueServiceTest {
         League otherLeague = league(2L, 11L, LeagueStatus.INACTIVE, 5, 1, null);
         LeagueInvite invite = invite(otherLeague, "OTHERLEAGUE", 10, 0, OffsetDateTime.now().plusDays(1));
 
-        when(leagueRepository.findById(1L)).thenReturn(Optional.of(league));
+        when(leagueRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(league));
         when(leagueInviteRepository.findByCodeAndRevokedAtIsNull("OTHERLEAGUE")).thenReturn(Optional.of(invite));
 
         assertThrows(InvalidInviteException.class, () -> service.joinLeague(20L, 1L, new JoinLeagueRequest("OTHERLEAGUE")));
@@ -263,7 +301,7 @@ class LeagueServiceTest {
         League league = league(1L, 10L, LeagueStatus.INACTIVE, 5, 1, null);
         LeagueInvite invite = invite(league, "EXPIREDINV1", 10, 0, OffsetDateTime.now().minusMinutes(1));
 
-        when(leagueRepository.findById(1L)).thenReturn(Optional.of(league));
+        when(leagueRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(league));
         when(leagueInviteRepository.findByCodeAndRevokedAtIsNull("EXPIREDINV1")).thenReturn(Optional.of(invite));
 
         assertThrows(InvalidInviteException.class, () -> service.joinLeague(20L, 1L, new JoinLeagueRequest("EXPIREDINV1")));
@@ -272,7 +310,7 @@ class LeagueServiceTest {
     @Test
     void joinLeagueRejectsWhenInviteCodeInvalid() {
         League league = league(1L, 10L, LeagueStatus.INACTIVE, 5, 1, null);
-        when(leagueRepository.findById(1L)).thenReturn(Optional.of(league));
+        when(leagueRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(league));
         when(leagueInviteRepository.findByCodeAndRevokedAtIsNull("MISSING")).thenReturn(Optional.empty());
 
         assertThrows(InvalidInviteException.class, () -> service.joinLeague(20L, 1L, new JoinLeagueRequest("MISSING")));
@@ -281,13 +319,43 @@ class LeagueServiceTest {
     @Test
     void joinLeagueRejectsWhenInviteUsesExceeded() {
         League league = league(1L, 10L, LeagueStatus.INACTIVE, 5, 1, null);
-        LeagueInvite invite = invite(league, "FULLUSEINV01", 1, 1, OffsetDateTime.now().plusDays(1));
+        LeagueInvite invite = invite(league, "FULLUSEINV01", 1, 0, OffsetDateTime.now().plusDays(1));
+        invite.setId(503L);
 
-        when(leagueRepository.findById(1L)).thenReturn(Optional.of(league));
+        when(leagueRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(league));
         when(leagueInviteRepository.findByCodeAndRevokedAtIsNull("FULLUSEINV01")).thenReturn(Optional.of(invite));
+        when(leagueMemberRepository.countByLeagueId(1L)).thenReturn(1);
+        when(leagueMemberRepository.findByLeagueIdAndUserId(1L, 20L)).thenReturn(Optional.empty());
+        when(leagueMemberRepository.save(any(LeagueMember.class))).thenAnswer(inv -> {
+            LeagueMember member = inv.getArgument(0);
+            member.setId(403L);
+            return member;
+        });
+        when(leagueInviteRepository.incrementUsesCount(503L)).thenReturn(0);
 
         assertThrows(InvalidInviteException.class, () -> service.joinLeague(20L, 1L, new JoinLeagueRequest("FULLUSEINV01")));
-        verify(leagueMemberRepository, never()).save(any(LeagueMember.class));
+    }
+
+    @Test
+    void joinLeagueThrowsWhenAtomicIncrementFails() {
+        League league = league(1L, 10L, LeagueStatus.INACTIVE, 5, 1, null);
+        LeagueInvite invite = invite(league, "RACECOND001", 1, 0, OffsetDateTime.now().plusDays(1));
+        invite.setId(504L);
+
+        when(leagueRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(league));
+        when(leagueInviteRepository.findByCodeAndRevokedAtIsNull("RACECOND001")).thenReturn(Optional.of(invite));
+        when(leagueMemberRepository.countByLeagueId(1L)).thenReturn(1);
+        when(leagueMemberRepository.findByLeagueIdAndUserId(1L, 20L)).thenReturn(Optional.empty());
+        when(leagueMemberRepository.save(any(LeagueMember.class))).thenAnswer(inv -> {
+            LeagueMember member = inv.getArgument(0);
+            member.setId(404L);
+            return member;
+        });
+        when(leagueInviteRepository.incrementUsesCount(504L)).thenReturn(0);
+
+        InvalidInviteException ex = assertThrows(InvalidInviteException.class,
+                () -> service.joinLeague(20L, 1L, new JoinLeagueRequest("RACECOND001")));
+        assertEquals("Invite code has reached maximum uses", ex.getMessage());
     }
 
     @Test
@@ -295,19 +363,19 @@ class LeagueServiceTest {
         League league = league(1L, 10L, LeagueStatus.INACTIVE, 5, 1, OffsetDateTime.now().minusMinutes(1));
         LeagueInvite invite = invite(league, "STARTEDCODE", 10, 0, OffsetDateTime.now().plusDays(1));
 
-        when(leagueRepository.findById(1L)).thenReturn(Optional.of(league));
+        when(leagueRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(league));
         when(leagueInviteRepository.findByCodeAndRevokedAtIsNull("STARTEDCODE")).thenReturn(Optional.of(invite));
         assertThrows(LeagueStateException.class, () -> service.joinLeague(20L, 1L, new JoinLeagueRequest("STARTEDCODE")));
     }
 
     @Test
     void joinLeagueRejectsIfLeagueIsFull() {
-        League league = league(1L, 10L, LeagueStatus.INACTIVE, 1, 1, null);
+        League league = league(1L, 10L, LeagueStatus.INACTIVE, 2, 2, null);
         LeagueInvite invite = invite(league, "FULLLEAGUE1", 10, 0, OffsetDateTime.now().plusDays(1));
 
-        when(leagueRepository.findById(1L)).thenReturn(Optional.of(league));
+        when(leagueRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(league));
         when(leagueInviteRepository.findByCodeAndRevokedAtIsNull("FULLLEAGUE1")).thenReturn(Optional.of(invite));
-        when(leagueMemberRepository.countByLeagueId(1L)).thenReturn(1);
+        when(leagueMemberRepository.countByLeagueId(1L)).thenReturn(2);
         assertThrows(LeagueStateException.class, () -> service.joinLeague(20L, 1L, new JoinLeagueRequest("FULLLEAGUE1")));
     }
 
@@ -316,8 +384,9 @@ class LeagueServiceTest {
         League league = league(1L, 10L, LeagueStatus.INACTIVE, 5, 1, null);
         LeagueInvite invite = invite(league, "ALREADYMEM01", 10, 0, OffsetDateTime.now().plusDays(1));
 
-        when(leagueRepository.findById(1L)).thenReturn(Optional.of(league));
+        when(leagueRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(league));
         when(leagueInviteRepository.findByCodeAndRevokedAtIsNull("ALREADYMEM01")).thenReturn(Optional.of(invite));
+        when(leagueMemberRepository.countByLeagueId(1L)).thenReturn(1);
         when(leagueMemberRepository.findByLeagueIdAndUserId(1L, 20L))
                 .thenReturn(Optional.of(newMember(20L, "MEMBER", league)));
 
@@ -327,10 +396,10 @@ class LeagueServiceTest {
 
     @Test
     void startLeagueStartsInactiveLeague() {
-        League league = league(1L, 10L, LeagueStatus.INACTIVE, 3, 1, null);
+        League league = league(1L, 10L, LeagueStatus.INACTIVE, 3, 2, null);
         when(leagueRepository.findById(1L)).thenReturn(Optional.of(league));
         when(leagueRepository.save(any(League.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(leagueMemberRepository.countByLeagueId(1L)).thenReturn(1);
+        when(leagueMemberRepository.countByLeagueId(1L)).thenReturn(2);
 
         LeagueResponse response = service.startLeague(10L, 1L);
 
@@ -341,7 +410,7 @@ class LeagueServiceTest {
         assertEquals(LeagueStatus.ACTIVE, saved.getStatus());
         assertNotNull(saved.getStartedAt());
         assertNotNull(saved.getInitialStipendIssuedAt());
-        assertEquals(1, response.memberCount());
+        assertEquals(2, response.memberCount());
         assertEquals(LeagueStatus.ACTIVE.name(), response.status());
     }
 
@@ -359,6 +428,16 @@ class LeagueServiceTest {
         when(leagueRepository.findById(1L)).thenReturn(Optional.of(league));
 
         assertThrows(LeagueStateException.class, () -> service.startLeague(10L, 1L));
+    }
+
+    @Test
+    void startLeagueRejectsIfOnlyOneMember() {
+        League league = league(1L, 10L, LeagueStatus.INACTIVE, 3, 1, null);
+        when(leagueRepository.findById(1L)).thenReturn(Optional.of(league));
+        when(leagueMemberRepository.countByLeagueId(1L)).thenReturn(1);
+
+        LeagueStateException ex = assertThrows(LeagueStateException.class, () -> service.startLeague(10L, 1L));
+        assertEquals("League must have at least 2 members to start", ex.getMessage());
     }
 
     @Test
@@ -385,7 +464,6 @@ class LeagueServiceTest {
     @Test
     void removeMemberRejectsIfStarted() {
         League league = league(1L, 10L, LeagueStatus.ACTIVE, 4, 1, OffsetDateTime.now().minusMinutes(1));
-        LeagueMember target = newMember(20L, "MEMBER", league);
         when(leagueRepository.findById(1L)).thenReturn(Optional.of(league));
 
         assertThrows(LeagueStateException.class, () -> service.removeMember(10L, 1L, 20L));
@@ -394,7 +472,6 @@ class LeagueServiceTest {
     @Test
     void removeMemberRejectsNonOwner() {
         League league = league(1L, 10L, LeagueStatus.INACTIVE, 4, 2, null);
-        LeagueMember target = newMember(20L, "MEMBER", league);
         when(leagueRepository.findById(1L)).thenReturn(Optional.of(league));
 
         assertThrows(LeagueAccessDeniedException.class, () -> service.removeMember(11L, 1L, 20L));
@@ -436,6 +513,17 @@ class LeagueServiceTest {
     }
 
     @Test
+    void leaveLeagueRejectsIfLeagueStatusNotInactive() {
+        League league = league(1L, 10L, LeagueStatus.ACTIVE, 4, 2, null);
+        LeagueMember member = newMember(20L, "MEMBER", league);
+
+        when(leagueRepository.findById(1L)).thenReturn(Optional.of(league));
+        when(leagueMemberRepository.findByLeagueIdAndUserId(1L, 20L)).thenReturn(Optional.of(member));
+
+        assertThrows(LeagueStateException.class, () -> service.leaveLeague(20L, 1L));
+    }
+
+    @Test
     void leaveLeagueRejectsIfNotMember() {
         League league = league(1L, 10L, LeagueStatus.INACTIVE, 4, 1, null);
         when(leagueRepository.findById(1L)).thenReturn(Optional.of(league));
@@ -453,12 +541,13 @@ class LeagueServiceTest {
 
         when(leagueRepository.findById(1L)).thenReturn(Optional.of(league));
         when(leagueMemberRepository.findByLeagueIdAndUserId(1L, 20L)).thenReturn(Optional.of(caller));
-        when(leagueMemberRepository.findAllByLeagueId(1L)).thenReturn(List.of(owner, caller, member));
+        when(leagueMemberRepository.findAllByLeagueId(eq(1L), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(owner, caller, member), DEFAULT_PAGE, 3));
 
-        List<LeagueMemberResponse> response = service.listMembers(20L, 1L);
+        Page<LeagueMemberResponse> response = service.listMembers(20L, 1L, DEFAULT_PAGE);
 
-        assertEquals(3, response.size());
-        assertEquals(List.of(10L, 20L, 21L), response.stream().map(LeagueMemberResponse::userId).toList());
+        assertEquals(3, response.getTotalElements());
+        assertEquals(List.of(10L, 20L, 21L), response.getContent().stream().map(LeagueMemberResponse::userId).toList());
     }
 
     @Test
@@ -467,15 +556,104 @@ class LeagueServiceTest {
         when(leagueRepository.findById(1L)).thenReturn(Optional.of(league));
         when(leagueMemberRepository.findByLeagueIdAndUserId(1L, 20L)).thenReturn(Optional.empty());
 
-        assertThrows(LeagueAccessDeniedException.class, () -> service.listMembers(20L, 1L));
-        verify(leagueMemberRepository, never()).findAllByLeagueId(any(Long.class));
+        assertThrows(LeagueAccessDeniedException.class, () -> service.listMembers(20L, 1L, DEFAULT_PAGE));
+        verify(leagueMemberRepository, never()).findAllByLeagueId(anyLong(), any(Pageable.class));
     }
 
     @Test
     void listMembersThrowsWhenLeagueMissing() {
         when(leagueRepository.findById(1L)).thenReturn(Optional.empty());
-        assertThrows(LeagueNotFoundException.class, () -> service.listMembers(20L, 1L));
+        assertThrows(LeagueNotFoundException.class, () -> service.listMembers(20L, 1L, DEFAULT_PAGE));
     }
+
+    // --- Revoke Invite Tests ---
+
+    @Test
+    void revokeInviteSucceeds() {
+        League league = league(1L, 10L, LeagueStatus.INACTIVE, 4, 1, null);
+        LeagueInvite invite = invite(league, "REVOKEME001", 10, 0, OffsetDateTime.now().plusDays(1));
+        invite.setId(600L);
+
+        when(leagueRepository.findById(1L)).thenReturn(Optional.of(league));
+        when(leagueInviteRepository.findById(600L)).thenReturn(Optional.of(invite));
+        when(leagueInviteRepository.save(any(LeagueInvite.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        service.revokeInvite(10L, 1L, 600L);
+
+        ArgumentCaptor<LeagueInvite> captor = ArgumentCaptor.forClass(LeagueInvite.class);
+        verify(leagueInviteRepository).save(captor.capture());
+        assertNotNull(captor.getValue().getRevokedAt());
+    }
+
+    @Test
+    void revokeInviteRejectsNonOwner() {
+        League league = league(1L, 10L, LeagueStatus.INACTIVE, 4, 1, null);
+        when(leagueRepository.findById(1L)).thenReturn(Optional.of(league));
+
+        assertThrows(LeagueAccessDeniedException.class, () -> service.revokeInvite(11L, 1L, 600L));
+    }
+
+    @Test
+    void revokeInviteRejectsAlreadyRevoked() {
+        League league = league(1L, 10L, LeagueStatus.INACTIVE, 4, 1, null);
+        LeagueInvite invite = invite(league, "ALREADYREV1", 10, 0, OffsetDateTime.now().plusDays(1));
+        invite.setId(601L);
+        invite.setRevokedAt(OffsetDateTime.now().minusDays(1));
+
+        when(leagueRepository.findById(1L)).thenReturn(Optional.of(league));
+        when(leagueInviteRepository.findById(601L)).thenReturn(Optional.of(invite));
+
+        assertThrows(LeagueStateException.class, () -> service.revokeInvite(10L, 1L, 601L));
+    }
+
+    @Test
+    void revokeInviteRejectsWrongLeague() {
+        League league = league(1L, 10L, LeagueStatus.INACTIVE, 4, 1, null);
+        League otherLeague = league(2L, 11L, LeagueStatus.INACTIVE, 4, 1, null);
+        LeagueInvite invite = invite(otherLeague, "WRONGLG001", 10, 0, OffsetDateTime.now().plusDays(1));
+        invite.setId(602L);
+
+        when(leagueRepository.findById(1L)).thenReturn(Optional.of(league));
+        when(leagueInviteRepository.findById(602L)).thenReturn(Optional.of(invite));
+
+        assertThrows(LeagueAccessDeniedException.class, () -> service.revokeInvite(10L, 1L, 602L));
+    }
+
+    // --- Archive League Tests ---
+
+    @Test
+    void archiveLeagueSucceeds() {
+        League league = league(1L, 10L, LeagueStatus.ACTIVE, 4, 3, OffsetDateTime.now().minusDays(1));
+        when(leagueRepository.findById(1L)).thenReturn(Optional.of(league));
+        when(leagueRepository.save(any(League.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(leagueMemberRepository.countByLeagueId(1L)).thenReturn(3);
+
+        LeagueResponse response = service.archiveLeague(10L, 1L);
+
+        ArgumentCaptor<League> captor = ArgumentCaptor.forClass(League.class);
+        verify(leagueRepository).save(captor.capture());
+        assertEquals(LeagueStatus.ARCHIVED, captor.getValue().getStatus());
+        assertEquals(LeagueStatus.ARCHIVED.name(), response.status());
+        assertEquals(3, response.memberCount());
+    }
+
+    @Test
+    void archiveLeagueRejectsNonOwner() {
+        League league = league(1L, 10L, LeagueStatus.ACTIVE, 4, 3, OffsetDateTime.now().minusDays(1));
+        when(leagueRepository.findById(1L)).thenReturn(Optional.of(league));
+
+        assertThrows(LeagueAccessDeniedException.class, () -> service.archiveLeague(11L, 1L));
+    }
+
+    @Test
+    void archiveLeagueRejectsAlreadyArchived() {
+        League league = league(1L, 10L, LeagueStatus.ARCHIVED, 4, 3, OffsetDateTime.now().minusDays(1));
+        when(leagueRepository.findById(1L)).thenReturn(Optional.of(league));
+
+        assertThrows(LeagueStateException.class, () -> service.archiveLeague(10L, 1L));
+    }
+
+    // --- Helpers ---
 
     private CreateLeagueRequest createLeagueRequest() {
         return new CreateLeagueRequest(

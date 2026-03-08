@@ -10,6 +10,8 @@ import com.sportstock.league.dto.response.LeagueResponse;
 import com.sportstock.league.service.LeagueService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,10 +19,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
 
 @RestController
 @Validated
@@ -45,8 +46,12 @@ public class LeagueController {
 
     @GetMapping("/")
     @ResponseStatus(HttpStatus.OK)
-    public List<LeagueResponse> listMyLeagues() {
-        return leagueService.listUserLeagues(currentUserProvider.getCurrentUserId());
+    public Page<LeagueResponse> listMyLeagues(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return leagueService.listUserLeagues(
+                currentUserProvider.getCurrentUserId(),
+                PageRequest.of(page, Math.min(size, 100)));
     }
 
     @PostMapping("/{leagueId}/invites")
@@ -54,6 +59,12 @@ public class LeagueController {
     public LeagueInviteResponse createInvite(@PathVariable Long leagueId,
                                               @Valid @RequestBody CreateInviteRequest request) {
         return leagueService.createInvite(currentUserProvider.getCurrentUserId(), leagueId, request);
+    }
+
+    @PostMapping("/{leagueId}/invites/{inviteId}/revoke")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void revokeInvite(@PathVariable Long leagueId, @PathVariable Long inviteId) {
+        leagueService.revokeInvite(currentUserProvider.getCurrentUserId(), leagueId, inviteId);
     }
 
     @PostMapping("/{leagueId}/join")
@@ -67,6 +78,12 @@ public class LeagueController {
     @ResponseStatus(HttpStatus.OK)
     public LeagueResponse startLeague(@PathVariable Long leagueId) {
         return leagueService.startLeague(currentUserProvider.getCurrentUserId(), leagueId);
+    }
+
+    @PostMapping("/{leagueId}/archive")
+    @ResponseStatus(HttpStatus.OK)
+    public LeagueResponse archiveLeague(@PathVariable Long leagueId) {
+        return leagueService.archiveLeague(currentUserProvider.getCurrentUserId(), leagueId);
     }
 
     @PostMapping("/{leagueId}/members/{targetUserId}/remove")
@@ -84,7 +101,12 @@ public class LeagueController {
 
     @GetMapping("/{leagueId}/members")
     @ResponseStatus(HttpStatus.OK)
-    public List<LeagueMemberResponse> listMembers(@PathVariable Long leagueId) {
-        return leagueService.listMembers(currentUserProvider.getCurrentUserId(), leagueId);
+    public Page<LeagueMemberResponse> listMembers(
+            @PathVariable Long leagueId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return leagueService.listMembers(
+                currentUserProvider.getCurrentUserId(), leagueId,
+                PageRequest.of(page, Math.min(size, 100)));
     }
 }

@@ -19,13 +19,16 @@ import com.sportstock.league.repo.LeagueMemberRepository;
 import com.sportstock.league.repo.LeagueRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -65,22 +68,30 @@ public class LeagueService {
         verifyMembership(leagueId, userId);
         int memberCount = leagueMemberRepository.countByLeagueId(leagueId);
         return LeagueResponse.from(league, memberCount);
-
     }
 
     @Transactional(readOnly = true)
-    public List<LeagueResponse> listUserLeagues(Long userId) {
-
-        List<LeagueMember> memberships = leagueMemberRepository.findByUserId(userId);
+    public Page<LeagueResponse> listUserLeagues(Long userId, Pageable pageable) {
+        Page<LeagueMember> memberships = leagueMemberRepository.findByUserId(userId, pageable);
 
         List<Long> leagueIds = memberships.stream()
                 .map(m -> m.getLeague().getId())
                 .toList();
 
-        return leagueRepository.findAllById(leagueIds).stream()
-                .map(league -> LeagueResponse.from(league, leagueMemberRepository.countByLeagueId(league.getId())))
-                .toList();
+        if (leagueIds.isEmpty()) {
+            return memberships.map(m -> null);
+        }
 
+        Map<Long, League> leagueMap = leagueRepository.findAllById(leagueIds).stream()
+                .collect(Collectors.toMap(League::getId, l -> l));
+
+        Map<Long, Long> countMap = leagueMemberRepository.countByLeagueIds(leagueIds).stream()
+                .collect(Collectors.toMap(row -> (Long) row[0], row -> (Long) row[1]));
+
+        return memberships.map(m -> {
+            League league = leagueMap.get(m.getLeague().getId());
+            return LeagueResponse.from(league, countMap.getOrDefault(league.getId(), 0L).intValue());
+        });
     }
 
     @Transactional
@@ -88,9 +99,13 @@ public class LeagueService {
         League league = findLeagueOrThrow(leagueId);
         verifyOwner(league, userId);
 
+        if (league.getStatus() != LeagueStatus.INACTIVE) {
+            throw new LeagueStateException("Cannot create invites for a league that is not inactive");
+        }
+
         LeagueInvite invite = new LeagueInvite();
 
-        invite.setCode(UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase());
+        invite.setCode(generateUniqueInviteCode());
         invite.setCreatedBy(userId);
         invite.setLeague(league);
         invite.setExpiresAt(req.expiresAt());
@@ -99,12 +114,12 @@ public class LeagueService {
         leagueInviteRepository.save(invite);
 
         return LeagueInviteResponse.from(invite);
-
     }
 
     @Transactional
     public LeagueMemberResponse joinLeague(Long userId, Long leagueId, JoinLeagueRequest req) {
-        League league = findLeagueOrThrow(leagueId);
+        League league = leagueRepository.findByIdForUpdate(leagueId)
+                .orElseThrow(() -> new LeagueNotFoundException("League not found: " + leagueId));
         LeagueInvite invite = leagueInviteRepository.findByCodeAndRevokedAtIsNull(req.inviteCode()).orElseThrow(
                 () -> new InvalidInviteException("Invalid invite code")
         );
@@ -114,9 +129,6 @@ public class LeagueService {
         }
         if (invite.getExpiresAt() != null && invite.getExpiresAt().isBefore(OffsetDateTime.now())) {
             throw new InvalidInviteException("Invite code has expired");
-        }
-        if (invite.getMaxUses() != null && invite.getUsesCount() >= invite.getMaxUses()) {
-            throw new InvalidInviteException("Invite code has reached maximum uses");
         }
         if (league.getStartedAt() != null || league.getStatus() != LeagueStatus.INACTIVE) {
             throw new LeagueStateException("Cannot join a league that has already started");
@@ -134,8 +146,10 @@ public class LeagueService {
         member.setRole("MEMBER");
         leagueMemberRepository.save(member);
 
-        invite.setUsesCount(invite.getUsesCount() + 1);
-        leagueInviteRepository.save(invite);
+        int updated = leagueInviteRepository.incrementUsesCount(invite.getId());
+        if (updated == 0) {
+            throw new InvalidInviteException("Invite code has reached maximum uses");
+        }
 
         return LeagueMemberResponse.from(member);
     }
@@ -149,12 +163,18 @@ public class LeagueService {
         if (league.getStatus() != LeagueStatus.INACTIVE) {
             throw new LeagueStateException("League can only be started when it is inactive");
         }
+
+        int memberCount = leagueMemberRepository.countByLeagueId(leagueId);
+        if (memberCount < 2) {
+            throw new LeagueStateException("League must have at least 2 members to start");
+        }
+
         league.setStartedAt(OffsetDateTime.now());
         league.setStatus(LeagueStatus.ACTIVE);
         // Call Wallet service and issue initial stipend
         league.setInitialStipendIssuedAt(OffsetDateTime.now());
         leagueRepository.save(league);
-        return LeagueResponse.from(league, leagueMemberRepository.countByLeagueId(leagueId));
+        return LeagueResponse.from(league, memberCount);
     }
 
     @Transactional
@@ -182,30 +202,71 @@ public class LeagueService {
         LeagueMember member = leagueMemberRepository.findByLeagueIdAndUserId(leagueId, userId).orElseThrow(
                 () -> new LeagueNotFoundException("User is not a member of the league")
         );
-        if (league.getStartedAt() != null) {
+        if (league.getStartedAt() != null || league.getStatus() != LeagueStatus.INACTIVE) {
             throw new LeagueStateException("Cannot leave a league that has already started");
         }
         if ("OWNER".equals(member.getRole()) || league.getOwnerUserId().equals(userId)) {
             throw new LeagueStateException("You cannot leave the league if you are the owner");
         }
         leagueMemberRepository.delete(member);
-
     }
 
     @Transactional(readOnly = true)
-    public List<LeagueMemberResponse> listMembers(Long userId, Long leagueId) {
+    public Page<LeagueMemberResponse> listMembers(Long userId, Long leagueId, Pageable pageable) {
         findLeagueOrThrow(leagueId);
         verifyMembership(leagueId, userId);
 
-        return leagueMemberRepository.findAllByLeagueId(leagueId).stream()
-                .map(LeagueMemberResponse::from)
-                .toList();
+        return leagueMemberRepository.findAllByLeagueId(leagueId, pageable)
+                .map(LeagueMemberResponse::from);
+    }
+
+    @Transactional
+    public void revokeInvite(Long userId, Long leagueId, Long inviteId) {
+        League league = findLeagueOrThrow(leagueId);
+        verifyOwner(league, userId);
+
+        LeagueInvite invite = leagueInviteRepository.findById(inviteId)
+                .orElseThrow(() -> new LeagueNotFoundException("Invite not found: " + inviteId));
+
+        if (!invite.getLeague().getId().equals(leagueId)) {
+            throw new LeagueAccessDeniedException("Invite does not belong to this league");
+        }
+        if (invite.getRevokedAt() != null) {
+            throw new LeagueStateException("Invite is already revoked");
+        }
+
+        invite.setRevokedAt(OffsetDateTime.now());
+        leagueInviteRepository.save(invite);
+    }
+
+    @Transactional
+    public LeagueResponse archiveLeague(Long userId, Long leagueId) {
+        League league = findLeagueOrThrow(leagueId);
+        verifyOwner(league, userId);
+
+        if (league.getStatus() == LeagueStatus.ARCHIVED) {
+            throw new LeagueStateException("League is already archived");
+        }
+
+        league.setStatus(LeagueStatus.ARCHIVED);
+        leagueRepository.save(league);
+        return LeagueResponse.from(league, leagueMemberRepository.countByLeagueId(leagueId));
     }
 
     private League findLeagueOrThrow(Long leagueId) {
         return leagueRepository.findById(leagueId).orElseThrow(
                 () -> new LeagueNotFoundException("League not found: " + leagueId)
         );
+    }
+
+    private String generateUniqueInviteCode() {
+        for (int attempt = 0; attempt < 3; attempt++) {
+            String code = UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase();
+            if (leagueInviteRepository.findByCode(code).isEmpty()) {
+                return code;
+            }
+        }
+        throw new LeagueStateException("Failed to generate unique invite code");
     }
 
     private void verifyOwner(League league, Long userId) {
@@ -219,8 +280,7 @@ public class LeagueService {
     }
 
     private void verifyMembership(Long leagueId, Long userId) {
-        Optional<LeagueMember> member = leagueMemberRepository.findByLeagueIdAndUserId(leagueId, userId);
-        if (member.isEmpty()) {
+        if (leagueMemberRepository.findByLeagueIdAndUserId(leagueId, userId).isEmpty()) {
             log.warn("Membership verification failed for leagueId={} userId={}", leagueId, userId);
             throw new LeagueAccessDeniedException("You are not a member of this league");
         }
