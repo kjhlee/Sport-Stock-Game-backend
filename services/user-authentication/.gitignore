@@ -35,3 +35,6 @@ build/
 
 ## DS stores
 .DS_Store
+
+# ---- ENV
+.env

@@ -22,6 +22,7 @@ public class LoginService {
     private final UserAccountRepo accountRepo;
 
     public TokenResponse login(String email, String password) {
+        System.out.println("EXPIRED: " + jwtService.generateExpiredToken(email));
         UserDetails account = accountRepo.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 

@@ -51,6 +51,16 @@ public class JwtService {
              .compact();
     }
 
+    public String generateExpiredToken(String email){
+        return Jwts
+             .builder()
+             .subject(email)
+             .issuedAt(new Date(System.currentTimeMillis() - 6000000))
+             .expiration(new Date(System.currentTimeMillis() - 300000))
+             .signWith(getSignInKey())
+             .compact();
+    }
+
     public Claims extractClaims(String token) {
         return Jwts.parser().verifyWith(getSignInKey()).build().parseSignedClaims(token).getPayload();
     }
