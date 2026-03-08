@@ -140,16 +140,17 @@ public class LeagueService {
             throw new LeagueStateException("User is already a member of this league");
         }
 
+        int updated = leagueInviteRepository.incrementUsesCount(invite.getId());
+        if (updated == 0) {
+            throw new InvalidInviteException("Invite code has reached maximum uses");
+        }
+
         LeagueMember member = new LeagueMember();
         member.setLeague(league);
         member.setUserId(userId);
         member.setRole("MEMBER");
         leagueMemberRepository.save(member);
 
-        int updated = leagueInviteRepository.incrementUsesCount(invite.getId());
-        if (updated == 0) {
-            throw new InvalidInviteException("Invite code has reached maximum uses");
-        }
 
         return LeagueMemberResponse.from(member);
     }
