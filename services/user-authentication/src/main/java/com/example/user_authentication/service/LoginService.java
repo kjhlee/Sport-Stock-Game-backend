@@ -11,9 +11,15 @@ import com.example.user_authentication.models.UserDetails;
 import com.example.user_authentication.repository.UserAccountRepo;
 import lombok.RequiredArgsConstructor;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @Service
 @RequiredArgsConstructor
 public class LoginService {
+
+    private static Logger logger = 
+            LoggerFactory.getLogger(LoginService.class);
 
     private final BCryptPasswordEncoder passwordEncoder;
     
@@ -33,7 +39,9 @@ public class LoginService {
             account = accountRepo.findByUsername(login)
                     .orElseThrow(() -> new RuntimeException("Username not found "));
         }
+        logger.info("Login attempt for account: {}", account);
         if (!passwordEncoder.matches(password, account.getPassword())) {
+            logger.error("Login failed for account: {}", account);
             throw new RuntimeException("Invalid credentials");
         }
 

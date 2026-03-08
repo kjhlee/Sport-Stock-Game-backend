@@ -18,10 +18,16 @@ import com.example.user_authentication.service.RegisterAccountService;
 
 import lombok.RequiredArgsConstructor;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor
 public class UserAuthController {
+
+    private static Logger logger = 
+            LoggerFactory.getLogger(UserAuthController.class);
     
     private final RegisterAccountService accountService;
     private final LoginService loginService;
@@ -29,6 +35,7 @@ public class UserAuthController {
     
     @PostMapping("/register")
     public ResponseEntity<String> registerAccount(@RequestBody RegisterRequest request) {
+        logger.info("Processing new /api/register request");
         try {
             accountService.registerAccount( request.getEmail(), 
                                             request.getPassword(), 
@@ -43,6 +50,7 @@ public class UserAuthController {
     }
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest request) {
+        logger.info("Processing new /api/login request");
         try {
             TokenResponse newToken = loginService.login(request.getLogin(), request.getPassword());
             return ResponseEntity.ok(newToken);
@@ -58,6 +66,7 @@ public class UserAuthController {
     @PostMapping("/refresh")
     public ResponseEntity<?> refresh(@RequestBody RefreshRequest request){
         try {
+            logger.info("Processing new refresh token /api/refresh");
             String refreshToken = request.getRefreshToken();
             String newAccessToken = refreshService.refreshAccessToken(refreshToken);
             return ResponseEntity.ok(new TokenResponse(newAccessToken, refreshToken));

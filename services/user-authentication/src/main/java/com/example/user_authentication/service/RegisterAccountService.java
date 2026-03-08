@@ -9,8 +9,14 @@ import org.springframework.stereotype.Service;
 import com.example.user_authentication.models.UserDetails;
 import com.example.user_authentication.repository.UserAccountRepo;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @Service
 public class RegisterAccountService {
+    private static Logger logger = 
+            LoggerFactory.getLogger(RegisterAccountService.class);
+
     
     private final UserAccountRepo accountRepo;
 
@@ -32,6 +38,7 @@ public class RegisterAccountService {
         newAccount.setPassword(hashedPassword);
 
         if(newAccount.getEmail() == null || newAccount.getPassword() == null) {
+            logger.error("Email or password is null for login attempt: {}", email);
             throw new Exception("Email or password cannot be null");
         }
         if(accountRepo.existsByUsername(newAccount.getUsername())){
@@ -41,6 +48,7 @@ public class RegisterAccountService {
             throw new Exception("Email already exists");
         }
         accountRepo.save(newAccount);
+        logger.info("Sucessfully added new user to the database: {}", newAccount);
         return "Account registered successfully";
     }
 }
