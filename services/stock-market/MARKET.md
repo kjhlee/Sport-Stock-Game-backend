@@ -2,44 +2,45 @@
 
 ## Project Overview
 
-This is a Spring Boot microservice that manages NFL player stock prices. It is part of a multi-service monorepo. The ingestion service (already built) pulls NFL data from ESPN into a shared Postgres database and exposes it via REST. This service calls the ingestion REST API to get NFL data, then calculates and manages player stock prices.
+This is a Spring Boot microservice that manages NFL player stock prices. It is part of a multi-service monorepo. The ingestion service (already built) pulls NFL data from ESPN into a shared Postgres database and exposes it via REST endpoints. This service calls those endpoints to read NFL data and calculates player stock prices.
 
 ## Tech Stack
 
-- Java 21, Spring Boot, Maven
+- Java 21, Spring Boot 4.0.3, Maven
 - PostgreSQL (owns the `market` schema only)
 - Flyway for migrations
 - Spring Data JPA / Hibernate
-- WebClient for HTTP calls to ingestion service
+- RestClient (from `spring-boot-starter-webmvc`) for calling the ingestion API
 - Lombok
 
 ## Schemas
 
 - `market` — owned by this service (player_stock, price_history)
-- Schema creation is handled by `infra/01-create-schemas.sql`, not by Flyway migrations
+- Schema creation is handled by `infra/db/init/01-create-schemas.sql`, not by Flyway migrations
 
 ## Build & Run
 
 ```bash
 # Database
-docker compose -f infra/docker-compose.yml down -v && docker compose -f infra/docker-compose.yml up --build -d
+docker compose down -v && docker compose up --build -d
 
 # Build
 ./mvnw -pl services/stock-market clean package
 
-# Run (ingestion service must be running on port 8081)
+# Run
 ./mvnw -pl services/stock-market spring-boot:run
 
 # Tests
 ./mvnw -pl services/stock-market test
 ```
 
-Ingestion service: port `8081`. Stock market service: port `8082`.
+Ingestion service runs on port `8081`. Stock market service runs on port `8082`.
 
 ## Conventions & Rules
 
 - **Timestamps:** All `TIMESTAMP` columns use `TIMESTAMPTZ` in Postgres. Java entities use `Instant` — never `LocalDateTime`.
 - **Money:** `DECIMAL(10,2)` in Postgres, `BigDecimal` in Java — never `float` or `double`.
+- **Lombok:** Used across all services. Entities use `@Getter`, `@Setter`, `@NoArgsConstructor`. Read-only DTOs use `@Getter`, `@NoArgsConstructor`.
 - **Stat parsing:** ESPN stat values are JSON strings that may be null, empty, or non-numeric. Always default to `BigDecimal.ZERO`:
 
 ```java
@@ -99,44 +100,78 @@ CREATE UNIQUE INDEX idx_price_history_unique ON market.price_history(player_stoc
 
 ## Ingestion Service (REST API)
 
-This service calls the ingestion REST API (running on port 8081) to get NFL data. No direct database reads from the ingestion schema.
+This service calls the ingestion API over HTTP using RestClient. No direct database access to ingestion tables.
+
+Base URL: `http://localhost:8081/api/v1/ingestion` (configurable via `ingestion.api.base-url`)
+
+No authentication required (for now).
 
 ### Endpoints used
 
-| Endpoint                                                              | Description                                        | Used by                                       |
-| --------------------------------------------------------------------- | -------------------------------------------------- | --------------------------------------------- |
-| `GET /api/v1/ingestion/athletes`                                      | List athletes. Optional `?positionAbbreviation=QB` | AthleteStockSyncService                       |
-| `GET /api/v1/ingestion/athletes/{athleteEspnId}`                      | Single athlete                                     | AthleteStockSyncService                       |
-| `GET /api/v1/ingestion/teams`                                         | List all teams                                     | AthleteStockSyncService (team ESPN ID lookup) |
-| `GET /api/v1/ingestion/teams/{teamEspnId}`                            | Single team                                        | AthleteStockSyncService                       |
-| `GET /api/v1/ingestion/events?seasonYear=&weekNumber=`                | Events for a season/week                           | PriceRecalculationService                     |
-| `GET /api/v1/ingestion/events/{eventEspnId}/player-stats?teamEspnId=` | Player game stats                                  | PriceRecalculationService                     |
+| Endpoint                                          | Description                                        | Used by                   |
+| ------------------------------------------------- | -------------------------------------------------- | ------------------------- |
+| `GET /athletes`                                   | List athletes. Optional `?positionAbbreviation=QB` | AthleteStockSyncService   |
+| `GET /athletes/{athleteEspnId}`                   | Single athlete                                     | AthleteStockSyncService   |
+| `GET /teams`                                      | List all teams                                     | AthleteStockSyncService   |
+| `GET /events?seasonYear=&seasonType=&weekNumber=` | Events for a season/week                           | PriceRecalculationService |
+| `GET /events/{eventEspnId}/player-stats`          | Player game stats for an event                     | PriceRecalculationService |
 
-### Response shapes (only fields this service maps)
+### Ingestion API response shapes (from actual response DTOs)
 
-These DTOs only include the fields this service needs. Jackson's `@JsonIgnoreProperties(ignoreUnknown = true)` handles extra fields in the response.
+These are Java records in the ingestion service. Jackson serializes field names as-is (camelCase).
 
-**Athlete:**
+**AthleteResponse:**
 ```json
-{ "espnId": "3139477", "fullName": "Patrick Mahomes", "positionAbbreviation": "QB" }
+{
+  "espnId": "3139477",
+  "firstName": "Patrick",
+  "lastName": "Mahomes",
+  "fullName": "Patrick Mahomes II",
+  "displayName": "Patrick Mahomes II",
+  "positionAbbreviation": "QB",
+  "statusName": "Active",
+  "statusType": "active"
+}
 ```
 
-**Team:**
+**TeamResponse:**
 ```json
-{ "espnId": "12", "displayName": "Kansas City Chiefs", "abbreviation": "KC" }
+{
+  "espnId": "12",
+  "abbreviation": "KC",
+  "displayName": "Kansas City Chiefs",
+  "shortDisplayName": "Chiefs"
+}
 ```
 
-**Event:**
+**EventResponse:**
 ```json
-{ "espnId": "401547417", "seasonYear": 2025, "seasonType": 2, "weekNumber": 6, "statusCompleted": true }
+{
+  "espnId": "401547417",
+  "seasonYear": 2025,
+  "seasonType": 2,
+  "weekNumber": 6,
+  "statusCompleted": true,
+  "statusState": "post"
+}
 ```
 
-**Player game stats (one entry per stat category — a player may have multiple):**
+**PlayerGameStatResponse (one entry per stat category per player):**
 ```json
-{ "athleteEspnId": "3139477", "statCategory": "passing", "stats": {"passingYards":"301","touchdowns":"3"} }
+{
+  "eventEspnId": "401547417",
+  "athleteEspnId": "3139477",
+  "teamEspnId": "12",
+  "statCategory": "passing",
+  "stats": { "completions": "22", "passingYards": "301", "passingTouchdowns": "3" }
+}
 ```
 
-The stats field is a JSON object with string values. The exact stat keys must be confirmed by calling the API and inspecting real data. A player may have multiple entries per game (one per stat category: passing, rushing, receiving, etc.) — these must be merged before calculating fantasy points.
+A player may have multiple entries per game (one per `statCategory`: passing, rushing, receiving, etc.). These must be merged before calculating fantasy points.
+
+### Stats field
+
+Stats are keyed by stat name with string values. The exact stat keys must be confirmed by calling `GET /events/{eventEspnId}/player-stats` for a completed game and inspecting the response.
 
 ---
 
@@ -172,9 +207,9 @@ final_price    = max(PRICE_FLOOR, smoothed_price)
 
 ### Recalculation flow
 
-1. Call `GET /events?seasonYear=&weekNumber=` — filter for completed events
-2. For each completed event, call `GET /events/{espnId}/player-stats`
-3. Group/merge stat entries by `athleteEspnId` (a player may have multiple stat categories)
+1. Call `GET /events?seasonYear=&seasonType=&weekNumber=` — filter to completed events (`statusCompleted == true`)
+2. For each completed event, call `GET /events/{eventEspnId}/player-stats`
+3. Group/merge stats by `athleteEspnId` (a player may have multiple `statCategory` entries)
 4. For each active `PlayerStock`:
    - Look up merged stats for this week (empty if bye/inactive)
    - Calculate fantasy points using PPR multipliers
@@ -288,20 +323,21 @@ services/stock-market/
 ├── pom.xml
 └── src/
     ├── main/
-    │   ├── java/com/yourapp/stockmarket/
+    │   ├── java/com/sportstock/stockmarket/
     │   │   ├── StockMarketApplication.java
     │   │   │
     │   │   ├── config/
     │   │   │   ├── PricingConfig.java
-    │   │   │   └── WebClientConfig.java
+    │   │   │   └── RestClientConfig.java
     │   │   │
     │   │   ├── client/
-    │   │   │   ├── IngestionApiClient.java
-    │   │   │   └── dto/
-    │   │   │       ├── IngestionAthleteDto.java
-    │   │   │       ├── IngestionTeamDto.java
-    │   │   │       ├── IngestionEventDto.java
-    │   │   │       └── IngestionPlayerGameStatsDto.java
+    │   │   │   └── IngestionApiClient.java
+    │   │   │
+    │   │   ├── client/dto/
+    │   │   │   ├── IngestionAthleteDto.java
+    │   │   │   ├── IngestionTeamDto.java
+    │   │   │   ├── IngestionEventDto.java
+    │   │   │   └── IngestionPlayerGameStatsDto.java
     │   │   │
     │   │   ├── controller/
     │   │   │   ├── StockController.java
@@ -347,7 +383,7 @@ services/stock-market/
     │           └── V2__create_price_history.sql
     │
     └── test/
-        └── java/com/yourapp/stockmarket/
+        └── java/com/sportstock/stockmarket/
             ├── service/
             │   ├── PricingServiceTest.java
             │   └── PriceRecalculationServiceTest.java
@@ -355,15 +391,15 @@ services/stock-market/
                 └── StockControllerTest.java
 ```
 
-## Service Class Responsibilities
+## Service / Client Class Responsibilities
 
-| Class                       | Responsibility                                                                                                                     |
-| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `IngestionApiClient`        | All HTTP calls to the ingestion service. Encapsulates WebClient usage. Returns DTOs.                                               |
-| `StockService`              | Stock lookups by ID, ESPN ID, list with filters/pagination.                                                                        |
-| `PricingService`            | Pure calculation — no DB, no HTTP. Takes a stat map and returns fantasy points / a price.                                          |
-| `PriceRecalculationService` | Orchestrates a recalculation run. Calls `IngestionApiClient` for events/stats, calls `PricingService` for each player, updates DB. |
-| `AthleteStockSyncService`   | Calls `IngestionApiClient` for athletes, creates/updates `player_stock` rows.                                                      |
+| Class                       | Responsibility                                                                                                                                                            |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `IngestionApiClient`        | HTTP calls to the ingestion API via RestClient. One method per ingestion endpoint. Returns DTOs. Only class that knows about the ingestion API.                           |
+| `StockService`              | Stock lookups by ID, ESPN ID, list with filters/pagination. Reads from `PlayerStockRepository`.                                                                           |
+| `PricingService`            | Pure calculation — no DB, no HTTP. Takes a stat map and returns fantasy points / a price.                                                                                 |
+| `PriceRecalculationService` | Orchestrates a full recalculation. Calls `IngestionApiClient` for events + stats, calls `PricingService` for each player, updates `player_stock`, writes `price_history`. |
+| `AthleteStockSyncService`   | Calls `IngestionApiClient` for athletes, creates new `player_stock` rows with base prices, updates metadata on existing rows.                                             |
 
 ## Controller → Endpoint Mapping
 
@@ -382,9 +418,9 @@ spring:
   application:
     name: stock-market-service
   datasource:
-    url: jdbc:postgresql://localhost:5432/sportstock
-    username: ${DB_USERNAME:sportstock}
-    password: ${DB_PASSWORD:sportstock}
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:6432}/${DB_NAME:sportstock}?currentSchema=market
+    username: ${DB_USER:sportstock}
+    password: ${DB_PASSWORD:localdev}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -393,17 +429,21 @@ spring:
         default_schema: market
         jdbc:
           time_zone: UTC
+    open-in-view: false
   flyway:
     enabled: true
     schemas: market
     default-schema: market
     locations: classpath:db/migration
+  config:
+    import: optional:file:.env[.properties],optional:file:../../.env[.properties]
 
 server:
-  port: 8082
+  port: ${STOCK_MARKET_SERVICE_PORT:8082}
 
 ingestion:
-  base-url: http://localhost:8081/api/v1/ingestion
+  api:
+    base-url: http://localhost:${INGESTION_SERVICE_PORT:8081}/api/v1/ingestion
 
 pricing:
   smoothing-alpha: 0.6
@@ -424,8 +464,13 @@ pricing:
 <parent>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
-    <version>3.4.1</version>
+    <version>4.0.3</version>
+    <relativePath/>
 </parent>
+
+<groupId>com.sportstock</groupId>
+<artifactId>stock-market</artifactId>
+<version>0.0.1-SNAPSHOT</version>
 
 <properties>
     <java.version>21</java.version>
@@ -434,32 +479,28 @@ pricing:
 <dependencies>
     <dependency>
         <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-web</artifactId>
-    </dependency>
-    <dependency>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-webflux</artifactId>
-    </dependency>
-    <dependency>
-        <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-data-jpa</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-flyway</artifactId>
     </dependency>
     <dependency>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-validation</artifactId>
     </dependency>
     <dependency>
-        <groupId>org.postgresql</groupId>
-        <artifactId>postgresql</artifactId>
-        <scope>runtime</scope>
-    </dependency>
-    <dependency>
-        <groupId>org.flywaydb</groupId>
-        <artifactId>flyway-core</artifactId>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-webmvc</artifactId>
     </dependency>
     <dependency>
         <groupId>org.flywaydb</groupId>
         <artifactId>flyway-database-postgresql</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.postgresql</groupId>
+        <artifactId>postgresql</artifactId>
+        <scope>runtime</scope>
     </dependency>
     <dependency>
         <groupId>org.projectlombok</groupId>
@@ -468,13 +509,18 @@ pricing:
     </dependency>
     <dependency>
         <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-test</artifactId>
+        <artifactId>spring-boot-starter-data-jpa-test</artifactId>
+        <scope>test</scope>
+    </dependency>
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-webmvc-test</artifactId>
         <scope>test</scope>
     </dependency>
 </dependencies>
 ```
 
-`spring-boot-starter-webflux` provides WebClient. Match the Spring Boot version to the ingestion service.
+Match the ingestion service's pom structure. Include the Lombok annotation processor and boot plugin excludes (copy from ingestion's pom.xml build section).
 
 ---
 
@@ -501,12 +547,20 @@ Not needed for the base version. To be added later.
 
 ### Price history enhancements
 
-- **Upsert logic:** `ON CONFLICT` when prices update more than once per week
-- **Weekly high/low columns:** `high_price` / `low_price` for intra-week updates
+- **Upsert logic:** `ON CONFLICT (player_stock_id, season_year, season_type, week) DO UPDATE` when prices update more than once per week
+- **Weekly high/low columns:** Add `high_price` / `low_price` to `price_history` for intra-week updates
 
 ### Pricing enhancements
 
-- **Bye week regression:** Price regresses toward position base
-- **Injury adjustments:** Modify price by injury status
-- **Configurable weights:** DB-driven weight table with admin CRUD
+- **Bye week regression:** Price regresses toward position base using `(ALPHA × BASE_PRICE) + ((1-ALPHA) × current_price)`
+- **Injury adjustments:** Modify price by status (QUESTIONABLE: -5%, DOUBTFUL: -15%, OUT: -25%, IR: -40%)
+- **Configurable weights:** DB-driven `pricing_weight_config` table with admin CRUD endpoints
 - **Market-driven pricing:** Layer supply/demand from trades on top of formula
+
+### Files to add
+
+| File                        | Purpose                                           |
+| --------------------------- | ------------------------------------------------- |
+| `PriceHistoryService.java`  | Read/write price history, season high/low queries |
+| `PriceHistoryResponse.java` | DTO for price history endpoint                    |
+| `MoversResponse.java`       | DTO for movers endpoint                           |

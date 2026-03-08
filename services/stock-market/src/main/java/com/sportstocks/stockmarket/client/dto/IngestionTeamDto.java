@@ -1,4 +1,4 @@
-package com.sportstocks.stockmarket.dto;
+package com.sportstocks.stockmarket.client.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
@@ -8,8 +8,8 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class IngestionAthleteDto {
+public class IngestionTeamDto {
     private String espnId;
-    private String fullName;
-    private String positionAbbreviation;
+    private String displayName;
+    private String abbreviation;
 }

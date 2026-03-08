@@ -1,4 +1,4 @@
-package com.sportstocks.stockmarket.dto;
+package com.sportstocks.stockmarket.client.dto;
 
 import java.util.Map;
 
@@ -11,7 +11,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class IngestionPlayerGameStatsDto {
+    private String eventEspnId;
     private String athleteEspnId;
+    private String teamEspnId;
     private String statCategory;
     private Map<String, String> stats;
 }
