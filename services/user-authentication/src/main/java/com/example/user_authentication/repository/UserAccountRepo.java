@@ -9,5 +9,7 @@ import com.example.user_authentication.models.UserDetails;
 
 public interface UserAccountRepo extends JpaRepository<UserDetails, UUID> {
     boolean existsByEmail(String email);
+    boolean existsByUsername(String username);
     Optional<UserDetails> findByEmail(String email);
+    Optional<UserDetails> findByUsername(String username);
 }

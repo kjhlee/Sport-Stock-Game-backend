@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.user_authentication.DTO.LoginRequest;
 import com.example.user_authentication.DTO.RefreshRequest;
 import com.example.user_authentication.DTO.RegisterRequest;
 import com.example.user_authentication.DTO.TokenResponse;
@@ -41,9 +42,9 @@ public class UserAuthController {
         }
     }
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody RegisterRequest request) {
+    public ResponseEntity<?> login(@RequestBody LoginRequest request) {
         try {
-            TokenResponse newToken = loginService.login(request.getEmail(), request.getPassword());
+            TokenResponse newToken = loginService.login(request.getLogin(), request.getPassword());
             return ResponseEntity.ok(newToken);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());    

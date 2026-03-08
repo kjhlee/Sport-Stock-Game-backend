@@ -30,9 +30,12 @@ public class RegisterAccountService {
         newAccount.setUpdateDate(OffsetDateTime.now());
         String hashedPassword = passwordEncoder.encode(password);
         newAccount.setPassword(hashedPassword);
-        
+
         if(newAccount.getEmail() == null || newAccount.getPassword() == null) {
             throw new Exception("Email or password cannot be null");
+        }
+        if(accountRepo.existsByUsername(newAccount.getUsername())){
+            throw new Exception("Username already Exists");
         }
         if(accountRepo.existsByEmail(newAccount.getEmail())) {
             throw new Exception("Email already exists");

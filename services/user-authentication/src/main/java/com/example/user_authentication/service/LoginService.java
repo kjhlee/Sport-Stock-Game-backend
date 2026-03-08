@@ -21,17 +21,24 @@ public class LoginService {
 
     private final UserAccountRepo accountRepo;
 
-    public TokenResponse login(String email, String password) {
-        System.out.println("EXPIRED: " + jwtService.generateExpiredToken(email));
-        UserDetails account = accountRepo.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+    public TokenResponse login(String login, String password) {
+        UserDetails account;
+        System.out.println("EXPIRED: " + jwtService.generateExpiredToken(login));
 
+        if(login.contains("@")){
+            account = accountRepo.findByEmail(login)
+                    .orElseThrow(() -> new RuntimeException("Email not found"));
+        }
+        else {
+            account = accountRepo.findByUsername(login)
+                    .orElseThrow(() -> new RuntimeException("Username not found "));
+        }
         if (!passwordEncoder.matches(password, account.getPassword())) {
             throw new RuntimeException("Invalid credentials");
         }
 
-        String accessToken = jwtService.generateAccessToken(email);
-        String refreshToken = jwtService.generateRefreshToken(email);
+        String accessToken = jwtService.generateAccessToken(account.getEmail());
+        String refreshToken = jwtService.generateRefreshToken(account.getEmail());
 
         return new TokenResponse(accessToken, refreshToken);
     }
