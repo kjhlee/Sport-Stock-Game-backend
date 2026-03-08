@@ -29,7 +29,12 @@ public class UserAuthController {
     @PostMapping("/register")
     public ResponseEntity<String> registerAccount(@RequestBody RegisterRequest request) {
         try {
-            accountService.registerAccount(request.getEmail(), request.getPassword());
+            accountService.registerAccount( request.getEmail(), 
+                                            request.getPassword(), 
+                                            request.getUsername(), 
+                                            request.getFirstName(), 
+                                            request.getLastName()
+                                        );
             return ResponseEntity.ok("Account registered successfully");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());

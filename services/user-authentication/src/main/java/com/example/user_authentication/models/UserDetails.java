@@ -37,8 +37,8 @@ public class UserDetails {
     @Column(name = "password")
     private String password;
 
-    @Column(name = "creation_date")
-    private OffsetDateTime creationDate;
+    @Column(name = "creation_date", updatable = false)
+    private OffsetDateTime creationDate = OffsetDateTime.now();
     @Column(name = "update_date")
     private OffsetDateTime updateDate;
 }
