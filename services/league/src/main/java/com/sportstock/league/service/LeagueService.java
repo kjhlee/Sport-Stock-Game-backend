@@ -191,7 +191,6 @@ public class LeagueService {
 
     @Transactional(readOnly = true)
     public List<LeagueMemberResponse> listMembers(Long userId, Long leagueId) {
-        League league = findLeagueOrThrow(leagueId);
         verifyMembership(leagueId, userId);
 
         return leagueMemberRepository.findAllByLeagueId(leagueId).stream()
