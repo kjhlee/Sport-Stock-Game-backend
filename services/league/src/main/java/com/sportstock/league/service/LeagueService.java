@@ -115,11 +115,11 @@ public class LeagueService {
         if (invite.getMaxUses() != null && invite.getUsesCount() >= invite.getMaxUses()) {
             throw new InvalidInviteException("Invite code has reached maximum uses");
         }
-        if (league.getStartedAt() != null) {
+        if (league.getStartedAt() != null || league.getStatus() != LeagueStatus.INACTIVE) {
             throw new LeagueStateException("Cannot join a league that has already started");
         }
         if (leagueMemberRepository.countByLeagueId(leagueId) >= league.getMaxMembers()) {
-            throw new InvalidInviteException("League is full");
+            throw new LeagueStateException("League is full");
         }
         if (leagueMemberRepository.findByLeagueIdAndUserId(leagueId, userId).isPresent()) {
             throw new LeagueStateException("User is already a member of this league");
@@ -162,7 +162,7 @@ public class LeagueService {
         if (userId.equals(targetUserId)) {
             throw new LeagueStateException("You cannot remove yourself from the league");
         }
-        if (league.getStartedAt() != null) {
+        if (league.getStartedAt() != null || league.getStatus() != LeagueStatus.INACTIVE) {
             throw new LeagueStateException("Cannot remove members after the league has started");
         }
 
@@ -191,7 +191,6 @@ public class LeagueService {
 
     @Transactional(readOnly = true)
     public List<LeagueMemberResponse> listMembers(Long userId, Long leagueId) {
-        // TODO: Implement method per LEAGUE-SERVICE.md
         League league = findLeagueOrThrow(leagueId);
         verifyMembership(leagueId, userId);
 

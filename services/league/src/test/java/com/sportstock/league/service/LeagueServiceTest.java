@@ -283,7 +283,6 @@ class LeagueServiceTest {
 
         when(leagueRepository.findById(1L)).thenReturn(Optional.of(league));
         when(leagueInviteRepository.findByCodeAndRevokedAtIsNull("FULLUSEINV01")).thenReturn(Optional.of(invite));
-        when(leagueMemberRepository.findByLeagueIdAndUserId(1L, 20L)).thenReturn(Optional.empty());
 
         assertThrows(InvalidInviteException.class, () -> service.joinLeague(20L, 1L, new JoinLeagueRequest("FULLUSEINV01")));
         verify(leagueMemberRepository, never()).save(any(LeagueMember.class));
@@ -296,8 +295,6 @@ class LeagueServiceTest {
 
         when(leagueRepository.findById(1L)).thenReturn(Optional.of(league));
         when(leagueInviteRepository.findByCodeAndRevokedAtIsNull("STARTEDCODE")).thenReturn(Optional.of(invite));
-        when(leagueMemberRepository.findByLeagueIdAndUserId(1L, 20L)).thenReturn(Optional.empty());
-
         assertThrows(LeagueStateException.class, () -> service.joinLeague(20L, 1L, new JoinLeagueRequest("STARTEDCODE")));
     }
 
@@ -308,8 +305,7 @@ class LeagueServiceTest {
 
         when(leagueRepository.findById(1L)).thenReturn(Optional.of(league));
         when(leagueInviteRepository.findByCodeAndRevokedAtIsNull("FULLLEAGUE1")).thenReturn(Optional.of(invite));
-        when(leagueMemberRepository.findByLeagueIdAndUserId(1L, 20L)).thenReturn(Optional.empty());
-
+        when(leagueMemberRepository.countByLeagueId(1L)).thenReturn(1);
         assertThrows(LeagueStateException.class, () -> service.joinLeague(20L, 1L, new JoinLeagueRequest("FULLLEAGUE1")));
     }
 
@@ -389,7 +385,6 @@ class LeagueServiceTest {
         League league = league(1L, 10L, LeagueStatus.ACTIVE, 4, 1, OffsetDateTime.now().minusMinutes(1));
         LeagueMember target = newMember(20L, "MEMBER", league);
         when(leagueRepository.findById(1L)).thenReturn(Optional.of(league));
-        when(leagueMemberRepository.findByLeagueIdAndUserId(1L, 20L)).thenReturn(Optional.of(target));
 
         assertThrows(LeagueStateException.class, () -> service.removeMember(10L, 1L, 20L));
     }
@@ -399,7 +394,6 @@ class LeagueServiceTest {
         League league = league(1L, 10L, LeagueStatus.INACTIVE, 4, 2, null);
         LeagueMember target = newMember(20L, "MEMBER", league);
         when(leagueRepository.findById(1L)).thenReturn(Optional.of(league));
-        when(leagueMemberRepository.findByLeagueIdAndUserId(1L, 20L)).thenReturn(Optional.of(target));
 
         assertThrows(LeagueAccessDeniedException.class, () -> service.removeMember(11L, 1L, 20L));
     }
