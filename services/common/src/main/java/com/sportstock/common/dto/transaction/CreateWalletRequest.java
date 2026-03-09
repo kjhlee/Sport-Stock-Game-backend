@@ -1,4 +1,4 @@
-package com.sportstock.transaction.dto.request;
+package com.sportstock.common.dto.transaction;
 
 import jakarta.validation.constraints.NotNull;
 

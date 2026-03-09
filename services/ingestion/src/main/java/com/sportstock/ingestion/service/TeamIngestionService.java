@@ -2,8 +2,9 @@ package com.sportstock.ingestion.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.sportstock.ingestion.client.EspnApiClient;
-import com.sportstock.ingestion.dto.response.TeamRecordResponse;
-import com.sportstock.ingestion.dto.response.TeamResponse;
+import com.sportstock.common.dto.ingestion.TeamRecordResponse;
+import com.sportstock.common.dto.ingestion.TeamResponse;
+import com.sportstock.ingestion.mapper.DtoMapper;
 import com.sportstock.ingestion.entity.Team;
 import com.sportstock.ingestion.entity.TeamRecord;
 import com.sportstock.ingestion.exception.EntityNotFoundException;
@@ -114,25 +115,25 @@ public class TeamIngestionService {
 
     public List<TeamResponse> listTeams() {
         return teamRepository.findAllByOrderByDisplayNameAsc()
-                .stream().map(TeamResponse::from).toList();
+                .stream().map(DtoMapper::toTeamResponse).toList();
     }
 
     public TeamResponse getTeamByEspnId(String teamEspnId) {
-        return TeamResponse.from(findTeamEntity(teamEspnId));
+        return DtoMapper.toTeamResponse(findTeamEntity(teamEspnId));
     }
 
     @Transactional(readOnly = true)
     public List<TeamRecordResponse> listRecordsByTeam(String teamEspnId, Integer seasonYear) {
         Team team = findTeamEntity(teamEspnId);
         return teamRecordRepository.findByTeamIdAndSeasonYear(team.getId(), seasonYear)
-                .stream().map(TeamRecordResponse::from).toList();
+                .stream().map(DtoMapper::toTeamRecordResponse).toList();
     }
 
     @Transactional(readOnly = true)
     public TeamRecordResponse getRecord(String teamEspnId, Integer seasonYear, String recordType) {
         Team team = findTeamEntity(teamEspnId);
         return teamRecordRepository.findByTeamIdAndSeasonYearAndRecordType(team.getId(), seasonYear, recordType)
-                .map(TeamRecordResponse::from)
+                .map(DtoMapper::toTeamRecordResponse)
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Record not found for team " + teamEspnId + " season " + seasonYear + " type " + recordType));
     }

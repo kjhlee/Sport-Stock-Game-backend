@@ -5,8 +5,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.sportstock.ingestion.client.EspnApiClient;
-import com.sportstock.ingestion.dto.response.BoxscoreTeamStatResponse;
-import com.sportstock.ingestion.dto.response.PlayerGameStatResponse;
+import com.sportstock.common.dto.ingestion.BoxscoreTeamStatResponse;
+import com.sportstock.common.dto.ingestion.PlayerGameStatResponse;
+import com.sportstock.ingestion.mapper.DtoMapper;
 import com.sportstock.ingestion.entity.Athlete;
 import com.sportstock.ingestion.entity.BoxscoreTeamStat;
 import com.sportstock.ingestion.entity.Event;
@@ -64,7 +65,7 @@ public class EventSummaryIngestionService {
         Event event = eventRepository.findByEspnId(eventEspnId)
                 .orElseThrow(() -> new EntityNotFoundException("Event not found with ESPN ID: " + eventEspnId));
         return boxscoreTeamStatRepository.findByEventId(event.getId())
-                .stream().map(BoxscoreTeamStatResponse::from).toList();
+                .stream().map(DtoMapper::toBoxscoreTeamStatResponse).toList();
     }
 
     @Transactional(readOnly = true)
@@ -76,10 +77,10 @@ public class EventSummaryIngestionService {
             Team team = teamRepository.findByEspnId(teamEspnId)
                     .orElseThrow(() -> new EntityNotFoundException("Team not found with ESPN ID: " + teamEspnId));
             return playerGameStatRepository.findByEventIdAndTeamId(event.getId(), team.getId())
-                    .stream().map(e -> PlayerGameStatResponse.from(e, objectMapper)).toList();
+                    .stream().map(e -> DtoMapper.toPlayerGameStatResponse(e, objectMapper)).toList();
         }
         return playerGameStatRepository.findByEventId(event.getId())
-                .stream().map(e -> PlayerGameStatResponse.from(e, objectMapper)).toList();
+                .stream().map(e -> DtoMapper.toPlayerGameStatResponse(e, objectMapper)).toList();
     }
 
     @Transactional(readOnly = true)
@@ -87,7 +88,7 @@ public class EventSummaryIngestionService {
         Event event = eventRepository.findByEspnId(eventEspnId)
                 .orElseThrow(() -> new EntityNotFoundException("Event not found with ESPN ID: " + eventEspnId));
         return playerGameStatRepository.findByEventIdAndAthleteEspnId(event.getId(), athleteEspnId)
-                .stream().map(e -> PlayerGameStatResponse.from(e, objectMapper)).toList();
+                .stream().map(e -> DtoMapper.toPlayerGameStatResponse(e, objectMapper)).toList();
     }
 
     private void upsertTeamStats(JsonNode root, Event event) {

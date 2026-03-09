@@ -1,8 +1,8 @@
 package com.sportstock.transaction.service;
 
-import com.sportstock.transaction.dto.response.StipendResultResponse;
-import com.sportstock.transaction.dto.response.TransactionResponse;
-import com.sportstock.transaction.dto.response.WalletResponse;
+import com.sportstock.common.dto.transaction.StipendResultResponse;
+import com.sportstock.common.dto.transaction.TransactionResponse;
+import com.sportstock.common.dto.transaction.WalletResponse;
 import com.sportstock.transaction.entity.Transaction;
 import com.sportstock.transaction.entity.Wallet;
 import com.sportstock.transaction.enums.TransactionType;

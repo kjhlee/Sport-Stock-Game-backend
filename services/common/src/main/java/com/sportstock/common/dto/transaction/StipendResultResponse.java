@@ -1,4 +1,4 @@
-package com.sportstock.transaction.dto.response;
+package com.sportstock.common.dto.transaction;
 
 import java.math.BigDecimal;
 

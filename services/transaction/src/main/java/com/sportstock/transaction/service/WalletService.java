@@ -1,8 +1,9 @@
 package com.sportstock.transaction.service;
 
-import com.sportstock.transaction.dto.response.StipendResultResponse;
-import com.sportstock.transaction.dto.response.TransactionResponse;
-import com.sportstock.transaction.dto.response.WalletResponse;
+import com.sportstock.common.dto.transaction.StipendResultResponse;
+import com.sportstock.common.dto.transaction.TransactionResponse;
+import com.sportstock.common.dto.transaction.WalletResponse;
+import com.sportstock.transaction.mapper.DtoMapper;
 import com.sportstock.transaction.entity.Transaction;
 import com.sportstock.transaction.entity.Wallet;
 import com.sportstock.transaction.enums.TransactionType;
@@ -50,7 +51,7 @@ public class WalletService {
         } catch (DataIntegrityViolationException e) {
             throw new WalletAlreadyExistsException(userId, leagueId);
         }
-        return WalletResponse.from(wallet);
+        return DtoMapper.toWalletResponse(wallet);
     }
 
     public StipendResultResponse issueInitialStipends(Long leagueId, BigDecimal amount, List<Long> userIds) {
@@ -162,7 +163,7 @@ public class WalletService {
 
     @Transactional(readOnly = true)
     public WalletResponse getWallet(Long userId, Long leagueId) {
-        return WalletResponse.from(walletRepository.findByUserIdAndLeagueId(userId, leagueId).orElseThrow(
+        return DtoMapper.toWalletResponse(walletRepository.findByUserIdAndLeagueId(userId, leagueId).orElseThrow(
                 () -> new WalletNotFoundException("Wallet not found for user: " + userId)
         ));
     }
@@ -170,13 +171,13 @@ public class WalletService {
     @Transactional(readOnly = true)
     public Page<TransactionResponse> getTransactionHistory(Long userId, Long leagueId, Pageable pageable) {
         return transactionRepository.findByUserIdAndLeagueIdOrderByCreatedAtDesc(userId, leagueId, pageable)
-                .map(TransactionResponse::from);
+                .map(DtoMapper::toTransactionResponse);
     }
 
     @Transactional(readOnly = true)
     public List<WalletResponse> getLeagueWallets(Long leagueId) {
         return walletRepository.findAllByLeagueId(leagueId).stream()
-                .map(WalletResponse::from)
+                .map(DtoMapper::toWalletResponse)
                 .toList();
     }
 

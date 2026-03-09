@@ -1,4 +1,4 @@
-package com.sportstock.league.dto.request;
+package com.sportstock.common.dto.league;
 
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Future;

@@ -1,7 +1,7 @@
 package com.sportstock.ingestion.service;
 
-import com.sportstock.ingestion.dto.response.EventResponse;
-import com.sportstock.ingestion.dto.response.TeamResponse;
+import com.sportstock.common.dto.ingestion.EventResponse;
+import com.sportstock.common.dto.ingestion.TeamResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

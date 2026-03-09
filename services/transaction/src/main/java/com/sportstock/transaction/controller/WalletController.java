@@ -1,12 +1,12 @@
 package com.sportstock.transaction.controller;
 
 import com.sportstock.transaction.config.CurrentUserProvider;
-import com.sportstock.transaction.dto.request.CreateWalletRequest;
-import com.sportstock.transaction.dto.request.IssueStipendRequest;
-import com.sportstock.transaction.dto.request.StockTransactionRequest;
-import com.sportstock.transaction.dto.response.StipendResultResponse;
-import com.sportstock.transaction.dto.response.TransactionResponse;
-import com.sportstock.transaction.dto.response.WalletResponse;
+import com.sportstock.common.dto.transaction.CreateWalletRequest;
+import com.sportstock.common.dto.transaction.IssueStipendRequest;
+import com.sportstock.common.dto.transaction.StockTransactionRequest;
+import com.sportstock.common.dto.transaction.StipendResultResponse;
+import com.sportstock.common.dto.transaction.TransactionResponse;
+import com.sportstock.common.dto.transaction.WalletResponse;
 import com.sportstock.transaction.service.WalletService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
