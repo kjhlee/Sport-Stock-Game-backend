@@ -72,14 +72,14 @@ public class WalletService {
                 );
 
                 BigDecimal balanceBefore = wallet.getBalance();
-                wallet.setBalance(balanceBefore.add(amount));
+                BigDecimal balanceAfter = balanceBefore.add(amount);
 
                 Transaction transaction = new Transaction();
                 transaction.setWallet(wallet);
                 transaction.setType(TransactionType.INITIAL_STIPEND);
                 transaction.setAmount(amount);
                 transaction.setBalanceBefore(balanceBefore);
-                transaction.setBalanceAfter(wallet.getBalance());
+                transaction.setBalanceAfter(balanceAfter);
                 transaction.setLeagueId(leagueId);
                 transaction.setUserId(userId);
                 transaction.setIdempotencyKey(idempotencyKey);
@@ -87,9 +87,11 @@ public class WalletService {
                 try {
                     transactionRepository.save(transaction);
                 } catch (DataIntegrityViolationException e) {
+                    status.setRollbackOnly();
                     return;
                 }
 
+                wallet.setBalance(balanceAfter);
                 stipendsIssued.incrementAndGet();
             });
         }
@@ -112,14 +114,14 @@ public class WalletService {
                         () -> new WalletNotFoundException("Wallet not found for user: " + userId)
                 );
                 BigDecimal balanceBefore = wallet.getBalance();
-                wallet.setBalance(balanceBefore.add(amount));
+                BigDecimal balanceAfter = balanceBefore.add(amount);
 
                 Transaction transaction = new Transaction();
                 transaction.setWallet(wallet);
                 transaction.setType(TransactionType.WEEKLY_STIPEND);
                 transaction.setAmount(amount);
                 transaction.setBalanceBefore(balanceBefore);
-                transaction.setBalanceAfter(wallet.getBalance());
+                transaction.setBalanceAfter(balanceAfter);
                 transaction.setLeagueId(leagueId);
                 transaction.setUserId(userId);
                 transaction.setIdempotencyKey(idempotencyKey);
@@ -127,9 +129,11 @@ public class WalletService {
                 try {
                     transactionRepository.save(transaction);
                 } catch (DataIntegrityViolationException e) {
+                    status.setRollbackOnly();
                     return;
                 }
 
+                wallet.setBalance(balanceAfter);
                 stipendsIssued.incrementAndGet();
             });
         }

@@ -25,6 +25,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionStatus;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -36,6 +37,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -53,6 +55,9 @@ class WalletServiceTest {
     @Mock
     private PlatformTransactionManager txManager;
 
+    @Mock
+    private TransactionStatus transactionStatus;
+
     private WalletService walletService;
 
     @Captor
@@ -64,6 +69,7 @@ class WalletServiceTest {
 
     @BeforeEach
     void setUp() {
+        lenient().when(txManager.getTransaction(any())).thenReturn(transactionStatus);
         walletService = new WalletService(walletRepository, transactionRepository, txManager);
     }
 
@@ -366,6 +372,31 @@ class WalletServiceTest {
             assertThat(response.walletsCreated()).isZero();
             assertThat(response.stipendsIssued()).isZero();
         }
+
+        @Test
+        @DisplayName("Should not update wallet balance and should roll back when transaction save fails with duplicate key")
+        void shouldNotUpdateWalletOnDuplicateKeyForInitialStipend() {
+            // Given
+            List<Long> userIds = List.of(TEST_USER_ID);
+            BigDecimal amount = new BigDecimal("10000.00");
+            BigDecimal originalBalance = BigDecimal.ZERO;
+
+            Wallet wallet = createMockWallet(1L, TEST_USER_ID, TEST_LEAGUE_ID, originalBalance);
+            when(walletRepository.findByUserIdAndLeagueIdForUpdate(TEST_USER_ID, TEST_LEAGUE_ID))
+                    .thenReturn(Optional.of(wallet));
+            when(transactionRepository.existsByIdempotencyKey(any())).thenReturn(false);
+            when(transactionRepository.save(any(Transaction.class)))
+                    .thenThrow(new DataIntegrityViolationException("Duplicate idempotency key"));
+
+            // When
+            StipendResultResponse response = walletService.issueInitialStipends(
+                    TEST_LEAGUE_ID, amount, userIds);
+
+            // Then
+            assertThat(response.stipendsIssued()).isZero();
+            assertThat(wallet.getBalance()).isEqualByComparingTo(originalBalance);
+            verify(transactionStatus).setRollbackOnly();
+        }
     }
 
     @Nested
@@ -438,6 +469,31 @@ class WalletServiceTest {
             assertThat(response1).isNotNull();
             assertThat(response2).isNotNull();
             assertThat(response3).isNotNull();
+        }
+
+        @Test
+        @DisplayName("Should not update wallet balance and should roll back when transaction save fails with duplicate key")
+        void shouldNotUpdateWalletOnDuplicateKeyForWeeklyStipend() {
+            // Given
+            List<Long> userIds = List.of(TEST_USER_ID);
+            BigDecimal amount = new BigDecimal("500.00");
+            BigDecimal originalBalance = new BigDecimal("10000.00");
+
+            Wallet wallet = createMockWallet(1L, TEST_USER_ID, TEST_LEAGUE_ID, originalBalance);
+            when(walletRepository.findByUserIdAndLeagueIdForUpdate(TEST_USER_ID, TEST_LEAGUE_ID))
+                    .thenReturn(Optional.of(wallet));
+            when(transactionRepository.existsByIdempotencyKey(any())).thenReturn(false);
+            when(transactionRepository.save(any(Transaction.class)))
+                    .thenThrow(new DataIntegrityViolationException("Duplicate idempotency key"));
+
+            // When
+            StipendResultResponse response = walletService.issueWeeklyStipends(
+                    TEST_LEAGUE_ID, amount, userIds, 1);
+
+            // Then
+            assertThat(response.stipendsIssued()).isZero();
+            assertThat(wallet.getBalance()).isEqualByComparingTo(originalBalance);
+            verify(transactionStatus).setRollbackOnly();
         }
     }
 
