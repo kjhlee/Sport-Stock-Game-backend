@@ -7,7 +7,6 @@ import com.sportstock.common.dto.league.LeagueInviteResponse;
 import com.sportstock.common.dto.league.LeagueMemberResponse;
 import com.sportstock.common.dto.league.LeagueResponse;
 import com.sportstock.league.client.TransactionServiceClient;
-import com.sportstock.league.config.TransactionServiceProperties;
 import com.sportstock.league.mapper.DtoMapper;
 import com.sportstock.league.entity.League;
 import com.sportstock.league.entity.LeagueInvite;
@@ -26,8 +25,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestClient;
-
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
