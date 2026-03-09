@@ -6,3 +6,4 @@
 | Ingestion   | 8090 | `INGESTION_SERVICE_PORT`   | Spring Boot HTTP                   |
 | League      | 8100 | `LEAGUE_SERVICE_PORT`      | Spring Boot HTTP                   |
 | Transaction | 8110 | `TRANSACTION_SERVICE_PORT` | Spring Boot HTTP                   |
+| User Auth   | 8120 | `USER_AUTH_PORT`           | Spring Boot HTTP                   |

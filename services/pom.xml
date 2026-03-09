@@ -18,6 +18,7 @@
     <module>ingestion</module>
     <module>league</module>
     <module>transaction</module>
+    <module>user-authentication</module>
   </modules>
 
 </project>
