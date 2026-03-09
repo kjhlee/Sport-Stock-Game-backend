@@ -8,7 +8,6 @@ import java.math.BigDecimal;
 
 public record StockTransactionRequest(
         @NotNull Long leagueId,
-        @NotNull Long userId,
         @NotNull @DecimalMin(value = "0.0", inclusive = false) BigDecimal amount,
         @NotBlank String referenceId,
         String description

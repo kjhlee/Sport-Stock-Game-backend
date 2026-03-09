@@ -80,8 +80,9 @@ public class WalletController {
     @PostMapping("/buy")
     @ResponseStatus(HttpStatus.OK)
     public TransactionResponse processStockBuy(@Valid @RequestBody StockTransactionRequest request) {
+        Long userId = currentUserProvider.getCurrentUserId();
         return walletService.processStockBuy(
-                request.userId(),
+                userId,
                 request.leagueId(),
                 request.amount(),
                 request.referenceId(),
@@ -92,8 +93,9 @@ public class WalletController {
     @PostMapping("/sell")
     @ResponseStatus(HttpStatus.OK)
     public TransactionResponse processStockSell(@Valid @RequestBody StockTransactionRequest request) {
+        Long userId = currentUserProvider.getCurrentUserId();
         return walletService.processStockSell(
-                request.userId(),
+                userId,
                 request.leagueId(),
                 request.amount(),
                 request.referenceId(),
