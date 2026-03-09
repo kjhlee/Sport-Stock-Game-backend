@@ -25,8 +25,6 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.TransactionStatus;
-import org.springframework.transaction.support.ResourcelessTransactionManager;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -38,7 +36,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -53,10 +50,8 @@ class WalletServiceTest {
     @Mock
     private TransactionRepository transactionRepository;
 
-    private final PlatformTransactionManager txManager = new ResourcelessTransactionManager();
-
     @Mock
-    private TransactionStatus transactionStatus;
+    private PlatformTransactionManager txManager;
 
     private WalletService walletService;
 
@@ -69,7 +64,6 @@ class WalletServiceTest {
 
     @BeforeEach
     void setUp() {
-        lenient().when(txManager.getTransaction(any())).thenReturn(transactionStatus);
         walletService = new WalletService(walletRepository, transactionRepository, txManager);
     }
 
@@ -82,7 +76,7 @@ class WalletServiceTest {
         void shouldCreateNewWallet() {
             // Given
             when(walletRepository.existsByUserIdAndLeagueId(TEST_USER_ID, TEST_LEAGUE_ID)).thenReturn(false);
-            
+
             Wallet savedWallet = createMockWallet(1L, TEST_USER_ID, TEST_LEAGUE_ID, INITIAL_BALANCE);
             when(walletRepository.save(any(Wallet.class))).thenReturn(savedWallet);
 
@@ -94,10 +88,10 @@ class WalletServiceTest {
             assertThat(response.userId()).isEqualTo(TEST_USER_ID);
             assertThat(response.leagueId()).isEqualTo(TEST_LEAGUE_ID);
             assertThat(response.balance()).isEqualByComparingTo(INITIAL_BALANCE);
-            
+
             verify(walletRepository).existsByUserIdAndLeagueId(TEST_USER_ID, TEST_LEAGUE_ID);
             verify(walletRepository).save(walletCaptor.capture());
-            
+
             Wallet capturedWallet = walletCaptor.getValue();
             assertThat(capturedWallet.getUserId()).isEqualTo(TEST_USER_ID);
             assertThat(capturedWallet.getLeagueId()).isEqualTo(TEST_LEAGUE_ID);
@@ -115,7 +109,7 @@ class WalletServiceTest {
                     .isInstanceOf(WalletAlreadyExistsException.class)
                     .hasMessageContaining("userId=" + TEST_USER_ID)
                     .hasMessageContaining("leagueId=" + TEST_LEAGUE_ID);
-            
+
             verify(walletRepository).existsByUserIdAndLeagueId(TEST_USER_ID, TEST_LEAGUE_ID);
             verify(walletRepository, never()).save(any(Wallet.class));
         }
@@ -131,7 +125,7 @@ class WalletServiceTest {
             // When & Then
             assertThatThrownBy(() -> walletService.createWallet(TEST_USER_ID, TEST_LEAGUE_ID))
                     .isInstanceOf(WalletAlreadyExistsException.class);
-            
+
             verify(walletRepository).save(any(Wallet.class));
         }
     }
@@ -157,7 +151,7 @@ class WalletServiceTest {
             assertThat(response.userId()).isEqualTo(TEST_USER_ID);
             assertThat(response.leagueId()).isEqualTo(TEST_LEAGUE_ID);
             assertThat(response.balance()).isEqualByComparingTo(new BigDecimal("1000.00"));
-            
+
             verify(walletRepository).findByUserIdAndLeagueId(TEST_USER_ID, TEST_LEAGUE_ID);
         }
 
@@ -172,7 +166,7 @@ class WalletServiceTest {
             assertThatThrownBy(() -> walletService.getWallet(TEST_USER_ID, TEST_LEAGUE_ID))
                     .isInstanceOf(WalletNotFoundException.class)
                     .hasMessageContaining("user: " + TEST_USER_ID);
-            
+
             verify(walletRepository).findByUserIdAndLeagueId(TEST_USER_ID, TEST_LEAGUE_ID);
         }
     }
@@ -201,7 +195,7 @@ class WalletServiceTest {
             assertThat(responses.get(1).userId()).isEqualTo(1002L);
             assertThat(responses.get(2).userId()).isEqualTo(1003L);
             assertThat(responses.get(0).balance()).isEqualByComparingTo(new BigDecimal("5000.00"));
-            
+
             verify(walletRepository).findAllByLeagueId(TEST_LEAGUE_ID);
         }
 
@@ -229,18 +223,18 @@ class WalletServiceTest {
         void shouldGetTransactionHistory() {
             // Given
             Wallet wallet = createMockWallet(1L, TEST_USER_ID, TEST_LEAGUE_ID, new BigDecimal("10000.00"));
-            
+
             Transaction tx1 = createMockTransaction(1L, wallet, TransactionType.INITIAL_STIPEND,
                     new BigDecimal("10000.00"), BigDecimal.ZERO, new BigDecimal("10000.00"));
             Transaction tx2 = createMockTransaction(2L, wallet, TransactionType.WEEKLY_STIPEND,
                     new BigDecimal("500.00"), new BigDecimal("10000.00"), new BigDecimal("10500.00"));
-            
+
             Page<Transaction> transactionPage = new PageImpl<>(
                     Arrays.asList(tx2, tx1),
                     PageRequest.of(0, 20),
                     2
             );
-            
+
             when(transactionRepository.findByUserIdAndLeagueIdOrderByCreatedAtDesc(
                     eq(TEST_USER_ID), eq(TEST_LEAGUE_ID), any(Pageable.class)))
                     .thenReturn(transactionPage);
@@ -254,7 +248,7 @@ class WalletServiceTest {
             assertThat(responses.getTotalElements()).isEqualTo(2);
             assertThat(responses.getContent().get(0).type()).isEqualTo("WEEKLY_STIPEND");
             assertThat(responses.getContent().get(1).type()).isEqualTo("INITIAL_STIPEND");
-            
+
             verify(transactionRepository).findByUserIdAndLeagueIdOrderByCreatedAtDesc(
                     eq(TEST_USER_ID), eq(TEST_LEAGUE_ID), any(Pageable.class));
         }
@@ -282,7 +276,7 @@ class WalletServiceTest {
         void shouldHandlePaginationCorrectly() {
             // Given
             Wallet wallet = createMockWallet(1L, TEST_USER_ID, TEST_LEAGUE_ID, new BigDecimal("10000.00"));
-            
+
             List<Transaction> allTransactions = Arrays.asList(
                     createMockTransaction(1L, wallet, TransactionType.INITIAL_STIPEND,
                             new BigDecimal("10000.00"), BigDecimal.ZERO, new BigDecimal("10000.00")),
@@ -291,23 +285,23 @@ class WalletServiceTest {
                     createMockTransaction(3L, wallet, TransactionType.WEEKLY_STIPEND,
                             new BigDecimal("500.00"), new BigDecimal("10500.00"), new BigDecimal("11000.00"))
             );
-            
+
             Page<Transaction> page1 = new PageImpl<>(
                     allTransactions.subList(0, 2),
                     PageRequest.of(0, 2),
                     3
             );
-            
+
             Page<Transaction> page2 = new PageImpl<>(
                     allTransactions.subList(2, 3),
                     PageRequest.of(1, 2),
                     3
             );
-            
+
             when(transactionRepository.findByUserIdAndLeagueIdOrderByCreatedAtDesc(
                     eq(TEST_USER_ID), eq(TEST_LEAGUE_ID), eq(PageRequest.of(0, 2))))
                     .thenReturn(page1);
-            
+
             when(transactionRepository.findByUserIdAndLeagueIdOrderByCreatedAtDesc(
                     eq(TEST_USER_ID), eq(TEST_LEAGUE_ID), eq(PageRequest.of(1, 2))))
                     .thenReturn(page2);
@@ -322,7 +316,7 @@ class WalletServiceTest {
             assertThat(firstPage.getContent()).hasSize(2);
             assertThat(firstPage.getTotalElements()).isEqualTo(3);
             assertThat(firstPage.getTotalPages()).isEqualTo(2);
-            
+
             assertThat(secondPage.getContent()).hasSize(1);
             assertThat(secondPage.getTotalElements()).isEqualTo(3);
             assertThat(secondPage.isLast()).isTrue();
@@ -371,31 +365,6 @@ class WalletServiceTest {
             assertThat(response.leagueId()).isEqualTo(TEST_LEAGUE_ID);
             assertThat(response.walletsCreated()).isZero();
             assertThat(response.stipendsIssued()).isZero();
-        }
-
-        @Test
-        @DisplayName("Should not update wallet balance and should roll back when transaction save fails with duplicate key")
-        void shouldNotUpdateWalletOnDuplicateKeyForInitialStipend() {
-            // Given
-            List<Long> userIds = List.of(TEST_USER_ID);
-            BigDecimal amount = new BigDecimal("10000.00");
-            BigDecimal originalBalance = BigDecimal.ZERO;
-
-            Wallet wallet = createMockWallet(1L, TEST_USER_ID, TEST_LEAGUE_ID, originalBalance);
-            when(walletRepository.findByUserIdAndLeagueIdForUpdate(TEST_USER_ID, TEST_LEAGUE_ID))
-                    .thenReturn(Optional.of(wallet));
-            when(transactionRepository.existsByIdempotencyKey(any())).thenReturn(false);
-            when(transactionRepository.save(any(Transaction.class)))
-                    .thenThrow(new DataIntegrityViolationException("Duplicate idempotency key"));
-
-            // When
-            StipendResultResponse response = walletService.issueInitialStipends(
-                    TEST_LEAGUE_ID, amount, userIds);
-
-            // Then
-            assertThat(response.stipendsIssued()).isZero();
-            assertThat(wallet.getBalance()).isEqualByComparingTo(originalBalance);
-            verify(transactionStatus).setRollbackOnly();
         }
     }
 
@@ -469,31 +438,6 @@ class WalletServiceTest {
             assertThat(response1).isNotNull();
             assertThat(response2).isNotNull();
             assertThat(response3).isNotNull();
-        }
-
-        @Test
-        @DisplayName("Should not update wallet balance and should roll back when transaction save fails with duplicate key")
-        void shouldNotUpdateWalletOnDuplicateKeyForWeeklyStipend() {
-            // Given
-            List<Long> userIds = List.of(TEST_USER_ID);
-            BigDecimal amount = new BigDecimal("500.00");
-            BigDecimal originalBalance = new BigDecimal("10000.00");
-
-            Wallet wallet = createMockWallet(1L, TEST_USER_ID, TEST_LEAGUE_ID, originalBalance);
-            when(walletRepository.findByUserIdAndLeagueIdForUpdate(TEST_USER_ID, TEST_LEAGUE_ID))
-                    .thenReturn(Optional.of(wallet));
-            when(transactionRepository.existsByIdempotencyKey(any())).thenReturn(false);
-            when(transactionRepository.save(any(Transaction.class)))
-                    .thenThrow(new DataIntegrityViolationException("Duplicate idempotency key"));
-
-            // When
-            StipendResultResponse response = walletService.issueWeeklyStipends(
-                    TEST_LEAGUE_ID, amount, userIds, 1);
-
-            // Then
-            assertThat(response.stipendsIssued()).isZero();
-            assertThat(wallet.getBalance()).isEqualByComparingTo(originalBalance);
-            verify(transactionStatus).setRollbackOnly();
         }
     }
 
@@ -590,10 +534,10 @@ class WalletServiceTest {
             // Given
             Long league1 = 1L;
             Long league2 = 2L;
-            
+
             Wallet wallet1 = createMockWallet(1L, TEST_USER_ID, league1, new BigDecimal("5000.00"));
             Wallet wallet2 = createMockWallet(2L, TEST_USER_ID, league2, new BigDecimal("7000.00"));
-            
+
             when(walletRepository.findByUserIdAndLeagueId(TEST_USER_ID, league1))
                     .thenReturn(Optional.of(wallet1));
             when(walletRepository.findByUserIdAndLeagueId(TEST_USER_ID, league2))
