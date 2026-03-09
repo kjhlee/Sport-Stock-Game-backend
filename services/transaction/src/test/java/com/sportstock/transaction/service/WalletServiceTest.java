@@ -58,9 +58,6 @@ class WalletServiceTest {
     @Captor
     private ArgumentCaptor<Wallet> walletCaptor;
 
-    @Captor
-    private ArgumentCaptor<Transaction> transactionCaptor;
-
     private static final Long TEST_USER_ID = 1001L;
     private static final Long TEST_LEAGUE_ID = 1L;
     private static final BigDecimal INITIAL_BALANCE = BigDecimal.ZERO;

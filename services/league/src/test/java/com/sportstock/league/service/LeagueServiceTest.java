@@ -6,6 +6,7 @@ import com.sportstock.common.dto.league.JoinLeagueRequest;
 import com.sportstock.common.dto.league.LeagueInviteResponse;
 import com.sportstock.common.dto.league.LeagueMemberResponse;
 import com.sportstock.common.dto.league.LeagueResponse;
+import com.sportstock.league.client.TransactionServiceClient;
 import com.sportstock.league.entity.League;
 import com.sportstock.league.entity.LeagueInvite;
 import com.sportstock.league.entity.LeagueMember;
@@ -27,6 +28,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.web.client.RestClient;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -59,12 +61,14 @@ class LeagueServiceTest {
     private LeagueMemberRepository leagueMemberRepository;
     @Mock
     private LeagueInviteRepository leagueInviteRepository;
+    @Mock
+    private TransactionServiceClient transactionServiceClient;
 
     private LeagueService service;
 
     @BeforeEach
     void setUp() {
-        service = new LeagueService(leagueRepository, leagueMemberRepository, leagueInviteRepository);
+        service = new LeagueService(leagueRepository, leagueMemberRepository, leagueInviteRepository, transactionServiceClient);
     }
 
     @Test
