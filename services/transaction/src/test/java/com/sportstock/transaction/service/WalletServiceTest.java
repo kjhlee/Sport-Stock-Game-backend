@@ -25,6 +25,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.ResourcelessTransactionManager;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -50,8 +51,7 @@ class WalletServiceTest {
     @Mock
     private TransactionRepository transactionRepository;
 
-    @Mock
-    private PlatformTransactionManager txManager;
+    private final PlatformTransactionManager txManager = new ResourcelessTransactionManager();
 
     private WalletService walletService;
 
