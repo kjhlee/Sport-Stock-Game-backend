@@ -1,7 +1,7 @@
 package com.sportstock.ingestion.controller;
 
-import com.sportstock.ingestion.dto.response.TeamRecordResponse;
-import com.sportstock.ingestion.dto.response.TeamResponse;
+import com.sportstock.common.dto.ingestion.TeamRecordResponse;
+import com.sportstock.common.dto.ingestion.TeamResponse;
 import com.sportstock.ingestion.service.RosterIngestionService;
 import com.sportstock.ingestion.service.TeamIngestionService;
 import jakarta.validation.constraints.Max;

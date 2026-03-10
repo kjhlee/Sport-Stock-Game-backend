@@ -3,7 +3,8 @@ package com.sportstock.ingestion.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.sportstock.ingestion.client.EspnApiClient;
 import com.sportstock.ingestion.config.EspnApiProperties;
-import com.sportstock.ingestion.dto.response.AthleteResponse;
+import com.sportstock.common.dto.ingestion.AthleteResponse;
+import com.sportstock.ingestion.mapper.DtoMapper;
 import com.sportstock.ingestion.entity.Athlete;
 import com.sportstock.ingestion.exception.EntityNotFoundException;
 import com.sportstock.ingestion.exception.IngestionException;
@@ -142,23 +143,23 @@ public class AthleteIngestionService {
         if (includeStubs) {
             if (positionAbbreviation != null && !positionAbbreviation.isBlank()) {
                 return athleteRepository.findByPositionAbbreviationOrderByFullNameAsc(positionAbbreviation)
-                        .stream().map(AthleteResponse::from).toList();
+                        .stream().map(DtoMapper::toAthleteResponse).toList();
             }
             return athleteRepository.findAllByOrderByFullNameAsc()
-                    .stream().map(AthleteResponse::from).toList();
+                    .stream().map(DtoMapper::toAthleteResponse).toList();
         }
 
         if (positionAbbreviation != null && !positionAbbreviation.isBlank()) {
             return athleteRepository.findByPositionAbbreviationAndStubFalseOrderByFullNameAsc(positionAbbreviation)
-                    .stream().map(AthleteResponse::from).toList();
+                    .stream().map(DtoMapper::toAthleteResponse).toList();
         }
         return athleteRepository.findByStubFalseOrderByFullNameAsc()
-                .stream().map(AthleteResponse::from).toList();
+                .stream().map(DtoMapper::toAthleteResponse).toList();
     }
 
     public AthleteResponse getAthleteByEspnId(String athleteEspnId) {
         return athleteRepository.findByEspnId(athleteEspnId)
-                .map(AthleteResponse::from)
+                .map(DtoMapper::toAthleteResponse)
                 .orElseThrow(() -> new EntityNotFoundException("Athlete not found with ESPN ID: " + athleteEspnId));
     }
 

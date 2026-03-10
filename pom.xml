@@ -6,8 +6,34 @@
   <artifactId>backend</artifactId>
   <version>0.0.1-SNAPSHOT</version>
   <packaging>pom</packaging>
-    <modules>
-        <module>services</module>
-    </modules>
+
+  <properties>
+    <jackson.version>2.21.1</jackson.version>
+  </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <!-- Override Jackson version to address CVE-2026-29062 -->
+      <dependency>
+        <groupId>com.fasterxml.jackson.core</groupId>
+        <artifactId>jackson-core</artifactId>
+        <version>${jackson.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.fasterxml.jackson.core</groupId>
+        <artifactId>jackson-databind</artifactId>
+        <version>${jackson.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.fasterxml.jackson.core</groupId>
+        <artifactId>jackson-annotations</artifactId>
+        <version>${jackson.version}</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <modules>
+    <module>services</module>
+  </modules>
 
 </project>

@@ -14,9 +14,10 @@
   <packaging>pom</packaging>
 
   <modules>
-    <!-- services go here later -->
+    <module>common</module>
     <module>ingestion</module>
     <module>league</module>
+    <module>transaction</module>
     <module>user-authentication</module>
   </modules>
 

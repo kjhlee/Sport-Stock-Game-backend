@@ -1,8 +1,8 @@
 package com.sportstock.ingestion.controller;
 
-import com.sportstock.ingestion.dto.response.BoxscoreTeamStatResponse;
-import com.sportstock.ingestion.dto.response.EventResponse;
-import com.sportstock.ingestion.dto.response.PlayerGameStatResponse;
+import com.sportstock.common.dto.ingestion.BoxscoreTeamStatResponse;
+import com.sportstock.common.dto.ingestion.EventResponse;
+import com.sportstock.common.dto.ingestion.PlayerGameStatResponse;
 import com.sportstock.ingestion.service.EventIngestionService;
 import com.sportstock.ingestion.service.EventSummaryIngestionService;
 import jakarta.validation.constraints.Max;

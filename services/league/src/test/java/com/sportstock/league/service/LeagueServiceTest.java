@@ -1,11 +1,12 @@
 package com.sportstock.league.service;
 
-import com.sportstock.league.dto.request.CreateInviteRequest;
-import com.sportstock.league.dto.request.CreateLeagueRequest;
-import com.sportstock.league.dto.request.JoinLeagueRequest;
-import com.sportstock.league.dto.response.LeagueInviteResponse;
-import com.sportstock.league.dto.response.LeagueMemberResponse;
-import com.sportstock.league.dto.response.LeagueResponse;
+import com.sportstock.common.dto.league.CreateInviteRequest;
+import com.sportstock.common.dto.league.CreateLeagueRequest;
+import com.sportstock.common.dto.league.JoinLeagueRequest;
+import com.sportstock.common.dto.league.LeagueInviteResponse;
+import com.sportstock.common.dto.league.LeagueMemberResponse;
+import com.sportstock.common.dto.league.LeagueResponse;
+import com.sportstock.league.client.TransactionServiceClient;
 import com.sportstock.league.entity.League;
 import com.sportstock.league.entity.LeagueInvite;
 import com.sportstock.league.entity.LeagueMember;
@@ -27,7 +28,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
@@ -59,12 +59,14 @@ class LeagueServiceTest {
     private LeagueMemberRepository leagueMemberRepository;
     @Mock
     private LeagueInviteRepository leagueInviteRepository;
+    @Mock
+    private TransactionServiceClient transactionServiceClient;
 
     private LeagueService service;
 
     @BeforeEach
     void setUp() {
-        service = new LeagueService(leagueRepository, leagueMemberRepository, leagueInviteRepository);
+        service = new LeagueService(leagueRepository, leagueMemberRepository, leagueInviteRepository, transactionServiceClient);
     }
 
     @Test

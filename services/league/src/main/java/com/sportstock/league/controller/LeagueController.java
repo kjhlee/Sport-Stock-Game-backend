@@ -1,12 +1,12 @@
 package com.sportstock.league.controller;
 
 import com.sportstock.league.config.CurrentUserProvider;
-import com.sportstock.league.dto.request.CreateInviteRequest;
-import com.sportstock.league.dto.request.CreateLeagueRequest;
-import com.sportstock.league.dto.request.JoinLeagueRequest;
-import com.sportstock.league.dto.response.LeagueInviteResponse;
-import com.sportstock.league.dto.response.LeagueMemberResponse;
-import com.sportstock.league.dto.response.LeagueResponse;
+import com.sportstock.common.dto.league.CreateInviteRequest;
+import com.sportstock.common.dto.league.CreateLeagueRequest;
+import com.sportstock.common.dto.league.JoinLeagueRequest;
+import com.sportstock.common.dto.league.LeagueInviteResponse;
+import com.sportstock.common.dto.league.LeagueMemberResponse;
+import com.sportstock.common.dto.league.LeagueResponse;
 import com.sportstock.league.service.LeagueService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

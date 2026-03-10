@@ -1,11 +1,13 @@
 package com.sportstock.league.service;
 
-import com.sportstock.league.dto.request.CreateInviteRequest;
-import com.sportstock.league.dto.request.CreateLeagueRequest;
-import com.sportstock.league.dto.request.JoinLeagueRequest;
-import com.sportstock.league.dto.response.LeagueInviteResponse;
-import com.sportstock.league.dto.response.LeagueMemberResponse;
-import com.sportstock.league.dto.response.LeagueResponse;
+import com.sportstock.common.dto.league.CreateInviteRequest;
+import com.sportstock.common.dto.league.CreateLeagueRequest;
+import com.sportstock.common.dto.league.JoinLeagueRequest;
+import com.sportstock.common.dto.league.LeagueInviteResponse;
+import com.sportstock.common.dto.league.LeagueMemberResponse;
+import com.sportstock.common.dto.league.LeagueResponse;
+import com.sportstock.league.client.TransactionServiceClient;
+import com.sportstock.league.mapper.DtoMapper;
 import com.sportstock.league.entity.League;
 import com.sportstock.league.entity.LeagueInvite;
 import com.sportstock.league.entity.LeagueMember;
@@ -23,7 +25,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
@@ -38,6 +39,7 @@ public class LeagueService {
     private final LeagueRepository leagueRepository;
     private final LeagueMemberRepository leagueMemberRepository;
     private final LeagueInviteRepository leagueInviteRepository;
+    private final TransactionServiceClient transactionServiceClient;
 
     @Transactional
     public LeagueResponse createLeague(Long userId, CreateLeagueRequest req) {
@@ -59,7 +61,7 @@ public class LeagueService {
         member.setRole("OWNER");
         leagueMemberRepository.save(member);
 
-        return LeagueResponse.from(league, 1);
+        return DtoMapper.toLeagueResponse(league, 1);
     }
 
     @Transactional(readOnly = true)
@@ -67,7 +69,7 @@ public class LeagueService {
         League league = findLeagueOrThrow(leagueId);
         verifyMembership(leagueId, userId);
         int memberCount = leagueMemberRepository.countByLeagueId(leagueId);
-        return LeagueResponse.from(league, memberCount);
+        return DtoMapper.toLeagueResponse(league, memberCount);
     }
 
     @Transactional(readOnly = true)
@@ -79,7 +81,7 @@ public class LeagueService {
                 .toList();
 
         if (leagueIds.isEmpty()) {
-            return memberships.map(m -> null);
+            return Page.empty(pageable);
         }
 
         Map<Long, League> leagueMap = leagueRepository.findAllById(leagueIds).stream()
@@ -90,7 +92,7 @@ public class LeagueService {
 
         return memberships.map(m -> {
             League league = leagueMap.get(m.getLeague().getId());
-            return LeagueResponse.from(league, countMap.getOrDefault(league.getId(), 0L).intValue());
+            return DtoMapper.toLeagueResponse(league, countMap.getOrDefault(league.getId(), 0L).intValue());
         });
     }
 
@@ -113,7 +115,7 @@ public class LeagueService {
         invite.setUsesCount(0);
         leagueInviteRepository.save(invite);
 
-        return LeagueInviteResponse.from(invite);
+        return DtoMapper.toLeagueInviteResponse(invite);
     }
 
     @Transactional
@@ -152,12 +154,11 @@ public class LeagueService {
         leagueMemberRepository.save(member);
 
 
-        return LeagueMemberResponse.from(member);
+        return DtoMapper.toLeagueMemberResponse(member);
     }
 
     @Transactional
     public LeagueResponse startLeague(Long userId, Long leagueId) {
-        // TODO: Add wallet service when implemented
         League league = findLeagueOrThrow(leagueId);
         verifyOwner(league, userId);
 
@@ -172,10 +173,14 @@ public class LeagueService {
 
         league.setStartedAt(OffsetDateTime.now());
         league.setStatus(LeagueStatus.ACTIVE);
-        // Call Wallet service and issue initial stipend
+
+        List<Long> memberIds = leagueMemberRepository.findAllByLeagueId(leagueId).stream()
+                        .map(LeagueMember::getUserId).toList();
+
+        transactionServiceClient.issueInitialStipends(leagueId, league.getInitialStipendAmount(), memberIds);
         league.setInitialStipendIssuedAt(OffsetDateTime.now());
         leagueRepository.save(league);
-        return LeagueResponse.from(league, memberCount);
+        return DtoMapper.toLeagueResponse(league, memberCount);
     }
 
     @Transactional
@@ -218,7 +223,7 @@ public class LeagueService {
         verifyMembership(leagueId, userId);
 
         return leagueMemberRepository.findAllByLeagueId(leagueId, pageable)
-                .map(LeagueMemberResponse::from);
+                .map(DtoMapper::toLeagueMemberResponse);
     }
 
     @Transactional
@@ -251,7 +256,7 @@ public class LeagueService {
 
         league.setStatus(LeagueStatus.ARCHIVED);
         leagueRepository.save(league);
-        return LeagueResponse.from(league, leagueMemberRepository.countByLeagueId(leagueId));
+        return DtoMapper.toLeagueResponse(league, leagueMemberRepository.countByLeagueId(leagueId));
     }
 
     private League findLeagueOrThrow(Long leagueId) {
