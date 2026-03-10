@@ -1,7 +1,7 @@
 package com.sportstock.ingestion.service;
 
 import com.sportstock.ingestion.client.EspnApiClient;
-import com.sportstock.ingestion.dto.response.EventResponse;
+import com.sportstock.common.dto.ingestion.EventResponse;
 import com.sportstock.ingestion.entity.Event;
 import com.sportstock.ingestion.mapper.JsonPayloadCodec;
 import com.sportstock.ingestion.repo.EventCompetitorLinescoreRepository;

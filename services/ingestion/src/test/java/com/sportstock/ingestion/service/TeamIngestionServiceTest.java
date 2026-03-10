@@ -3,7 +3,7 @@ package com.sportstock.ingestion.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sportstock.ingestion.client.EspnApiClient;
-import com.sportstock.ingestion.dto.response.TeamRecordResponse;
+import com.sportstock.common.dto.ingestion.TeamRecordResponse;
 import com.sportstock.ingestion.entity.Team;
 import com.sportstock.ingestion.entity.TeamRecord;
 import com.sportstock.ingestion.mapper.JsonPayloadCodec;

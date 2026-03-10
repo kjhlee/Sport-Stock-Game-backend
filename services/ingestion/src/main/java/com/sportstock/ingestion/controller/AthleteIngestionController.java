@@ -1,6 +1,6 @@
 package com.sportstock.ingestion.controller;
 
-import com.sportstock.ingestion.dto.response.AthleteResponse;
+import com.sportstock.common.dto.ingestion.AthleteResponse;
 import com.sportstock.ingestion.service.AthleteIngestionService;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;

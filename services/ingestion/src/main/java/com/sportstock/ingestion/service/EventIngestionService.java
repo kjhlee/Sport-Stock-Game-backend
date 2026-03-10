@@ -2,7 +2,8 @@ package com.sportstock.ingestion.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.sportstock.ingestion.client.EspnApiClient;
-import com.sportstock.ingestion.dto.response.EventResponse;
+import com.sportstock.common.dto.ingestion.EventResponse;
+import com.sportstock.ingestion.mapper.DtoMapper;
 import com.sportstock.ingestion.entity.Event;
 import com.sportstock.ingestion.entity.EventCompetitor;
 import com.sportstock.ingestion.entity.EventCompetitorLinescore;
@@ -73,15 +74,15 @@ public class EventIngestionService {
                     seasonYear,
                     seasonType,
                     weekNumber
-            ).stream().map(EventResponse::from).toList();
+            ).stream().map(DtoMapper::toEventResponse).toList();
         }
         return eventRepository.findBySeasonYearOrderByDateAsc(seasonYear)
-                .stream().map(EventResponse::from).toList();
+                .stream().map(DtoMapper::toEventResponse).toList();
     }
 
     public EventResponse getEventByEspnId(String eventEspnId) {
         return eventRepository.findByEspnId(eventEspnId)
-                .map(EventResponse::from)
+                .map(DtoMapper::toEventResponse)
                 .orElseThrow(() -> new EntityNotFoundException("Event not found with ESPN ID: " + eventEspnId));
     }
 
