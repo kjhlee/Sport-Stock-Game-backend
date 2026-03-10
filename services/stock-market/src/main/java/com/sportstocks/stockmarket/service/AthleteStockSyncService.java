@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Set;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,6 +15,7 @@ import com.sportstocks.stockmarket.model.entity.PlayerStock;
 import com.sportstocks.stockmarket.model.enums.StockStatus;
 import com.sportstocks.stockmarket.repository.PlayerStockRepository;
 
+@Slf4j
 @Service
 public class AthleteStockSyncService {
 
@@ -36,7 +38,7 @@ public class AthleteStockSyncService {
     @Transactional
     public SyncAthletesResult syncAthletes(String position) {
         String ingestionFilterPosition = normalizeRequestedPositionForIngestion(position);
-
+        log.info("Starting Sync Athletes for position '{}'", ingestionFilterPosition);
         List<IngestionAthleteDto> athletes = ingestionApiClient.getAthletes(ingestionFilterPosition);
 
         if (athletes.isEmpty()) {

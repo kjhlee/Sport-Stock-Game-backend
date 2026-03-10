@@ -2,6 +2,7 @@ package com.sportstocks.stockmarket.client;
 
 import java.util.List;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -11,6 +12,7 @@ import com.sportstocks.stockmarket.dto.IngestionEventDto;
 import com.sportstocks.stockmarket.dto.IngestionPlayerGameStatsDto;
 import com.sportstocks.stockmarket.dto.IngestionTeamDto;
 
+@Slf4j
 @Component
 public class IngestionApiClient {
 
@@ -37,7 +39,7 @@ public class IngestionApiClient {
                 .uri(uriBuilder -> {
                     uriBuilder.path("/athletes");
                     if (positionAbbreviation != null && !positionAbbreviation.isBlank()) {
-                        uriBuilder.queryParam("position", positionAbbreviation);
+                        uriBuilder.queryParam("positionAbbreviation", positionAbbreviation);
                     }
                     return uriBuilder.build();
                 })
