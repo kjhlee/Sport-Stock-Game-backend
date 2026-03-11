@@ -21,6 +21,4 @@ public interface PlayerStockRepository extends JpaRepository<PlayerStock, UUID> 
     Page<PlayerStock> findByPosition(String position, Pageable pageable);
 
     Page<PlayerStock> findByPositionAndStatus(String position, StockStatus status, Pageable pageable);
-
-    boolean existsByAthleteEspnId(String athleteEspnId);
 }
