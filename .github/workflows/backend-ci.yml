@@ -30,7 +30,7 @@ jobs:
         run: chmod +x ./mvnw
 
       - name: Check formatting
-        run: ./mvnw -B validate
+        run: ./mvnw spotless:check
 
   build:
     runs-on: ubuntu-latest
@@ -51,4 +51,4 @@ jobs:
         run: chmod +x ./mvnw
 
       - name: Build backend
-        run: ./mvnw -B package -DskipTests -Dspotless.check.skip=true
+        run: ./mvnw -B package -DskipTests
