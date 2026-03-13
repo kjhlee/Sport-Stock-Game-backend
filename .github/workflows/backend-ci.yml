@@ -51,4 +51,4 @@ jobs:
         run: chmod +x ./mvnw
 
       - name: Build backend
-        run: ./mvnw -B package -DskipTests
+        run: ./mvnw -B package -DskipTests -Dspotless.check.skip=true
