@@ -4,7 +4,6 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Set;
 
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,6 +13,8 @@ import com.sportstocks.stockmarket.dto.IngestionAthleteDto;
 import com.sportstocks.stockmarket.model.entity.PlayerStock;
 import com.sportstocks.stockmarket.model.enums.StockStatus;
 import com.sportstocks.stockmarket.repository.PlayerStockRepository;
+
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
@@ -54,14 +55,17 @@ public class AthleteStockSyncService {
 
             if (!isSupportedPosition(normalizedAthletePosition)) {
                 skipped++;
+                log.warn("Skipping athlete '{}' with unsupported position '{}'", athlete.getFullName(), normalizedAthletePosition);
                 continue;
             }
 
             boolean wasCreated = upsertStockFromAthlete(athlete, normalizedAthletePosition);
             if (wasCreated) {
                 created++;
+                log.info("Created stock for athlete '{}' with position '{}'", athlete.getFullName(), normalizedAthletePosition);
             } else {
                 updated++;
+                log.info("Updated stock for athlete '{}' with position '{}'", athlete.getFullName(), normalizedAthletePosition);
             }
         }
 

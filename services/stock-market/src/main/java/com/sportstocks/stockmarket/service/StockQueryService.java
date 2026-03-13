@@ -1,5 +1,6 @@
 package com.sportstocks.stockmarket.service;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.data.domain.Page;
@@ -9,19 +10,23 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.sportstocks.stockmarket.dto.response.PagedStockResponse;
+import com.sportstocks.stockmarket.dto.response.PriceHistoryResponse;
 import com.sportstocks.stockmarket.dto.response.StockResponse;
 import com.sportstocks.stockmarket.exception.StockNotFoundException;
 import com.sportstocks.stockmarket.model.entity.PlayerStock;
 import com.sportstocks.stockmarket.model.enums.StockStatus;
 import com.sportstocks.stockmarket.repository.PlayerStockRepository;
+import com.sportstocks.stockmarket.repository.PriceHistoryRepository;
 
 @Service
 public class StockQueryService {
 
     private final PlayerStockRepository playerStockRepository;
+    private final PriceHistoryRepository priceHistoryRepository;
 
-    public StockQueryService(PlayerStockRepository playerStockRepository) {
+    public StockQueryService(PlayerStockRepository playerStockRepository, PriceHistoryRepository priceHistoryRepository) {
         this.playerStockRepository = playerStockRepository;
+        this.priceHistoryRepository = priceHistoryRepository;
     }
 
     @Transactional(readOnly = true)
@@ -56,6 +61,18 @@ public class StockQueryService {
                 stockPage.getTotalElements(),
                 stockPage.getTotalPages()
         );
+    }
+
+    @Transactional(readOnly = true)
+    public List<PriceHistoryResponse> getPriceHistory(UUID stockId, int seasonYear, int seasonType) {
+        if (!playerStockRepository.existsById(stockId)) {
+            throw new StockNotFoundException(stockId);
+        }
+        return priceHistoryRepository
+                .findByPlayerStockIdAndSeasonYearAndSeasonTypeOrderByWeekAsc(stockId, seasonYear, seasonType)
+                .stream()
+                .map(h -> new PriceHistoryResponse(h.getSeasonYear(), h.getSeasonType(), h.getWeek(), h.getPrice(), h.getRecordedAt()))
+                .toList();
     }
 
     private String normalizePosition(String rawPosition) {
