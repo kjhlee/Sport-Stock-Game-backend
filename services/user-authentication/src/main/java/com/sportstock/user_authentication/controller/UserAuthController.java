@@ -11,7 +11,6 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -53,12 +52,6 @@ public class UserAuthController {
     } catch (Exception e) {
       return ResponseEntity.badRequest().body(e.getMessage());
     }
-  }
-
-  // this is a test mapping if the user has valid token they can access this endpoint
-  @GetMapping("/test")
-  public ResponseEntity<String> test() {
-    return ResponseEntity.ok("Test successful");
   }
 
   @PostMapping("/refresh")
