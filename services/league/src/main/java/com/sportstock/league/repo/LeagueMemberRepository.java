@@ -1,31 +1,31 @@
 package com.sportstock.league.repo;
 
 import com.sportstock.league.entity.LeagueMember;
+import java.util.List;
+import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.util.List;
-import java.util.Optional;
-
 public interface LeagueMemberRepository extends JpaRepository<LeagueMember, Long> {
 
-    Optional<LeagueMember> findByUserIdAndRole(Long userId, String role);
+  Optional<LeagueMember> findByUserIdAndRole(Long userId, String role);
 
-    List<LeagueMember> findByUserId(Long userId);
+  List<LeagueMember> findByUserId(Long userId);
 
-    Page<LeagueMember> findByUserId(Long userId, Pageable pageable);
+  Page<LeagueMember> findByUserId(Long userId, Pageable pageable);
 
-    Optional<LeagueMember> findByLeagueIdAndUserId(Long leagueId, Long userId);
+  Optional<LeagueMember> findByLeagueIdAndUserId(Long leagueId, Long userId);
 
-    List<LeagueMember> findAllByLeagueId(Long leagueId);
+  List<LeagueMember> findAllByLeagueId(Long leagueId);
 
-    Page<LeagueMember> findAllByLeagueId(Long leagueId, Pageable pageable);
+  Page<LeagueMember> findAllByLeagueId(Long leagueId, Pageable pageable);
 
-    int countByLeagueId(Long leagueId);
+  int countByLeagueId(Long leagueId);
 
-    @Query("SELECT lm.league.id, COUNT(lm) FROM LeagueMember lm WHERE lm.league.id IN :leagueIds GROUP BY lm.league.id")
-    List<Object[]> countByLeagueIds(@Param("leagueIds") List<Long> leagueIds);
+  @Query(
+      "SELECT lm.league.id, COUNT(lm) FROM LeagueMember lm WHERE lm.league.id IN :leagueIds GROUP BY lm.league.id")
+  List<Object[]> countByLeagueIds(@Param("leagueIds") List<Long> leagueIds);
 }

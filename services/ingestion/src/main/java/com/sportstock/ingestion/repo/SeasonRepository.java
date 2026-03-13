@@ -1,11 +1,10 @@
 package com.sportstock.ingestion.repo;
 
 import com.sportstock.ingestion.entity.Season;
-import org.springframework.data.jpa.repository.JpaRepository;
-
 import java.util.Optional;
+import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface SeasonRepository extends JpaRepository<Season, Long> {
 
-    Optional<Season> findByYearAndSeasonTypeId(Integer year, String seasonTypeId);
+  Optional<Season> findByYearAndSeasonTypeId(Integer year, String seasonTypeId);
 }

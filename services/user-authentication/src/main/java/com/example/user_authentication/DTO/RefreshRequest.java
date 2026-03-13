@@ -4,5 +4,5 @@ import lombok.Getter;
 
 @Getter
 public class RefreshRequest {
-    private String refreshToken;
+  private String refreshToken;
 }

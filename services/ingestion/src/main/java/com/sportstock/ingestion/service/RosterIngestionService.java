@@ -15,154 +15,171 @@ import com.sportstock.ingestion.repo.CoachRepository;
 import com.sportstock.ingestion.repo.TeamRepository;
 import com.sportstock.ingestion.repo.TeamRosterEntryRepository;
 import jakarta.persistence.EntityManager;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import java.util.ArrayList;
-import java.util.List;
-
 @Service
 @Slf4j
 public class RosterIngestionService {
 
-    private final EspnApiClient espnApiClient;
-    private final TeamRepository teamRepository;
-    private final AthleteRepository athleteRepository;
-    private final TeamRosterEntryRepository teamRosterEntryRepository;
-    private final CoachRepository coachRepository;
-    private final JsonPayloadCodec jsonPayloadCodec;
-    private final TransactionTemplate transactionTemplate;
-    private final EntityManager entityManager;
+  private final EspnApiClient espnApiClient;
+  private final TeamRepository teamRepository;
+  private final AthleteRepository athleteRepository;
+  private final TeamRosterEntryRepository teamRosterEntryRepository;
+  private final CoachRepository coachRepository;
+  private final JsonPayloadCodec jsonPayloadCodec;
+  private final TransactionTemplate transactionTemplate;
+  private final EntityManager entityManager;
 
-    public RosterIngestionService(
-            EspnApiClient espnApiClient,
-            TeamRepository teamRepository,
-            AthleteRepository athleteRepository,
-            TeamRosterEntryRepository teamRosterEntryRepository,
-            CoachRepository coachRepository,
-            JsonPayloadCodec jsonPayloadCodec,
-            TransactionTemplate transactionTemplate,
-            EntityManager entityManager
-    ) {
-        this.espnApiClient = espnApiClient;
-        this.teamRepository = teamRepository;
-        this.athleteRepository = athleteRepository;
-        this.teamRosterEntryRepository = teamRosterEntryRepository;
-        this.coachRepository = coachRepository;
-        this.jsonPayloadCodec = jsonPayloadCodec;
-        this.transactionTemplate = transactionTemplate;
-        this.entityManager = entityManager;
+  public RosterIngestionService(
+      EspnApiClient espnApiClient,
+      TeamRepository teamRepository,
+      AthleteRepository athleteRepository,
+      TeamRosterEntryRepository teamRosterEntryRepository,
+      CoachRepository coachRepository,
+      JsonPayloadCodec jsonPayloadCodec,
+      TransactionTemplate transactionTemplate,
+      EntityManager entityManager) {
+    this.espnApiClient = espnApiClient;
+    this.teamRepository = teamRepository;
+    this.athleteRepository = athleteRepository;
+    this.teamRosterEntryRepository = teamRosterEntryRepository;
+    this.coachRepository = coachRepository;
+    this.jsonPayloadCodec = jsonPayloadCodec;
+    this.transactionTemplate = transactionTemplate;
+    this.entityManager = entityManager;
+  }
+
+  @Transactional
+  public void ingestTeamRoster(String teamEspnId, Integer seasonYear, Integer rosterLimit) {
+    ingestTeamRosterInternal(teamEspnId, seasonYear, rosterLimit);
+  }
+
+  private void ingestTeamRosterInternal(
+      String teamEspnId, Integer seasonYear, Integer rosterLimit) {
+    Team team =
+        teamRepository
+            .findByEspnId(teamEspnId)
+            .orElseThrow(
+                () -> new EntityNotFoundException("Team not found with ESPN ID: " + teamEspnId));
+
+    String json = espnApiClient.fetchTeamRoster(teamEspnId);
+    JsonNode root = jsonPayloadCodec.parseJson(json);
+    JsonNode athleteGroups = root.path("athletes");
+
+    if (!athleteGroups.isArray()) {
+      throw new IngestionException("Unexpected ESPN roster response for team " + teamEspnId);
     }
 
-    @Transactional
-    public void ingestTeamRoster(String teamEspnId, Integer seasonYear, Integer rosterLimit) {
-        ingestTeamRosterInternal(teamEspnId, seasonYear, rosterLimit);
+    int count = 0;
+    for (JsonNode group : athleteGroups) {
+      String rosterGroup = group.path("position").asText("unknown");
+      JsonNode items = group.path("items");
+      if (!items.isArray()) {
+        continue;
+      }
+
+      for (JsonNode athleteNode : items) {
+        if (rosterLimit != null && count >= rosterLimit) {
+          break;
+        }
+
+        Athlete athlete = upsertAthlete(athleteNode);
+
+        TeamRosterEntry entry =
+            teamRosterEntryRepository
+                .findByTeamIdAndAthleteIdAndSeasonYear(team.getId(), athlete.getId(), seasonYear)
+                .orElseGet(TeamRosterEntry::new);
+        AthleteMapper.applyRosterEntryFields(
+            athleteNode, entry, team, athlete, seasonYear, rosterGroup);
+        teamRosterEntryRepository.save(entry);
+        count++;
+      }
+      if (rosterLimit != null && count >= rosterLimit) {
+        break;
+      }
+    }
+    JsonNode coachArray = root.path("coach");
+    int seasonYearValue = root.path("season").path("year").asInt(0);
+    if (seasonYearValue == 0) {
+      seasonYearValue = seasonYear;
+    }
+    if (coachArray.isArray()) {
+      for (JsonNode coachNode : coachArray) {
+        String coachEspnId = coachNode.path("id").asText();
+        Coach coach =
+            coachRepository
+                .findByEspnIdAndTeamIdAndSeasonYear(coachEspnId, team.getId(), seasonYearValue)
+                .orElseGet(Coach::new);
+        AthleteMapper.applyCoachFields(coachNode, coach, team, seasonYearValue);
+        coachRepository.save(coach);
+      }
     }
 
-    private void ingestTeamRosterInternal(String teamEspnId, Integer seasonYear, Integer rosterLimit) {
-        Team team = teamRepository.findByEspnId(teamEspnId)
-                .orElseThrow(() -> new EntityNotFoundException("Team not found with ESPN ID: " + teamEspnId));
+    log.info(
+        "Ingested {} roster entries for team {} ({})", count, team.getDisplayName(), teamEspnId);
+  }
 
-        String json = espnApiClient.fetchTeamRoster(teamEspnId);
-        JsonNode root = jsonPayloadCodec.parseJson(json);
-        JsonNode athleteGroups = root.path("athletes");
+  private Athlete upsertAthlete(JsonNode athleteNode) {
+    String espnId = athleteNode.path("id").asText();
+    Athlete athlete = athleteRepository.findByEspnId(espnId).orElseGet(Athlete::new);
+    AthleteMapper.applyFields(athleteNode, athlete);
 
-        if (!athleteGroups.isArray()) {
-            throw new IngestionException("Unexpected ESPN roster response for team " + teamEspnId);
-        }
+    try {
+      return athleteRepository.save(athlete);
+    } catch (DataIntegrityViolationException ex) {
+      log.warn(
+          "Athlete {} was inserted concurrently during roster sync; reloading existing row",
+          espnId);
+      entityManager.detach(athlete);
+      Athlete existing = athleteRepository.findByEspnId(espnId).orElseThrow(() -> ex);
+      AthleteMapper.applyFields(athleteNode, existing);
+      return athleteRepository.save(existing);
+    }
+  }
 
-        int count = 0;
-        for (JsonNode group : athleteGroups) {
-            String rosterGroup = group.path("position").asText("unknown");
-            JsonNode items = group.path("items");
-            if (!items.isArray()) {
-                continue;
-            }
-
-            for (JsonNode athleteNode : items) {
-                if (rosterLimit != null && count >= rosterLimit) {
-                    break;
-                }
-
-                Athlete athlete = upsertAthlete(athleteNode);
-
-                TeamRosterEntry entry = teamRosterEntryRepository
-                        .findByTeamIdAndAthleteIdAndSeasonYear(team.getId(), athlete.getId(), seasonYear)
-                        .orElseGet(TeamRosterEntry::new);
-                AthleteMapper.applyRosterEntryFields(athleteNode, entry, team, athlete, seasonYear, rosterGroup);
-                teamRosterEntryRepository.save(entry);
-                count++;
-            }
-            if (rosterLimit != null && count >= rosterLimit) {
-                break;
-            }
-        }
-        JsonNode coachArray = root.path("coach");
-        int seasonYearValue = root.path("season").path("year").asInt(0);
-        if (seasonYearValue == 0) {
-            seasonYearValue = seasonYear;
-        }
-        if (coachArray.isArray()) {
-            for (JsonNode coachNode : coachArray) {
-                String coachEspnId = coachNode.path("id").asText();
-                Coach coach = coachRepository
-                        .findByEspnIdAndTeamIdAndSeasonYear(coachEspnId, team.getId(), seasonYearValue)
-                        .orElseGet(Coach::new);
-                AthleteMapper.applyCoachFields(coachNode, coach, team, seasonYearValue);
-                coachRepository.save(coach);
-            }
-        }
-
-        log.info("Ingested {} roster entries for team {} ({})", count, team.getDisplayName(), teamEspnId);
+  public void ingestAllRosters(Integer seasonYear, Integer rosterLimit, List<String> teamEspnIds) {
+    List<Team> teams;
+    if (teamEspnIds != null && !teamEspnIds.isEmpty()) {
+      teams =
+          teamEspnIds.stream()
+              .map(
+                  id ->
+                      teamRepository
+                          .findByEspnId(id)
+                          .orElseThrow(
+                              () ->
+                                  new EntityNotFoundException(
+                                      "Team not found with ESPN ID: " + id)))
+              .toList();
+    } else {
+      teams = teamRepository.findAllByOrderByDisplayNameAsc();
     }
 
-    private Athlete upsertAthlete(JsonNode athleteNode) {
-        String espnId = athleteNode.path("id").asText();
-        Athlete athlete = athleteRepository.findByEspnId(espnId).orElseGet(Athlete::new);
-        AthleteMapper.applyFields(athleteNode, athlete);
+    int success = 0;
+    int failed = 0;
+    List<String> failedIds = new ArrayList<>();
 
-        try {
-            return athleteRepository.save(athlete);
-        } catch (DataIntegrityViolationException ex) {
-            log.warn("Athlete {} was inserted concurrently during roster sync; reloading existing row", espnId);
-            entityManager.detach(athlete);
-            Athlete existing = athleteRepository.findByEspnId(espnId)
-                    .orElseThrow(() -> ex);
-            AthleteMapper.applyFields(athleteNode, existing);
-            return athleteRepository.save(existing);
-        }
+    for (Team team : teams) {
+      try {
+        transactionTemplate.executeWithoutResult(
+            status -> ingestTeamRosterInternal(team.getEspnId(), seasonYear, rosterLimit));
+        success++;
+      } catch (Exception e) {
+        failed++;
+        failedIds.add(team.getEspnId());
+        log.error("Failed to ingest roster for team {}: {}", team.getEspnId(), e.getMessage());
+      }
     }
-
-    public void ingestAllRosters(Integer seasonYear, Integer rosterLimit, List<String> teamEspnIds) {
-        List<Team> teams;
-        if (teamEspnIds != null && !teamEspnIds.isEmpty()) {
-            teams = teamEspnIds.stream()
-                    .map(id -> teamRepository.findByEspnId(id)
-                            .orElseThrow(() -> new EntityNotFoundException("Team not found with ESPN ID: " + id)))
-                    .toList();
-        } else {
-            teams = teamRepository.findAllByOrderByDisplayNameAsc();
-        }
-
-        int success = 0;
-        int failed = 0;
-        List<String> failedIds = new ArrayList<>();
-
-        for (Team team : teams) {
-            try {
-                transactionTemplate.executeWithoutResult(status ->
-                        ingestTeamRosterInternal(team.getEspnId(), seasonYear, rosterLimit));
-                success++;
-            } catch (Exception e) {
-                failed++;
-                failedIds.add(team.getEspnId());
-                log.error("Failed to ingest roster for team {}: {}", team.getEspnId(), e.getMessage());
-            }
-        }
-        log.info("Ingested rosters for {} teams ({} failed{})",
-                success, failed, failedIds.isEmpty() ? "" : ", IDs: " + failedIds);
-    }
+    log.info(
+        "Ingested rosters for {} teams ({} failed{})",
+        success,
+        failed,
+        failedIds.isEmpty() ? "" : ", IDs: " + failedIds);
+  }
 }
