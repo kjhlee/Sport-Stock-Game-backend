@@ -1,13 +1,12 @@
-package com.example.user_authentication.controller;
+package com.sportstock.user_authentication.controller;
 
-import com.example.user_authentication.DTO.LoginRequest;
-import com.example.user_authentication.DTO.RefreshRequest;
-import com.example.user_authentication.DTO.RegisterRequest;
-import com.example.user_authentication.DTO.TokenResponse;
-// import com.example.user_authentication.security.exceptions.TokenExpiredException;
-import com.example.user_authentication.service.LoginService;
-import com.example.user_authentication.service.RefreshService;
-import com.example.user_authentication.service.RegisterAccountService;
+import com.sportstock.common.dto.user_authentication.LoginRequest;
+import com.sportstock.common.dto.user_authentication.RefreshRequest;
+import com.sportstock.common.dto.user_authentication.RegisterRequest;
+import com.sportstock.common.dto.user_authentication.TokenResponse;
+import com.sportstock.user_authentication.service.LoginService;
+import com.sportstock.user_authentication.service.RefreshService;
+import com.sportstock.user_authentication.service.RegisterAccountService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

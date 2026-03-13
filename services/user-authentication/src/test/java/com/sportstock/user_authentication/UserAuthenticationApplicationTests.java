@@ -1,4 +1,4 @@
-package com.example.user_authentication;
+package com.sportstock.user_authentication;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

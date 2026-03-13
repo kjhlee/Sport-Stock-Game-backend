@@ -1,4 +1,4 @@
-package com.example.user_authentication.models;
+package com.sportstock.user_authentication.models;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

@@ -1,8 +1,8 @@
-package com.example.user_authentication.service;
+package com.sportstock.user_authentication.service;
 
-import com.example.user_authentication.DTO.TokenResponse;
-import com.example.user_authentication.models.UserDetails;
-import com.example.user_authentication.repository.UserAccountRepo;
+import com.sportstock.common.dto.user_authentication.TokenResponse;
+import com.sportstock.user_authentication.models.UserDetails;
+import com.sportstock.user_authentication.repository.UserAccountRepo;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

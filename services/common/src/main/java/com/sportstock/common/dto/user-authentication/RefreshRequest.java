@@ -1,4 +1,4 @@
-package com.example.user_authentication.DTO;
+package com.sportstock.common.dto.user_authentication;
 
 import lombok.Getter;
 

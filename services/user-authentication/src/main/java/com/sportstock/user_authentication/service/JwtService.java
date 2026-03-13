@@ -1,4 +1,4 @@
-package com.example.user_authentication.service;
+package com.sportstock.user_authentication.service;
 
 // import com.example.user_authentication.security.exceptions.InvalidTokenException;
 // import com.example.user_authentication.security.exceptions.TokenExpiredException;
