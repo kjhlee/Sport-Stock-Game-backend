@@ -1,5 +1,6 @@
 package com.example.user_authentication.security;
 
+import com.sportstock.common.security.JwtAuthenticationFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

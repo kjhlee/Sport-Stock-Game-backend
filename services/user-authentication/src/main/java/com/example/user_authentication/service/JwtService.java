@@ -1,7 +1,9 @@
 package com.example.user_authentication.service;
 
-import com.example.user_authentication.security.exceptions.InvalidTokenException;
-import com.example.user_authentication.security.exceptions.TokenExpiredException;
+// import com.example.user_authentication.security.exceptions.InvalidTokenException;
+// import com.example.user_authentication.security.exceptions.TokenExpiredException;
+import com.sportstock.common.exceptions.InvalidTokenException;
+import com.sportstock.common.exceptions.RefreshTokenExpiredException;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
@@ -53,27 +55,18 @@ public class JwtService {
         .compact();
   }
 
+  // THIS WILL ALL SIT IN COMMON SECURITY FOR THE FILTER
   public Claims extractClaims(String token) {
     return Jwts.parser().verifyWith(getSignInKey()).build().parseSignedClaims(token).getPayload();
-  }
-
-  public Claims validateAccessToken(String token) {
-    try {
-      return extractClaims(token);
-    } catch (ExpiredJwtException e) {
-      throw new TokenExpiredException(e.getMessage());
-    } catch (Exception e) {
-      throw new InvalidTokenException(e.getMessage());
-    }
   }
 
   public Claims validateRefreshToken(String token) {
     try {
       return extractClaims(token);
     } catch (ExpiredJwtException e) {
-      throw new TokenExpiredException(token + e.getMessage());
-    } catch (Exception e) {
-      throw new InvalidTokenException(token + e.getMessage());
+      throw new RefreshTokenExpiredException(e.getMessage(), token);
+    } catch (InvalidTokenException e) {
+      throw new InvalidTokenException(e.getMessage(), token);
     }
   }
 

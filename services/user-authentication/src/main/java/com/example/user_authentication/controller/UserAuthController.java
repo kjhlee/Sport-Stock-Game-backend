@@ -4,7 +4,7 @@ import com.example.user_authentication.DTO.LoginRequest;
 import com.example.user_authentication.DTO.RefreshRequest;
 import com.example.user_authentication.DTO.RegisterRequest;
 import com.example.user_authentication.DTO.TokenResponse;
-import com.example.user_authentication.security.exceptions.TokenExpiredException;
+// import com.example.user_authentication.security.exceptions.TokenExpiredException;
 import com.example.user_authentication.service.LoginService;
 import com.example.user_authentication.service.RefreshService;
 import com.example.user_authentication.service.RegisterAccountService;
@@ -69,7 +69,7 @@ public class UserAuthController {
       String refreshToken = request.getRefreshToken();
       String newAccessToken = refreshService.refreshAccessToken(refreshToken);
       return ResponseEntity.ok(new TokenResponse(newAccessToken, refreshToken));
-    } catch (TokenExpiredException e) {
+    } catch (Exception e) {
       return ResponseEntity.badRequest().body(e.getMessage());
     }
   }
