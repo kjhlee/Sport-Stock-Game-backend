@@ -17,45 +17,48 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 public class SeasonIngestionService {
 
-    private final SeasonRepository seasonRepository;
-    private final SeasonWeekRepository seasonWeekRepository;
+  private final SeasonRepository seasonRepository;
+  private final SeasonWeekRepository seasonWeekRepository;
 
-    @Transactional
-    public void ingestSeasonAndWeeksFromScoreboard(Integer seasonYear, Integer seasonType, JsonNode root) {
-        JsonNode leagueNode = root.path("leagues").path(0);
-        if (leagueNode.isMissingNode()) {
-            throw new IngestionException("Unexpected ESPN scoreboard response structure");
-        }
-
-        JsonNode seasonNode = leagueNode.path("season");
-        JsonNode typeNode = seasonNode.path("type");
-        String seasonTypeId = typeNode.path("id").asText(String.valueOf(seasonType));
-
-        Season season = seasonRepository.findByYearAndSeasonTypeId(seasonYear, seasonTypeId)
-                .orElseGet(Season::new);
-        SeasonMapper.applyFields(seasonNode, typeNode, season);
-        season = seasonRepository.save(season);
-
-        int weekCount = 0;
-        JsonNode calendar = leagueNode.path("calendar");
-        if (calendar.isArray()) {
-            for (JsonNode calendarEntry : calendar) {
-                String calendarTypeValue = calendarEntry.path("value").asText();
-                JsonNode entries = calendarEntry.path("entries");
-                if (!entries.isArray()) {
-                    continue;
-                }
-                for (JsonNode entry : entries) {
-                    String weekValue = entry.path("value").asText();
-                    SeasonWeek sw = seasonWeekRepository
-                            .findBySeasonIdAndSeasonTypeValueAndWeekValue(season.getId(), calendarTypeValue, weekValue)
-                            .orElseGet(SeasonWeek::new);
-                    SeasonMapper.applyWeekFields(entry, sw, season, calendarTypeValue);
-                    seasonWeekRepository.save(sw);
-                    weekCount++;
-                }
-            }
-        }
-        log.info("Ingested season {}/{} with {} weeks", seasonYear, seasonTypeId, weekCount);
+  @Transactional
+  public void ingestSeasonAndWeeksFromScoreboard(
+      Integer seasonYear, Integer seasonType, JsonNode root) {
+    JsonNode leagueNode = root.path("leagues").path(0);
+    if (leagueNode.isMissingNode()) {
+      throw new IngestionException("Unexpected ESPN scoreboard response structure");
     }
+
+    JsonNode seasonNode = leagueNode.path("season");
+    JsonNode typeNode = seasonNode.path("type");
+    String seasonTypeId = typeNode.path("id").asText(String.valueOf(seasonType));
+
+    Season season =
+        seasonRepository.findByYearAndSeasonTypeId(seasonYear, seasonTypeId).orElseGet(Season::new);
+    SeasonMapper.applyFields(seasonNode, typeNode, season);
+    season = seasonRepository.save(season);
+
+    int weekCount = 0;
+    JsonNode calendar = leagueNode.path("calendar");
+    if (calendar.isArray()) {
+      for (JsonNode calendarEntry : calendar) {
+        String calendarTypeValue = calendarEntry.path("value").asText();
+        JsonNode entries = calendarEntry.path("entries");
+        if (!entries.isArray()) {
+          continue;
+        }
+        for (JsonNode entry : entries) {
+          String weekValue = entry.path("value").asText();
+          SeasonWeek sw =
+              seasonWeekRepository
+                  .findBySeasonIdAndSeasonTypeValueAndWeekValue(
+                      season.getId(), calendarTypeValue, weekValue)
+                  .orElseGet(SeasonWeek::new);
+          SeasonMapper.applyWeekFields(entry, sw, season, calendarTypeValue);
+          seasonWeekRepository.save(sw);
+          weekCount++;
+        }
+      }
+    }
+    log.info("Ingested season {}/{} with {} weeks", seasonYear, seasonTypeId, weekCount);
+  }
 }

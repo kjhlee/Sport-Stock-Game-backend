@@ -17,42 +17,40 @@ import org.springframework.validation.annotation.Validated;
 @ConfigurationProperties(prefix = "espn.api")
 public class EspnApiProperties {
 
-    @NotBlank
-    @Pattern(regexp = "^https://[^\\s]+$")
-    private String siteBaseUrl;
+  @NotBlank
+  @Pattern(regexp = "^https://[^\\s]+$")
+  private String siteBaseUrl;
 
-    @NotBlank
-    @Pattern(regexp = "^https://[^\\s]+$")
-    private String coreBaseUrl;
+  @NotBlank
+  @Pattern(regexp = "^https://[^\\s]+$")
+  private String coreBaseUrl;
 
-    @NotBlank
-    private String sport;
+  @NotBlank private String sport;
 
-    @NotBlank
-    private String league;
+  @NotBlank private String league;
 
-    @Min(1)
-    private int defaultAthletePageSize = 250;
+  @Min(1)
+  private int defaultAthletePageSize = 250;
 
-    @Min(1)
-    private int defaultRosterLimit = 200;
+  @Min(1)
+  private int defaultRosterLimit = 200;
 
-    @Min(0)
-    private int rateLimitDelayMs = 200;
+  @Min(0)
+  private int rateLimitDelayMs = 200;
 
-    @Min(100)
-    @Max(500000)
-    private int maxAthleteRowsPerSync = 50000;
+  @Min(100)
+  @Max(500000)
+  private int maxAthleteRowsPerSync = 50000;
 
-    @Min(1)
-    @Max(60)
-    private int connectTimeoutSeconds = 5;
+  @Min(1)
+  @Max(60)
+  private int connectTimeoutSeconds = 5;
 
-    @Min(1)
-    @Max(300)
-    private int readTimeoutSeconds = 60;
+  @Min(1)
+  @Max(300)
+  private int readTimeoutSeconds = 60;
 
-    @Min(5)
-    @Max(1800)
-    private int athletePageTransactionTimeoutSeconds = 120;
+  @Min(5)
+  @Max(1800)
+  private int athletePageTransactionTimeoutSeconds = 120;
 }

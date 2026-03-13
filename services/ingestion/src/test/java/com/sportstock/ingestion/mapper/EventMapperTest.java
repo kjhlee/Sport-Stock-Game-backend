@@ -1,21 +1,23 @@
 package com.sportstock.ingestion.mapper;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sportstock.ingestion.entity.Event;
 import com.sportstock.ingestion.exception.IngestionException;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-
 class EventMapperTest {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-    @Test
-    void applyFieldsReadsSeasonTypeFromNestedTypeObject() throws Exception {
-        JsonNode eventNode = OBJECT_MAPPER.readTree("""
+  @Test
+  void applyFieldsReadsSeasonTypeFromNestedTypeObject() throws Exception {
+    JsonNode eventNode =
+        OBJECT_MAPPER.readTree(
+            """
                 {
                   "id": "401",
                   "name": "Example Event",
@@ -31,17 +33,19 @@ class EventMapperTest {
                 }
                 """);
 
-        Event event = new Event();
+    Event event = new Event();
 
-        EventMapper.applyFields(eventNode, null, event, 3);
+    EventMapper.applyFields(eventNode, null, event, 3);
 
-        assertEquals(2025, event.getSeasonYear());
-        assertEquals(2, event.getSeasonType());
-    }
+    assertEquals(2025, event.getSeasonYear());
+    assertEquals(2, event.getSeasonType());
+  }
 
-    @Test
-    void applyFieldsFallsBackToRequestedSeasonTypeWhenMissingFromPayload() throws Exception {
-        JsonNode eventNode = OBJECT_MAPPER.readTree("""
+  @Test
+  void applyFieldsFallsBackToRequestedSeasonTypeWhenMissingFromPayload() throws Exception {
+    JsonNode eventNode =
+        OBJECT_MAPPER.readTree(
+            """
                 {
                   "id": "402",
                   "name": "Example Event",
@@ -54,16 +58,18 @@ class EventMapperTest {
                 }
                 """);
 
-        Event event = new Event();
+    Event event = new Event();
 
-        EventMapper.applyFields(eventNode, null, event, 2);
+    EventMapper.applyFields(eventNode, null, event, 2);
 
-        assertEquals(2, event.getSeasonType());
-    }
+    assertEquals(2, event.getSeasonType());
+  }
 
-    @Test
-    void applyFieldsThrowsWhenDateIsMissing() throws Exception {
-        JsonNode eventNode = OBJECT_MAPPER.readTree("""
+  @Test
+  void applyFieldsThrowsWhenDateIsMissing() throws Exception {
+    JsonNode eventNode =
+        OBJECT_MAPPER.readTree(
+            """
                 {
                   "id": "403",
                   "name": "Example Event",
@@ -77,13 +83,12 @@ class EventMapperTest {
                 }
                 """);
 
-        Event event = new Event();
+    Event event = new Event();
 
-        IngestionException ex = assertThrows(
-                IngestionException.class,
-                () -> EventMapper.applyFields(eventNode, null, event, 2)
-        );
+    IngestionException ex =
+        assertThrows(
+            IngestionException.class, () -> EventMapper.applyFields(eventNode, null, event, 2));
 
-        assertEquals("Event 403 is missing a parseable date", ex.getMessage());
-    }
+    assertEquals("Event 403 is missing a parseable date", ex.getMessage());
+  }
 }

@@ -10,11 +10,11 @@ import org.springframework.stereotype.Component;
 @Component
 @ConfigurationProperties(prefix = "services.transaction")
 public class TransactionServiceProperties {
-    
-    private String baseUrl;
-    private int port;
-    
-    public String getFullUrl() {
-        return baseUrl + ":" + port;
-    }
+
+  private String baseUrl;
+  private int port;
+
+  public String getFullUrl() {
+    return baseUrl + ":" + port;
+  }
 }

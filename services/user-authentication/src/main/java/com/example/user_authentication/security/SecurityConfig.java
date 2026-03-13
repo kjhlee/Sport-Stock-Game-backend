@@ -12,30 +12,31 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @Configuration
 public class SecurityConfig {
 
-    @Autowired
-    JwtAuthenticationFilter jwtAuthenticationFilter;
-    @Bean
-    public BCryptPasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
+  @Autowired JwtAuthenticationFilter jwtAuthenticationFilter;
 
-    @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http
-            // for APIs + Postman during dev
-            .csrf(csrf -> csrf.disable())
+  @Bean
+  public BCryptPasswordEncoder passwordEncoder() {
+    return new BCryptPasswordEncoder();
+  }
 
-            // if you're building a stateless REST API
-            .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+  @Bean
+  public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    http
+        // for APIs + Postman during dev
+        .csrf(csrf -> csrf.disable())
 
-            // authorize endpoints
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/register/**", "/api/login/**", "/api/refresh/**").permitAll()
-                .anyRequest().authenticated()
-            )
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+        // if you're building a stateless REST API
+        .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-        return http.build();
-    }
+        // authorize endpoints
+        .authorizeHttpRequests(
+            auth ->
+                auth.requestMatchers("/api/register/**", "/api/login/**", "/api/refresh/**")
+                    .permitAll()
+                    .anyRequest()
+                    .authenticated())
+        .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
+    return http.build();
+  }
 }
