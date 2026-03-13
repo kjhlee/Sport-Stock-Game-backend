@@ -1,8 +1,7 @@
-package com.example.user_authentication.security;
+package com.sportstock.common.security;
 
-import com.example.user_authentication.security.exceptions.InvalidTokenException;
-import com.example.user_authentication.security.exceptions.TokenExpiredException;
-import com.example.user_authentication.service.JwtService;
+import com.sportstock.common.exceptions.InvalidTokenException;
+import com.sportstock.common.exceptions.TokenExpiredException;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -20,27 +19,29 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-  @Autowired JwtService jwtService;
+  @Autowired JwtValidationService jwtValidationService;
 
   @Override
   protected void doFilterInternal(
       HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
       throws ServletException, IOException {
+
     String authHeader = request.getHeader("Authorization");
+
+    // Skip the authentication since the user doesn't have the right header
     if (authHeader == null || !authHeader.startsWith("Bearer ")) {
       filterChain.doFilter(request, response);
       return;
     }
+
     String token = authHeader.substring(7);
     try {
-      Claims claims = jwtService.validateAccessToken(token);
+      Claims claims = jwtValidationService.validateAccessToken(token);
       String subject = claims.getSubject();
 
       UsernamePasswordAuthenticationToken authentication =
           new UsernamePasswordAuthenticationToken(subject, null, Collections.emptyList());
-
       authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-
       SecurityContextHolder.getContext().setAuthentication(authentication);
     } catch (TokenExpiredException e) {
       response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);

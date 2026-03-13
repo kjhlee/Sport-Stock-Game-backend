@@ -1,6 +1,6 @@
-package com.example.user_authentication.repository;
+package com.sportstock.user_authentication.repository;
 
-import com.example.user_authentication.models.UserDetails;
+import com.sportstock.user_authentication.models.UserDetails;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;

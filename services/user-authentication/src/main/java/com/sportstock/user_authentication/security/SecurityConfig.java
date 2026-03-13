@@ -1,5 +1,6 @@
-package com.example.user_authentication.security;
+package com.sportstock.user_authentication.security;
 
+import com.sportstock.common.security.JwtAuthenticationFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -21,14 +22,8 @@ public class SecurityConfig {
 
   @Bean
   public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-    http
-        // for APIs + Postman during dev
-        .csrf(csrf -> csrf.disable())
-
-        // if you're building a stateless REST API
+    http.csrf(csrf -> csrf.disable())
         .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-
-        // authorize endpoints
         .authorizeHttpRequests(
             auth ->
                 auth.requestMatchers("/api/register/**", "/api/login/**", "/api/refresh/**")
