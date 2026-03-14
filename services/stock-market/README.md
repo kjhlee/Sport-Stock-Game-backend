@@ -117,38 +117,6 @@ Configured in `application.properties` under the `pricing.*` namespace:
 | `pricing.base-prices.TE`  | `8.00`  | Initial price for TEs                |
 | `pricing.base-prices.K`   | `5.00`  | Initial price for Ks                 |
 
-## Running locally
-
-**1. Start the database**
-```bash
-docker compose -f docker-compose.yml up -d
-```
-
-**2. Start the ingestion service**
-```bash
-mvn -f services/ingestion/pom.xml spring-boot:run
-```
-
-**3. Populate the ingestion database**
-```bash
-curl -X POST "http://localhost:8090/api/v1/ingestion/sync/full?seasonYear=2024&seasonType=2&week=1&rosterLimit=500&athletePageSize=250&athletePageCount=10"
-```
-
-**4. Start the stock-market service**
-```bash
-mvn -f services/stock-market/pom.xml spring-boot:run
-```
-
-**5. Sync player stocks**
-```bash
-curl -X POST "http://localhost:8130/api/v1/stocks/sync-athletes"
-```
-
-**6. Update prices for a week** (once game stats are ingested)
-```bash
-curl -X POST "http://localhost:8130/api/v1/stocks/update-prices?seasonYear=2024&seasonType=2&weekNumber=1"
-```
-
 ---
 
 ## End-to-end walkthrough
@@ -305,8 +273,6 @@ Example response:
   }
 ]
 ```
-
-`price` reflects the EMA-smoothed value after each week's game stats. `seasonType` `2` = regular season.
 
 ---
 
