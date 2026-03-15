@@ -6,7 +6,7 @@ import com.sportstock.common.dto.transaction.StipendResultResponse;
 import com.sportstock.common.dto.transaction.StockTransactionRequest;
 import com.sportstock.common.dto.transaction.TransactionResponse;
 import com.sportstock.common.dto.transaction.WalletResponse;
-import com.sportstock.transaction.config.CurrentUserProvider;
+import com.sportstock.common.security.CurrentUserProvider;
 import com.sportstock.transaction.service.WalletService;
 import jakarta.validation.Valid;
 import java.util.List;
