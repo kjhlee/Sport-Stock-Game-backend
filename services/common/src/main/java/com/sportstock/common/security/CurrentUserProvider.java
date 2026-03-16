@@ -1,5 +1,6 @@
 package com.sportstock.common.security;
 
+import com.sportstock.common.exceptions.MissingAuthenticationException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -20,19 +21,19 @@ public class CurrentUserProvider {
   public Long getCurrentUserId() {
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
     if (authentication == null || authentication.getPrincipal() == null) {
-      throw new IllegalStateException("No authenticated user found in security context");
+      throw new MissingAuthenticationException("No authenticated user found in security context");
     }
 
     String email = authentication.getPrincipal().toString();
     if (email == null || email.isBlank()) {
-      throw new IllegalStateException("No user email found in security context");
+      throw new MissingAuthenticationException("No user email found in security context");
     }
 
     String rawUserId = fetchUserIdByEmail(email);
     try {
       return Long.parseLong(rawUserId);
     } catch (NumberFormatException e) {
-      throw new IllegalStateException(
+      throw new MissingAuthenticationException(
           "User ID is not numeric and cannot be mapped to Long. email="
               + email
               + ", userId="
@@ -45,7 +46,7 @@ public class CurrentUserProvider {
     try {
       return queryForUserId(email, USER_ID_QUERY);
     } catch (SQLException e) {
-      throw new IllegalStateException("Failed to query user id for email: " + email, e);
+      throw new MissingAuthenticationException("Failed to query user id for email: " + email, e);
     }
   }
 
@@ -53,13 +54,13 @@ public class CurrentUserProvider {
     try (Connection connection = dataSource.getConnection();
         PreparedStatement statement = connection.prepareStatement(query)) {
       statement.setString(1, email);
-      try (ResultSet rs = statement.executeQuery()) {
+    try (ResultSet rs = statement.executeQuery()) {
         if (!rs.next()) {
-          throw new IllegalStateException("No user found for email: " + email);
+          throw new MissingAuthenticationException("No user found for email: " + email);
         }
         String userId = rs.getString("id");
         if (userId == null || userId.isBlank()) {
-          throw new IllegalStateException("User id is null for email: " + email);
+          throw new MissingAuthenticationException("User id is null for email: " + email);
         }
         return userId;
       }

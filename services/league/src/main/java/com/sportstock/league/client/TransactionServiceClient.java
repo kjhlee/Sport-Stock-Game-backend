@@ -2,6 +2,7 @@ package com.sportstock.league.client;
 
 import com.sportstock.common.dto.transaction.CreateWalletRequest;
 import com.sportstock.common.dto.transaction.IssueStipendRequest;
+import com.sportstock.common.exceptions.MissingAuthenticationException;
 import com.sportstock.common.dto.transaction.StipendResultResponse;
 import com.sportstock.common.dto.transaction.WalletResponse;
 import java.math.BigDecimal;
@@ -25,9 +26,20 @@ public class TransactionServiceClient {
     ServletRequestAttributes attrs =
         (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
     if (attrs == null) {
-      throw new IllegalStateException("No request context available");
+      throw new MissingAuthenticationException("No request context available");
     }
-    return attrs.getRequest().getHeader("Authorization");
+    if (attrs.getRequest() == null) {
+      throw new MissingAuthenticationException("No servlet request available");
+    }
+    String authorizationHeader = attrs.getRequest().getHeader("Authorization");
+    if (authorizationHeader == null || authorizationHeader.isBlank()) {
+      throw new MissingAuthenticationException("Missing Authorization header on incoming request");
+    }
+    if (!authorizationHeader.startsWith("Bearer ")) {
+      throw new MissingAuthenticationException(
+          "Authorization header must use Bearer token format (Authorization: Bearer <token>)");
+    }
+    return authorizationHeader;
   }
 
   public WalletResponse createWallet(Long userId, Long leagueId) {

@@ -1,5 +1,6 @@
 package com.sportstock.transaction.controller;
 
+import com.sportstock.common.exceptions.MissingAuthenticationException;
 import com.sportstock.transaction.exception.InsufficientFundsException;
 import com.sportstock.transaction.exception.TransactionStateException;
 import com.sportstock.transaction.exception.WalletAlreadyExistsException;
@@ -78,6 +79,12 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(IllegalArgumentException.class)
   public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException ex) {
     return build(HttpStatus.BAD_REQUEST, "BAD_REQUEST", ex.getMessage());
+  }
+
+  @ExceptionHandler(MissingAuthenticationException.class)
+  public ResponseEntity<Map<String, Object>> handleMissingAuthentication(
+      MissingAuthenticationException ex) {
+    return build(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", ex.getMessage());
   }
 
   private ResponseEntity<Map<String, Object>> build(
