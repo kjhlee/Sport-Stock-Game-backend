@@ -2,9 +2,9 @@ package com.sportstock.league.client;
 
 import com.sportstock.common.dto.transaction.CreateWalletRequest;
 import com.sportstock.common.dto.transaction.IssueStipendRequest;
-import com.sportstock.common.exceptions.MissingAuthenticationException;
 import com.sportstock.common.dto.transaction.StipendResultResponse;
 import com.sportstock.common.dto.transaction.WalletResponse;
+import com.sportstock.common.exceptions.MissingAuthenticationException;
 import java.math.BigDecimal;
 import java.util.List;
 import lombok.RequiredArgsConstructor;

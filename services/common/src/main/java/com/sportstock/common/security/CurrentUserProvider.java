@@ -54,7 +54,7 @@ public class CurrentUserProvider {
     try (Connection connection = dataSource.getConnection();
         PreparedStatement statement = connection.prepareStatement(query)) {
       statement.setString(1, email);
-    try (ResultSet rs = statement.executeQuery()) {
+      try (ResultSet rs = statement.executeQuery()) {
         if (!rs.next()) {
           throw new MissingAuthenticationException("No user found for email: " + email);
         }
