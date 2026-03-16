@@ -11,6 +11,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 @Slf4j
 @Component
@@ -19,12 +21,21 @@ public class TransactionServiceClient {
 
   private final RestClient transactionRestClient;
 
+  private String getAuthorizationHeader() {
+    ServletRequestAttributes attrs =
+        (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+    if (attrs == null) {
+      throw new IllegalStateException("No request context available");
+    }
+    return attrs.getRequest().getHeader("Authorization");
+  }
+
   public WalletResponse createWallet(Long userId, Long leagueId) {
     try {
       return transactionRestClient
           .post()
           .uri("/api/v1/wallets")
-          .header("X-User-Id", userId.toString())
+          .header("Authorization", getAuthorizationHeader())
           .body(new CreateWalletRequest(leagueId))
           .retrieve()
           .body(WalletResponse.class);
@@ -41,6 +52,7 @@ public class TransactionServiceClient {
       return transactionRestClient
           .post()
           .uri("/api/v1/wallets/stipends/initial")
+          .header("Authorization", getAuthorizationHeader())
           .body(new IssueStipendRequest(leagueId, amount, userIds))
           .retrieve()
           .body(StipendResultResponse.class);
@@ -57,7 +69,7 @@ public class TransactionServiceClient {
           .uri(
               uriBuilder ->
                   uriBuilder.path("/api/v1/wallets").queryParam("leagueId", leagueId).build())
-          .header("X-User-Id", userId.toString())
+          .header("Authorization", getAuthorizationHeader())
           .retrieve()
           .body(WalletResponse.class);
     } catch (RestClientResponseException e) {
