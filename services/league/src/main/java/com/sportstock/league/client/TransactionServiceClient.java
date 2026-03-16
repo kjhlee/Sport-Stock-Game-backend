@@ -42,7 +42,7 @@ public class TransactionServiceClient {
     return authorizationHeader;
   }
 
-  public WalletResponse createWallet(Long userId, Long leagueId) {
+  public WalletResponse createWallet(Long leagueId) {
     try {
       return transactionRestClient
           .post()
@@ -52,8 +52,7 @@ public class TransactionServiceClient {
           .retrieve()
           .body(WalletResponse.class);
     } catch (RestClientResponseException e) {
-      log.error(
-          "Failed to create wallet for user {} in league {}: {}", userId, leagueId, e.getMessage());
+      log.error("Failed to create wallet for league {}: {}", leagueId, e.getMessage());
       throw new RuntimeException("Transaction service unavailable", e);
     }
   }
