@@ -47,8 +47,7 @@ public class LeagueServiceClient {
           .retrieve()
           .body(new ParameterizedTypeReference<>() {});
     } catch (RestClientResponseException e) {
-      log.error(
-          "Failed to fetch member IDs for league {}: {}", leagueId, e.getMessage());
+      log.error("Failed to fetch member IDs for league {}: {}", leagueId, e.getMessage());
       throw new RuntimeException("League service unavailable", e);
     }
   }

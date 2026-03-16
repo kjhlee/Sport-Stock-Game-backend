@@ -356,16 +356,14 @@ class WalletServiceTest {
       // Given
       BigDecimal amount = new BigDecimal("10000.00");
 
-      when(leagueServiceClient.getMemberUserIds(TEST_LEAGUE_ID))
-          .thenReturn(List.of(TEST_USER_ID));
+      when(leagueServiceClient.getMemberUserIds(TEST_LEAGUE_ID)).thenReturn(List.of(TEST_USER_ID));
       Wallet wallet = createMockWallet(1L, TEST_USER_ID, TEST_LEAGUE_ID, INITIAL_BALANCE);
       when(walletRepository.findByUserIdAndLeagueIdForUpdate(TEST_USER_ID, TEST_LEAGUE_ID))
           .thenReturn(Optional.of(wallet));
       when(transactionRepository.existsByIdempotencyKey(any())).thenReturn(false);
 
       // When
-      StipendResultResponse response =
-          walletService.issueInitialStipends(TEST_LEAGUE_ID, amount);
+      StipendResultResponse response = walletService.issueInitialStipends(TEST_LEAGUE_ID, amount);
 
       // Then
       assertThat(response).isNotNull();
@@ -381,8 +379,7 @@ class WalletServiceTest {
       when(leagueServiceClient.getMemberUserIds(TEST_LEAGUE_ID)).thenReturn(List.of());
 
       // When
-      StipendResultResponse response =
-          walletService.issueInitialStipends(TEST_LEAGUE_ID, amount);
+      StipendResultResponse response = walletService.issueInitialStipends(TEST_LEAGUE_ID, amount);
 
       // Then
       assertThat(response).isNotNull();
@@ -403,8 +400,7 @@ class WalletServiceTest {
       BigDecimal amount = new BigDecimal("500.00");
       Integer weekNumber = 1;
 
-      when(leagueServiceClient.getMemberUserIds(TEST_LEAGUE_ID))
-          .thenReturn(List.of(TEST_USER_ID));
+      when(leagueServiceClient.getMemberUserIds(TEST_LEAGUE_ID)).thenReturn(List.of(TEST_USER_ID));
       Wallet wallet =
           createMockWallet(1L, TEST_USER_ID, TEST_LEAGUE_ID, new BigDecimal("10000.00"));
       when(walletRepository.findByUserIdAndLeagueIdForUpdate(TEST_USER_ID, TEST_LEAGUE_ID))
@@ -446,8 +442,7 @@ class WalletServiceTest {
       // Given
       BigDecimal amount = new BigDecimal("500.00");
 
-      when(leagueServiceClient.getMemberUserIds(TEST_LEAGUE_ID))
-          .thenReturn(List.of(TEST_USER_ID));
+      when(leagueServiceClient.getMemberUserIds(TEST_LEAGUE_ID)).thenReturn(List.of(TEST_USER_ID));
       Wallet wallet =
           createMockWallet(1L, TEST_USER_ID, TEST_LEAGUE_ID, new BigDecimal("10000.00"));
       when(walletRepository.findByUserIdAndLeagueIdForUpdate(TEST_USER_ID, TEST_LEAGUE_ID))
