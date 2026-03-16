@@ -3,6 +3,7 @@ package com.sportstock.transaction.service;
 import com.sportstock.common.dto.transaction.StipendResultResponse;
 import com.sportstock.common.dto.transaction.TransactionResponse;
 import com.sportstock.common.dto.transaction.WalletResponse;
+import com.sportstock.transaction.client.LeagueServiceClient;
 import com.sportstock.transaction.entity.Transaction;
 import com.sportstock.transaction.entity.Wallet;
 import com.sportstock.transaction.enums.TransactionType;
@@ -28,14 +29,17 @@ public class WalletService {
   private final WalletRepository walletRepository;
   private final TransactionRepository transactionRepository;
   private final TransactionTemplate transactionTemplate;
+  private final LeagueServiceClient leagueServiceClient;
 
   public WalletService(
       WalletRepository walletRepository,
       TransactionRepository transactionRepository,
-      PlatformTransactionManager txManager) {
+      PlatformTransactionManager txManager,
+      LeagueServiceClient leagueServiceClient) {
     this.walletRepository = walletRepository;
     this.transactionRepository = transactionRepository;
     this.transactionTemplate = new TransactionTemplate(txManager);
+    this.leagueServiceClient = leagueServiceClient;
   }
 
   @Transactional
@@ -54,8 +58,8 @@ public class WalletService {
     return DtoMapper.toWalletResponse(wallet);
   }
 
-  public StipendResultResponse issueInitialStipends(
-      Long leagueId, BigDecimal amount, List<Long> userIds) {
+  public StipendResultResponse issueInitialStipends(Long leagueId, BigDecimal amount) {
+    List<Long> userIds = leagueServiceClient.getMemberUserIds(leagueId);
     AtomicInteger walletsCreated = new AtomicInteger(0);
     AtomicInteger stipendsIssued = new AtomicInteger(0);
 
@@ -104,7 +108,8 @@ public class WalletService {
   }
 
   public StipendResultResponse issueWeeklyStipends(
-      Long leagueId, BigDecimal amount, List<Long> userIds, Integer weekNumber) {
+      Long leagueId, BigDecimal amount, Integer weekNumber) {
+    List<Long> userIds = leagueServiceClient.getMemberUserIds(leagueId);
     AtomicInteger stipendsIssued = new AtomicInteger(0);
 
     for (Long userId : userIds) {

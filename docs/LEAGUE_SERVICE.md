@@ -42,7 +42,20 @@ A league progresses through three states:
 
 ### Authentication
 
-All endpoints require the `X-User-Id` header containing the authenticated user's ID. This is currently extracted by `CurrentUserProvider` and will be migrated to OAuth/Spring Security in the future.
+All endpoints require a valid JWT token in the `Authorization` header. User ID is extracted from JWT claims via the centralized `CurrentUserProvider` in `services/common`.
+
+**Header format:**
+```
+Authorization: Bearer <accessToken>
+```
+
+Where `<accessToken>` is obtained from the user-authentication service's login/register endpoints.
+
+**How it works:**
+1. Client includes `Authorization: Bearer <token>` in request headers
+2. `JwtAuthenticationFilter` validates token via `JwtValidationService`
+3. User ID is extracted from JWT claims and set in `SecurityContextHolder`
+4. `CurrentUserProvider` retrieves the user ID from `SecurityContextHolder` for authorization checks
 
 ---
 
@@ -65,8 +78,8 @@ Creates a new league with the authenticated user as owner.
 **Request:**
 ```http
 POST /api/v1/leagues
+Authorization: Bearer <accessToken>
 Content-Type: application/json
-X-User-Id: 12345
 
 {
   "name": "Sunday Night Warriors",
@@ -116,7 +129,7 @@ Retrieves league information. Requires league membership.
 **Request:**
 ```http
 GET /api/v1/leagues/{leagueId}
-X-User-Id: 12345
+Authorization: Bearer <accessToken>
 ```
 
 **Response (200 OK):**
@@ -151,7 +164,7 @@ Returns paginated list of leagues the user is a member of.
 **Request:**
 ```http
 GET /api/v1/leagues?page=0&size=20
-X-User-Id: 12345
+Authorization: Bearer <accessToken>
 ```
 
 **Query Parameters:**
@@ -203,7 +216,7 @@ Starts a league, transitioning from INACTIVE to ACTIVE. Only the owner can start
 **Request:**
 ```http
 POST /api/v1/leagues/{leagueId}/start
-X-User-Id: 12345
+Authorization: Bearer <accessToken>
 ```
 
 **Response (200 OK):**
@@ -238,7 +251,7 @@ Archives a league, marking it as complete. Only the owner can archive.
 **Request:**
 ```http
 POST /api/v1/leagues/{leagueId}/archive
-X-User-Id: 12345
+Authorization: Bearer <accessToken>
 ```
 
 **Response (200 OK):**
@@ -273,7 +286,7 @@ Generates a unique invite code for a league. Only the owner can create invites, 
 ```http
 POST /api/v1/leagues/{leagueId}/invites
 Content-Type: application/json
-X-User-Id: 12345
+Authorization: Bearer <accessToken>
 
 {
   "expiresAt": "2024-09-01T23:59:59Z",
@@ -312,7 +325,7 @@ Revokes an invite code, preventing further use.
 **Request:**
 ```http
 POST /api/v1/leagues/{leagueId}/invites/{inviteId}/revoke
-X-User-Id: 12345
+Authorization: Bearer <accessToken>
 ```
 
 **Response (204 No Content)**
@@ -334,7 +347,7 @@ Join a league using an invite code. The league must be INACTIVE, have available 
 ```http
 POST /api/v1/leagues/{leagueId}/join
 Content-Type: application/json
-X-User-Id: 67890
+Authorization: Bearer <accessToken>
 
 {
   "inviteCode": "XJ4K9P2M7N5Q"
@@ -367,7 +380,7 @@ Returns paginated list of league members. Requires league membership.
 **Request:**
 ```http
 GET /api/v1/leagues/{leagueId}/members?page=0&size=20
-X-User-Id: 12345
+Authorization: Bearer <accessToken>
 ```
 
 **Query Parameters:**
@@ -412,7 +425,7 @@ Remove a member from the league. Only the owner can remove members, and only bef
 **Request:**
 ```http
 POST /api/v1/leagues/{leagueId}/members/{targetUserId}/remove
-X-User-Id: 12345
+Authorization: Bearer <accessToken>
 ```
 
 **Response (204 No Content)**
@@ -431,7 +444,7 @@ User leaves a league. Only allowed in INACTIVE leagues, and owner cannot leave.
 **Request:**
 ```http
 POST /api/v1/leagues/{leagueId}/leave
-X-User-Id: 67890
+Authorization: Bearer <accessToken>
 ```
 
 **Response (204 No Content)**
@@ -807,7 +820,7 @@ Service will start on `http://localhost:8100`
 ```bash
 curl -X POST http://localhost:8100/api/v1/leagues \
   -H "Content-Type: application/json" \
-  -H "X-User-Id: 12345" \
+  -H "Authorization: Bearer <accessToken>" \
   -d '{
     "name": "Test League",
     "maxMembers": 10,
@@ -823,7 +836,7 @@ curl -X POST http://localhost:8100/api/v1/leagues \
 ```bash
 curl -X POST http://localhost:8100/api/v1/leagues/1/invites \
   -H "Content-Type: application/json" \
-  -H "X-User-Id: 12345" \
+  -H "Authorization: Bearer <accessToken>" \
   -d '{
     "expiresAt": "2025-09-01T23:59:59Z",
     "maxUses": 10
@@ -834,7 +847,7 @@ curl -X POST http://localhost:8100/api/v1/leagues/1/invites \
 ```bash
 curl -X POST http://localhost:8100/api/v1/leagues/1/join \
   -H "Content-Type: application/json" \
-  -H "X-User-Id: 67890" \
+  -H "Authorization: Bearer <accessToken>" \
   -d '{
     "inviteCode": "XJ4K9P2M7N5Q"
   }'
@@ -843,7 +856,7 @@ curl -X POST http://localhost:8100/api/v1/leagues/1/join \
 **Start league:**
 ```bash
 curl -X POST http://localhost:8100/api/v1/leagues/1/start \
-  -H "X-User-Id: 12345"
+  -H "Authorization: Bearer <accessToken>"
 ```
 
 ---

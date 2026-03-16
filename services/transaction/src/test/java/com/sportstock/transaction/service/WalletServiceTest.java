@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import com.sportstock.common.dto.transaction.StipendResultResponse;
 import com.sportstock.common.dto.transaction.TransactionResponse;
 import com.sportstock.common.dto.transaction.WalletResponse;
+import com.sportstock.transaction.client.LeagueServiceClient;
 import com.sportstock.transaction.entity.Transaction;
 import com.sportstock.transaction.entity.Wallet;
 import com.sportstock.transaction.enums.TransactionType;
@@ -49,6 +50,8 @@ class WalletServiceTest {
 
   @Mock private PlatformTransactionManager txManager;
 
+  @Mock private LeagueServiceClient leagueServiceClient;
+
   private WalletService walletService;
 
   @Captor private ArgumentCaptor<Wallet> walletCaptor;
@@ -59,7 +62,8 @@ class WalletServiceTest {
 
   @BeforeEach
   void setUp() {
-    walletService = new WalletService(walletRepository, transactionRepository, txManager);
+    walletService =
+        new WalletService(walletRepository, transactionRepository, txManager, leagueServiceClient);
   }
 
   @Nested
@@ -350,9 +354,10 @@ class WalletServiceTest {
     @DisplayName("Should return stipend result with league info")
     void shouldReturnStipendResultWithLeagueInfo() {
       // Given
-      List<Long> userIds = List.of(TEST_USER_ID);
       BigDecimal amount = new BigDecimal("10000.00");
 
+      when(leagueServiceClient.getMemberUserIds(TEST_LEAGUE_ID))
+          .thenReturn(List.of(TEST_USER_ID));
       Wallet wallet = createMockWallet(1L, TEST_USER_ID, TEST_LEAGUE_ID, INITIAL_BALANCE);
       when(walletRepository.findByUserIdAndLeagueIdForUpdate(TEST_USER_ID, TEST_LEAGUE_ID))
           .thenReturn(Optional.of(wallet));
@@ -360,7 +365,7 @@ class WalletServiceTest {
 
       // When
       StipendResultResponse response =
-          walletService.issueInitialStipends(TEST_LEAGUE_ID, amount, userIds);
+          walletService.issueInitialStipends(TEST_LEAGUE_ID, amount);
 
       // Then
       assertThat(response).isNotNull();
@@ -372,12 +377,12 @@ class WalletServiceTest {
     @DisplayName("Should handle empty user list")
     void shouldHandleEmptyUserList() {
       // Given
-      List<Long> emptyUserIds = List.of();
       BigDecimal amount = new BigDecimal("10000.00");
+      when(leagueServiceClient.getMemberUserIds(TEST_LEAGUE_ID)).thenReturn(List.of());
 
       // When
       StipendResultResponse response =
-          walletService.issueInitialStipends(TEST_LEAGUE_ID, amount, emptyUserIds);
+          walletService.issueInitialStipends(TEST_LEAGUE_ID, amount);
 
       // Then
       assertThat(response).isNotNull();
@@ -395,10 +400,11 @@ class WalletServiceTest {
     @DisplayName("Should return stipend result with league info")
     void shouldReturnStipendResultWithLeagueInfo() {
       // Given
-      List<Long> userIds = List.of(TEST_USER_ID);
       BigDecimal amount = new BigDecimal("500.00");
       Integer weekNumber = 1;
 
+      when(leagueServiceClient.getMemberUserIds(TEST_LEAGUE_ID))
+          .thenReturn(List.of(TEST_USER_ID));
       Wallet wallet =
           createMockWallet(1L, TEST_USER_ID, TEST_LEAGUE_ID, new BigDecimal("10000.00"));
       when(walletRepository.findByUserIdAndLeagueIdForUpdate(TEST_USER_ID, TEST_LEAGUE_ID))
@@ -407,7 +413,7 @@ class WalletServiceTest {
 
       // When
       StipendResultResponse response =
-          walletService.issueWeeklyStipends(TEST_LEAGUE_ID, amount, userIds, weekNumber);
+          walletService.issueWeeklyStipends(TEST_LEAGUE_ID, amount, weekNumber);
 
       // Then
       assertThat(response).isNotNull();
@@ -420,13 +426,13 @@ class WalletServiceTest {
     @DisplayName("Should handle empty user list")
     void shouldHandleEmptyUserList() {
       // Given
-      List<Long> emptyUserIds = List.of();
       BigDecimal amount = new BigDecimal("500.00");
       Integer weekNumber = 1;
+      when(leagueServiceClient.getMemberUserIds(TEST_LEAGUE_ID)).thenReturn(List.of());
 
       // When
       StipendResultResponse response =
-          walletService.issueWeeklyStipends(TEST_LEAGUE_ID, amount, emptyUserIds, weekNumber);
+          walletService.issueWeeklyStipends(TEST_LEAGUE_ID, amount, weekNumber);
 
       // Then
       assertThat(response).isNotNull();
@@ -438,9 +444,10 @@ class WalletServiceTest {
     @DisplayName("Should handle multiple week numbers")
     void shouldHandleMultipleWeekNumbers() {
       // Given
-      List<Long> userIds = List.of(TEST_USER_ID);
       BigDecimal amount = new BigDecimal("500.00");
 
+      when(leagueServiceClient.getMemberUserIds(TEST_LEAGUE_ID))
+          .thenReturn(List.of(TEST_USER_ID));
       Wallet wallet =
           createMockWallet(1L, TEST_USER_ID, TEST_LEAGUE_ID, new BigDecimal("10000.00"));
       when(walletRepository.findByUserIdAndLeagueIdForUpdate(TEST_USER_ID, TEST_LEAGUE_ID))
@@ -449,11 +456,11 @@ class WalletServiceTest {
 
       // When
       StipendResultResponse response1 =
-          walletService.issueWeeklyStipends(TEST_LEAGUE_ID, amount, userIds, 1);
+          walletService.issueWeeklyStipends(TEST_LEAGUE_ID, amount, 1);
       StipendResultResponse response2 =
-          walletService.issueWeeklyStipends(TEST_LEAGUE_ID, amount, userIds, 2);
+          walletService.issueWeeklyStipends(TEST_LEAGUE_ID, amount, 2);
       StipendResultResponse response3 =
-          walletService.issueWeeklyStipends(TEST_LEAGUE_ID, amount, userIds, 18);
+          walletService.issueWeeklyStipends(TEST_LEAGUE_ID, amount, 18);
 
       // Then
       assertThat(response1).isNotNull();

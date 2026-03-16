@@ -57,16 +57,14 @@ public class WalletController {
   @ResponseStatus(HttpStatus.OK)
   public StipendResultResponse issueInitialStipends(
       @Valid @RequestBody IssueStipendRequest request) {
-    return walletService.issueInitialStipends(
-        request.leagueId(), request.amount(), request.userIds());
+    return walletService.issueInitialStipends(request.leagueId(), request.amount());
   }
 
   @PostMapping("/stipends/weekly")
   @ResponseStatus(HttpStatus.OK)
   public StipendResultResponse issueWeeklyStipends(
       @Valid @RequestBody IssueStipendRequest request, @RequestParam Integer weekNumber) {
-    return walletService.issueWeeklyStipends(
-        request.leagueId(), request.amount(), request.userIds(), weekNumber);
+    return walletService.issueWeeklyStipends(request.leagueId(), request.amount(), weekNumber);
   }
 
   @PostMapping("/buy")

@@ -178,13 +178,7 @@ public class LeagueService {
     league.setStartedAt(OffsetDateTime.now());
     league.setStatus(LeagueStatus.ACTIVE);
 
-    List<Long> memberIds =
-        leagueMemberRepository.findAllByLeagueId(leagueId).stream()
-            .map(LeagueMember::getUserId)
-            .toList();
-
-    transactionServiceClient.issueInitialStipends(
-        leagueId, league.getInitialStipendAmount(), memberIds);
+    transactionServiceClient.issueInitialStipends(leagueId, league.getInitialStipendAmount());
     league.setInitialStipendIssuedAt(OffsetDateTime.now());
     leagueRepository.save(league);
     return DtoMapper.toLeagueResponse(league, memberCount);
@@ -269,6 +263,14 @@ public class LeagueService {
     league.setStatus(LeagueStatus.ARCHIVED);
     leagueRepository.save(league);
     return DtoMapper.toLeagueResponse(league, leagueMemberRepository.countByLeagueId(leagueId));
+  }
+
+  @Transactional(readOnly = true)
+  public List<Long> getMemberUserIds(Long leagueId) {
+    findLeagueOrThrow(leagueId);
+    return leagueMemberRepository.findAllByLeagueId(leagueId).stream()
+        .map(LeagueMember::getUserId)
+        .toList();
   }
 
   private League findLeagueOrThrow(Long leagueId) {

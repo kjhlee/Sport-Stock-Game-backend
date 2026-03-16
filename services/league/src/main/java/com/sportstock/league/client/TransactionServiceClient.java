@@ -6,7 +6,6 @@ import com.sportstock.common.dto.transaction.StipendResultResponse;
 import com.sportstock.common.dto.transaction.WalletResponse;
 import com.sportstock.common.exceptions.MissingAuthenticationException;
 import java.math.BigDecimal;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -57,14 +56,13 @@ public class TransactionServiceClient {
     }
   }
 
-  public StipendResultResponse issueInitialStipends(
-      Long leagueId, BigDecimal amount, List<Long> userIds) {
+  public StipendResultResponse issueInitialStipends(Long leagueId, BigDecimal amount) {
     try {
       return transactionRestClient
           .post()
           .uri("/api/v1/wallets/stipends/initial")
           .header("Authorization", getAuthorizationHeader())
-          .body(new IssueStipendRequest(leagueId, amount, userIds))
+          .body(new IssueStipendRequest(leagueId, amount))
           .retrieve()
           .body(StipendResultResponse.class);
     } catch (RestClientResponseException e) {
