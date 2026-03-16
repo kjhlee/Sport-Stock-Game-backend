@@ -32,6 +32,23 @@ There are two categories of endpoints:
 
 ---
 
+## Authentication
+
+All endpoints require a valid JWT token in the `Authorization` header. User ID is extracted from JWT claims via the centralized `CurrentUserProvider` in `services/common`.
+
+**Header format:**
+```
+Authorization: Bearer <accessToken>
+```
+
+Where `<accessToken>` is obtained from the user-authentication service's login/register endpoints.
+
+**Error Responses:**
+- `401 Unauthorized` — Missing or invalid JWT token
+- `403 Forbidden` — User lacks necessary permissions for admin operations
+
+---
+
 ## Orchestrated Sync Endpoints
 
 These run **asynchronously** — the HTTP response returns immediately with `202 Accepted` and the job runs in the background. All three are `POST` requests with query parameters.

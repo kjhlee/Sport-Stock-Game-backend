@@ -6,7 +6,7 @@ import com.sportstock.common.dto.transaction.StipendResultResponse;
 import com.sportstock.common.dto.transaction.StockTransactionRequest;
 import com.sportstock.common.dto.transaction.TransactionResponse;
 import com.sportstock.common.dto.transaction.WalletResponse;
-import com.sportstock.transaction.config.CurrentUserProvider;
+import com.sportstock.common.security.CurrentUserProvider;
 import com.sportstock.transaction.service.WalletService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -57,16 +57,14 @@ public class WalletController {
   @ResponseStatus(HttpStatus.OK)
   public StipendResultResponse issueInitialStipends(
       @Valid @RequestBody IssueStipendRequest request) {
-    return walletService.issueInitialStipends(
-        request.leagueId(), request.amount(), request.userIds());
+    return walletService.issueInitialStipends(request.leagueId(), request.amount());
   }
 
   @PostMapping("/stipends/weekly")
   @ResponseStatus(HttpStatus.OK)
   public StipendResultResponse issueWeeklyStipends(
       @Valid @RequestBody IssueStipendRequest request, @RequestParam Integer weekNumber) {
-    return walletService.issueWeeklyStipends(
-        request.leagueId(), request.amount(), request.userIds(), weekNumber);
+    return walletService.issueWeeklyStipends(request.leagueId(), request.amount(), weekNumber);
   }
 
   @PostMapping("/buy")

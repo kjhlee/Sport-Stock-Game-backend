@@ -1,5 +1,6 @@
 package com.sportstock.league.controller;
 
+import com.sportstock.common.exceptions.MissingAuthenticationException;
 import com.sportstock.league.exception.InvalidInviteException;
 import com.sportstock.league.exception.LeagueAccessDeniedException;
 import com.sportstock.league.exception.LeagueNotFoundException;
@@ -75,6 +76,12 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(IllegalArgumentException.class)
   public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException ex) {
     return build(HttpStatus.BAD_REQUEST, "BAD_REQUEST", ex.getMessage());
+  }
+
+  @ExceptionHandler(MissingAuthenticationException.class)
+  public ResponseEntity<Map<String, Object>> handleMissingAuthentication(
+      MissingAuthenticationException ex) {
+    return build(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", ex.getMessage());
   }
 
   private ResponseEntity<Map<String, Object>> build(

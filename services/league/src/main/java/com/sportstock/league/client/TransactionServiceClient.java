@@ -4,13 +4,15 @@ import com.sportstock.common.dto.transaction.CreateWalletRequest;
 import com.sportstock.common.dto.transaction.IssueStipendRequest;
 import com.sportstock.common.dto.transaction.StipendResultResponse;
 import com.sportstock.common.dto.transaction.WalletResponse;
+import com.sportstock.common.exceptions.MissingAuthenticationException;
 import java.math.BigDecimal;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 @Slf4j
 @Component
@@ -19,29 +21,48 @@ public class TransactionServiceClient {
 
   private final RestClient transactionRestClient;
 
-  public WalletResponse createWallet(Long userId, Long leagueId) {
+  private String getAuthorizationHeader() {
+    ServletRequestAttributes attrs =
+        (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+    if (attrs == null) {
+      throw new MissingAuthenticationException("No request context available");
+    }
+    if (attrs.getRequest() == null) {
+      throw new MissingAuthenticationException("No servlet request available");
+    }
+    String authorizationHeader = attrs.getRequest().getHeader("Authorization");
+    if (authorizationHeader == null || authorizationHeader.isBlank()) {
+      throw new MissingAuthenticationException("Missing Authorization header on incoming request");
+    }
+    if (!authorizationHeader.startsWith("Bearer ")) {
+      throw new MissingAuthenticationException(
+          "Authorization header must use Bearer token format (Authorization: Bearer <token>)");
+    }
+    return authorizationHeader;
+  }
+
+  public WalletResponse createWallet(Long leagueId) {
     try {
       return transactionRestClient
           .post()
           .uri("/api/v1/wallets")
-          .header("X-User-Id", userId.toString())
+          .header("Authorization", getAuthorizationHeader())
           .body(new CreateWalletRequest(leagueId))
           .retrieve()
           .body(WalletResponse.class);
     } catch (RestClientResponseException e) {
-      log.error(
-          "Failed to create wallet for user {} in league {}: {}", userId, leagueId, e.getMessage());
+      log.error("Failed to create wallet for league {}: {}", leagueId, e.getMessage());
       throw new RuntimeException("Transaction service unavailable", e);
     }
   }
 
-  public StipendResultResponse issueInitialStipends(
-      Long leagueId, BigDecimal amount, List<Long> userIds) {
+  public StipendResultResponse issueInitialStipends(Long leagueId, BigDecimal amount) {
     try {
       return transactionRestClient
           .post()
           .uri("/api/v1/wallets/stipends/initial")
-          .body(new IssueStipendRequest(leagueId, amount, userIds))
+          .header("Authorization", getAuthorizationHeader())
+          .body(new IssueStipendRequest(leagueId, amount))
           .retrieve()
           .body(StipendResultResponse.class);
     } catch (RestClientResponseException e) {
@@ -57,7 +78,7 @@ public class TransactionServiceClient {
           .uri(
               uriBuilder ->
                   uriBuilder.path("/api/v1/wallets").queryParam("leagueId", leagueId).build())
-          .header("X-User-Id", userId.toString())
+          .header("Authorization", getAuthorizationHeader())
           .retrieve()
           .body(WalletResponse.class);
     } catch (RestClientResponseException e) {

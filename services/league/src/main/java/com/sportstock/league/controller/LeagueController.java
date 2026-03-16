@@ -6,9 +6,10 @@ import com.sportstock.common.dto.league.JoinLeagueRequest;
 import com.sportstock.common.dto.league.LeagueInviteResponse;
 import com.sportstock.common.dto.league.LeagueMemberResponse;
 import com.sportstock.common.dto.league.LeagueResponse;
-import com.sportstock.league.config.CurrentUserProvider;
+import com.sportstock.common.security.CurrentUserProvider;
 import com.sportstock.league.service.LeagueService;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -94,6 +95,12 @@ public class LeagueController {
   @ResponseStatus(HttpStatus.NO_CONTENT)
   public void leaveLeague(@PathVariable Long leagueId) {
     leagueService.leaveLeague(currentUserProvider.getCurrentUserId(), leagueId);
+  }
+
+  @GetMapping("/internal/{leagueId}/member-ids")
+  @ResponseStatus(HttpStatus.OK)
+  public List<Long> getMemberUserIds(@PathVariable Long leagueId) {
+    return leagueService.getMemberUserIds(leagueId);
   }
 
   @GetMapping("/{leagueId}/members")

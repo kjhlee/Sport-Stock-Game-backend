@@ -21,9 +21,12 @@ public class StipendScheduler {
     // - Call league service internal endpoint to get active leagues matching this payout day
     //   GET /api/v1/leagues/internal/active-for-payout?dayOfWeek={0-6}
     // - For each league returned:
-    //   - Extract leagueId, stipendAmount, member userIds, current week number
-    //   - Call walletService.issueWeeklyStipends(leagueId, amount, userIds, weekNumber)
+    //   - Extract leagueId, stipendAmount, current week number
+    //   - Call walletService.issueWeeklyStipends(leagueId, amount, weekNumber)
+    //     (member IDs are fetched automatically from league service)
     // - Log results for each league
+    // NOTE: This cron job has no incoming HTTP request, so RequestContextHolder will be null.
+    //   A service-to-service auth mechanism will be needed when this is implemented.
     log.info("Weekly stipend scheduler triggered for {}", LocalDate.now().getDayOfWeek());
     throw new UnsupportedOperationException("TODO: Implement processWeeklyStipends");
   }
