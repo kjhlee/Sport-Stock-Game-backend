@@ -1,0 +1,1279 @@
+{
+  "info": {
+    "_postman_id": "sportstockflow-collection-v2",
+    "name": "SportStock Complete Flow - Updated",
+    "description": "Complete end-to-end test flow for all SportStock services with JWT authentication. Flow: Register → Login → Ingestion → League → Transaction. All endpoints have correct bodies based on DTOs and proper authentication headers.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Auth Service (Port 8120)",
+      "item": [
+        {
+          "name": "Register Player 1",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set('player1_accessToken', jsonData.accessToken);",
+                  "pm.collectionVariables.set('player1_refreshToken', jsonData.refreshToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"player1@test.com\",\"username\":\"player1\",\"firstName\":\"Player\",\"lastName\":\"One\",\"password\":\"TestPassword123!\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}:{{authPort}}/api/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "port": "{{authPort}}",
+              "path": [
+                "api",
+                "register"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Register Player 2",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set('player2_accessToken', jsonData.accessToken);",
+                  "pm.collectionVariables.set('player2_refreshToken', jsonData.refreshToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"player2@test.com\",\"username\":\"player2\",\"firstName\":\"Player\",\"lastName\":\"Two\",\"password\":\"TestPassword123!\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}:{{authPort}}/api/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "port": "{{authPort}}",
+              "path": [
+                "api",
+                "register"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Login Player 1",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set('accessToken', jsonData.accessToken);",
+                  "pm.collectionVariables.set('refreshToken', jsonData.refreshToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"login\":\"player1\",\"password\":\"TestPassword123!\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}:{{authPort}}/api/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "port": "{{authPort}}",
+              "path": [
+                "api",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set('accessToken', jsonData.accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"refreshToken\":\"{{refreshToken}}\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}:{{authPort}}/api/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "port": "{{authPort}}",
+              "path": [
+                "api",
+                "refresh"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Ingestion Service (Port 8090)",
+      "item": [
+        {
+          "name": "Sync Foundation Data",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 202 Accepted\", function () {",
+                  "    pm.response.to.have.status(202);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/sync/foundation?seasonYear=2025&seasonType=2&week=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "port": "{{ingestionPort}}",
+              "path": [
+                "api",
+                "v1",
+                "ingestion",
+                "sync",
+                "foundation"
+              ],
+              "query": [
+                {
+                  "key": "seasonYear",
+                  "value": "2025"
+                },
+                {
+                  "key": "seasonType",
+                  "value": "2"
+                },
+                {
+                  "key": "week",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get All Athletes",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.length > 0) {",
+                  "    pm.collectionVariables.set('athleteEspnId', jsonData[0].espnId);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/athletes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "port": "{{ingestionPort}}",
+              "path": [
+                "api",
+                "v1",
+                "ingestion",
+                "athletes"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Athlete by ESPN ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/athletes/{{athleteEspnId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "port": "{{ingestionPort}}",
+              "path": [
+                "api",
+                "v1",
+                "ingestion",
+                "athletes",
+                "{{athleteEspnId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get All Teams",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.length > 0) {",
+                  "    pm.collectionVariables.set('teamEspnId', jsonData[0].espnId);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/teams",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "port": "{{ingestionPort}}",
+              "path": [
+                "api",
+                "v1",
+                "ingestion",
+                "teams"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Team Records by Season",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/teams/{{teamEspnId}}/records?seasonYear=2025",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "port": "{{ingestionPort}}",
+              "path": [
+                "api",
+                "v1",
+                "ingestion",
+                "teams",
+                "{{teamEspnId}}",
+                "records"
+              ],
+              "query": [
+                {
+                  "key": "seasonYear",
+                  "value": "2025"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Events for Season/Week",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (Array.isArray(jsonData) && jsonData.length > 0) {",
+                  "    pm.collectionVariables.set('eventEspnId', jsonData[0].espnId);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/events?seasonYear=2025&seasonType=2&weekNumber=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "port": "{{ingestionPort}}",
+              "path": [
+                "api",
+                "v1",
+                "ingestion",
+                "events"
+              ],
+              "query": [
+                {
+                  "key": "seasonYear",
+                  "value": "2025"
+                },
+                {
+                  "key": "seasonType",
+                  "value": "2"
+                },
+                {
+                  "key": "weekNumber",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Event by ESPN ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/events/{{eventEspnId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "port": "{{ingestionPort}}",
+              "path": [
+                "api",
+                "v1",
+                "ingestion",
+                "events",
+                "{{eventEspnId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Unauthorized Access (Missing Token)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 401\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/athletes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "port": "{{ingestionPort}}",
+              "path": [
+                "api",
+                "v1",
+                "ingestion",
+                "athletes"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. League Service (Port 8100)",
+      "item": [
+        {
+          "name": "Create League as Player 1",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set('leagueId', jsonData.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"Test League\",\"maxMembers\":12,\"seasonStartAt\":\"2025-09-04T00:00:00Z\",\"seasonEndAt\":\"2026-02-08T00:00:00Z\",\"initialStipendAmount\":10000.00,\"weeklyStipendAmount\":500.00,\"weeklyPayoutDowUtc\":1}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}:{{leaguePort}}/api/v1/leagues",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "port": "{{leaguePort}}",
+              "path": [
+                "api",
+                "v1",
+                "leagues"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get League Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}:{{leaguePort}}/api/v1/leagues/{{leagueId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "port": "{{leaguePort}}",
+              "path": [
+                "api",
+                "v1",
+                "leagues",
+                "{{leagueId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "List User's Leagues",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}:{{leaguePort}}/api/v1/leagues?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "port": "{{leaguePort}}",
+              "path": [
+                "api",
+                "v1",
+                "leagues"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Generate Invite Code",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set('inviteCode', jsonData.code);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"expiresAt\":\"2025-12-31T23:59:59Z\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}:{{leaguePort}}/api/v1/leagues/{{leagueId}}/invites",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "port": "{{leaguePort}}",
+              "path": [
+                "api",
+                "v1",
+                "leagues",
+                "{{leagueId}}",
+                "invites"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Join League as Player 2 (Using Invite Code)",
+          "event": [
+            {
+              "listen": "preRequest",
+              "script": {
+                "exec": [
+                  "pm.collectionVariables.set('accessToken', pm.collectionVariables.get('player2_accessToken'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"inviteCode\":\"{{inviteCode}}\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}:{{leaguePort}}/api/v1/leagues/{{leagueId}}/join",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "port": "{{leaguePort}}",
+              "path": [
+                "api",
+                "v1",
+                "leagues",
+                "{{leagueId}}",
+                "join"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get League Members",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{player1_accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}:{{leaguePort}}/api/v1/leagues/{{leagueId}}/members?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "port": "{{leaguePort}}",
+              "path": [
+                "api",
+                "v1",
+                "leagues",
+                "{{leagueId}}",
+                "members"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Start League",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{player1_accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}:{{leaguePort}}/api/v1/leagues/{{leagueId}}/start",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "port": "{{leaguePort}}",
+              "path": [
+                "api",
+                "v1",
+                "leagues",
+                "{{leagueId}}",
+                "start"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Unauthorized - Missing Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 401\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}:{{leaguePort}}/api/v1/leagues",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "port": "{{leaguePort}}",
+              "path": [
+                "api",
+                "v1",
+                "leagues"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Transaction Service (Port 8110)",
+      "item": [
+        {
+          "name": "Create Wallet for Player 1",
+          "event": [
+            {
+              "listen": "preRequest",
+              "script": {
+                "exec": [
+                  "pm.collectionVariables.set('accessToken', pm.collectionVariables.get('player1_accessToken'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set('player1_walletId', jsonData.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"leagueId\":{{leagueId}}}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}:{{transactionPort}}/api/v1/wallets",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "port": "{{transactionPort}}",
+              "path": [
+                "api",
+                "v1",
+                "wallets"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Wallet for Player 2",
+          "event": [
+            {
+              "listen": "preRequest",
+              "script": {
+                "exec": [
+                  "pm.collectionVariables.set('accessToken', pm.collectionVariables.get('player2_accessToken'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set('player2_walletId', jsonData.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"leagueId\":{{leagueId}}}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}:{{transactionPort}}/api/v1/wallets",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "port": "{{transactionPort}}",
+              "path": [
+                "api",
+                "v1",
+                "wallets"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Wallet by League",
+          "event": [
+            {
+              "listen": "preRequest",
+              "script": {
+                "exec": [
+                  "pm.collectionVariables.set('accessToken', pm.collectionVariables.get('player1_accessToken'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}:{{transactionPort}}/api/v1/wallets?leagueId={{leagueId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "port": "{{transactionPort}}",
+              "path": [
+                "api",
+                "v1",
+                "wallets"
+              ],
+              "query": [
+                {
+                  "key": "leagueId",
+                  "value": "{{leagueId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get League Wallets",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{player1_accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}:{{transactionPort}}/api/v1/wallets/league/{{leagueId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "port": "{{transactionPort}}",
+              "path": [
+                "api",
+                "v1",
+                "wallets",
+                "league",
+                "{{leagueId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Issue Initial Stipends",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{player1_accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"leagueId\":{{leagueId}},\"amount\":10000.00}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}:{{transactionPort}}/api/v1/wallets/stipends/initial",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "port": "{{transactionPort}}",
+              "path": [
+                "api",
+                "v1",
+                "wallets",
+                "stipends",
+                "initial"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Issue Weekly Stipends",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{player1_accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"leagueId\":{{leagueId}},\"amount\":500.00}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}:{{transactionPort}}/api/v1/wallets/stipends/weekly?weekNumber=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "port": "{{transactionPort}}",
+              "path": [
+                "api",
+                "v1",
+                "wallets",
+                "stipends",
+                "weekly"
+              ],
+              "query": [
+                {
+                  "key": "weekNumber",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Buy Stock",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{player1_accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"leagueId\":{{leagueId}},\"amount\":500.00,\"referenceId\":\"{{athleteEspnId}}\",\"description\":\"Buy stock for athlete {{athleteEspnId}}\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}:{{transactionPort}}/api/v1/wallets/buy",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "port": "{{transactionPort}}",
+              "path": [
+                "api",
+                "v1",
+                "wallets",
+                "buy"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Sell Stock",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{player1_accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"leagueId\":{{leagueId}},\"amount\":250.00,\"referenceId\":\"{{athleteEspnId}}\",\"description\":\"Sell stock for athlete {{athleteEspnId}}\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}:{{transactionPort}}/api/v1/wallets/sell",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "port": "{{transactionPort}}",
+              "path": [
+                "api",
+                "v1",
+                "wallets",
+                "sell"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Transaction History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{player1_accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}:{{transactionPort}}/api/v1/wallets/transactions?leagueId={{leagueId}}&page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "port": "{{transactionPort}}",
+              "path": [
+                "api",
+                "v1",
+                "wallets",
+                "transactions"
+              ],
+              "query": [
+                {
+                  "key": "leagueId",
+                  "value": "{{leagueId}}"
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Unauthorized - Missing Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 401\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}:{{transactionPort}}/api/v1/wallets?leagueId={{leagueId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "port": "{{transactionPort}}",
+              "path": [
+                "api",
+                "v1",
+                "wallets"
+              ],
+              "query": [
+                {
+                  "key": "leagueId",
+                  "value": "{{leagueId}}"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost",
+      "type": "string"
+    },
+    {
+      "key": "authPort",
+      "value": "8120",
+      "type": "string"
+    },
+    {
+      "key": "leaguePort",
+      "value": "8100",
+      "type": "string"
+    },
+    {
+      "key": "transactionPort",
+      "value": "8110",
+      "type": "string"
+    },
+    {
+      "key": "ingestionPort",
+      "value": "8090",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refreshToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "player1_accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "player1_refreshToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "player2_accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "player2_refreshToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "leagueId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "inviteCode",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "athleteEspnId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "teamEspnId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "eventEspnId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "player1_walletId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "player2_walletId",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

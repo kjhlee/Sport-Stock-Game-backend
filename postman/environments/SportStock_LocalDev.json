@@ -1,0 +1,34 @@
+{
+  "id": "sportstockenv-localdev",
+  "name": "SportStock LocalDev",
+  "values": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost",
+      "enabled": true
+    },
+    {
+      "key": "authPort",
+      "value": "8120",
+      "enabled": true
+    },
+    {
+      "key": "leaguePort",
+      "value": "8100",
+      "enabled": true
+    },
+    {
+      "key": "transactionPort",
+      "value": "8110",
+      "enabled": true
+    },
+    {
+      "key": "ingestionPort",
+      "value": "8090",
+      "enabled": true
+    }
+  ],
+  "_postman_variable_scope": "environment",
+  "_postman_exported_at": "2025-03-16T01:04:28.838Z",
+  "_postman_exported_using": "Postman/11.0.0"
+}
