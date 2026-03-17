@@ -38,6 +38,14 @@ public class StockQueryService {
     }
 
     @Transactional(readOnly = true)
+    public StockResponse getStockByEspnId(String athleteEspnId) {
+        PlayerStock stock = playerStockRepository.findByAthleteEspnId(athleteEspnId)
+                .orElseThrow( () -> new StockNotFoundException((athleteEspnId)));
+
+        return toResponse(stock);
+    }
+
+    @Transactional(readOnly = true)
     public PagedStockResponse listStocks(String position, StockStatus status, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
 

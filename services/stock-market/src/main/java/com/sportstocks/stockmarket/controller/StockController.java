@@ -44,6 +44,10 @@ public class StockController {
         return stockQueryService.getStock(stockId);
     }
 
+    @GetMapping("athlete/{espnAthleteId}")
+    public StockResponse getStockByAthlete(@PathVariable String espnAthleteId) {
+        return stockQueryService.getStockByEspnId(espnAthleteId);
+    }
     @GetMapping("/{stockId}/price-history")
     public List<PriceHistoryResponse> getPriceHistory(
             @PathVariable UUID stockId,
