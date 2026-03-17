@@ -2,7 +2,7 @@ CREATE SCHEMA IF NOT EXISTS users;
 -- SET search_path TO users;
 
 CREATE TABLE userinfo (
-    id UUID PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     email VARCHAR(255) NOT NULL UNIQUE,
     username VARCHAR(255) NOT NULL,
     first_name VARCHAR(255),
