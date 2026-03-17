@@ -1,6 +1,5 @@
 package com.sportstock.stockmarket.config;
 
-import jakarta.servlet.http.HttpServletRequest;
 import java.net.http.HttpClient;
 import java.time.Duration;
 import org.springframework.beans.factory.annotation.Value;
