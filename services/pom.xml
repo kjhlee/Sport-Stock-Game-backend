@@ -20,7 +20,8 @@
     <module>ingestion</module>
     <module>league</module>
     <module>transaction</module>
-    <module>user-authentication</module> 
+    <module>user-authentication</module>
+    <module>stock-market</module>
   </modules>
 
   <properties>

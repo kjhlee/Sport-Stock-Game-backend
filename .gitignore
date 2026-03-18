@@ -1,0 +1,37 @@
+# ======================
+# IntelliJ / JetBrains
+# ======================
+.idea/
+.vscode/
+*.iml
+out/
+
+# ======================
+# macOS
+# ======================
+.DS_Store
+
+# ======================
+# Maven / Java build
+# ======================
+target/
+*.class
+*.log
+
+# ======================
+# Env / secrets
+# ======================
+.env
+.env.*
+!.env.example
+application-local.yml
+application-dev.yml
+
+# ======================
+# Test output
+# ======================
+**/tmp/
+
+
+
+/.claude/

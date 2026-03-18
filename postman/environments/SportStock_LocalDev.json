@@ -26,6 +26,11 @@
       "key": "ingestionPort",
       "value": "8090",
       "enabled": true
+    },
+    {
+      "key": "stockMarketPort",
+      "value": "8130",
+      "enabled": true
     }
   ],
   "_postman_variable_scope": "environment",
