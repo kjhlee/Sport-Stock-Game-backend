@@ -68,7 +68,7 @@ public class UserAuthController {
   }
 
   @GetMapping("/test")
-  public String tester(){
+  public String tester() {
     return "test";
   }
 }
