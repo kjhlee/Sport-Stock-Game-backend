@@ -13,7 +13,8 @@ public class RefreshService {
   public String refreshAccessToken(String token) throws Exception {
     try {
       Claims claims = jwtService.validateRefreshToken(token);
-      return jwtService.generateAccessToken(claims.getSubject());
+      Long userId = claims.get("userId", Long.class);
+      return jwtService.generateAccessToken(claims.getSubject(), userId);
     } catch (RefreshTokenExpiredException e) {
       throw new Exception(e.getMessage());
     }
