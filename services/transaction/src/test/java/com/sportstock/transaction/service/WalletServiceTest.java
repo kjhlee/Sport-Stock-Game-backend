@@ -18,6 +18,7 @@ import com.sportstock.transaction.client.StockMarketServiceClient;
 import com.sportstock.transaction.entity.Transaction;
 import com.sportstock.transaction.entity.Wallet;
 import com.sportstock.transaction.enums.TransactionType;
+import com.sportstock.transaction.exception.InvalidTradeRequestException;
 import com.sportstock.transaction.exception.WalletAlreadyExistsException;
 import com.sportstock.transaction.exception.WalletNotFoundException;
 import com.sportstock.transaction.repo.TransactionRepository;
@@ -480,31 +481,38 @@ class WalletServiceTest {
   class ProcessStockBuyTests {
 
     @Test
-    @DisplayName("Should throw UnsupportedOperationException (not yet implemented)")
-    void shouldThrowUnsupportedOperationForStockBuy() {
+    @DisplayName("Should process stock buy request")
+    void shouldProcessStockBuy() {
       when(stockMarketServiceClient.getStock(any())).thenReturn(createActiveStockResponse());
+      Wallet wallet = createMockWallet(1L, TEST_USER_ID, TEST_LEAGUE_ID, new BigDecimal("1000.00"));
+      when(walletRepository.findByUserIdAndLeagueIdForUpdate(TEST_USER_ID, TEST_LEAGUE_ID))
+          .thenReturn(Optional.of(wallet));
+      when(transactionRepository.existsByIdempotencyKey("idem-buy-1")).thenReturn(false);
+      when(transactionRepository.save(any(Transaction.class)))
+          .thenAnswer(
+              invocation -> {
+                Transaction tx = invocation.getArgument(0);
+                tx.setId(1001L);
+                tx.setCreatedAt(OffsetDateTime.now());
+                return tx;
+              });
 
-      // When & Then
-      assertThatThrownBy(
-              () ->
-                  walletService.processStockBuy(
-                      TEST_USER_ID,
-                      TEST_LEAGUE_ID,
-                      new StockTransactionRequest(
-                          TEST_LEAGUE_ID,
-                          UUID.randomUUID(),
-                          new BigDecimal("10"),
-                          null,
-                          "idem-buy-1")))
-          .isInstanceOf(UnsupportedOperationException.class)
-          .hasMessageContaining("TODO");
+      var response =
+          walletService.processStockBuy(
+              TEST_USER_ID,
+              TEST_LEAGUE_ID,
+              new StockTransactionRequest(
+                  TEST_LEAGUE_ID, UUID.randomUUID(), new BigDecimal("10"), null, "idem-buy-1"));
+
+      assertThat(response).isNotNull();
+      assertThat(response.type()).isEqualTo("STOCK_BUY");
+      assertThat(response.quantity()).isEqualByComparingTo(new BigDecimal("10"));
+      assertThat(response.totalCost()).isEqualByComparingTo(new BigDecimal("250.0000"));
     }
 
     @Test
-    @DisplayName("Should validate all parameters are passed")
+    @DisplayName("Should require exactly one of quantity or dollarAmount")
     void shouldValidateAllParametersArePassed() {
-      when(stockMarketServiceClient.getStock(any())).thenReturn(createActiveStockResponse());
-
       // When & Then
       assertThatThrownBy(
               () ->
@@ -512,8 +520,8 @@ class WalletServiceTest {
                       1001L,
                       1L,
                       new StockTransactionRequest(
-                          1L, UUID.randomUUID(), null, new BigDecimal("250.50"), "idem-buy-2")))
-          .isInstanceOf(UnsupportedOperationException.class);
+                          1L, UUID.randomUUID(), null, null, "idem-buy-2")))
+          .isInstanceOf(InvalidTradeRequestException.class);
     }
   }
 
@@ -522,31 +530,41 @@ class WalletServiceTest {
   class ProcessStockSellTests {
 
     @Test
-    @DisplayName("Should throw UnsupportedOperationException (not yet implemented)")
-    void shouldThrowUnsupportedOperationForStockSell() {
+    @DisplayName("Should process stock sell request")
+    void shouldProcessStockSell() {
       when(stockMarketServiceClient.getStock(any())).thenReturn(createActiveStockResponse());
+      Wallet wallet = createMockWallet(2L, 1002L, 2L, new BigDecimal("1000.00"));
+      when(walletRepository.findByUserIdAndLeagueIdForUpdate(1002L, 2L)).thenReturn(Optional.of(wallet));
+      when(transactionRepository.existsByIdempotencyKey("idem-sell-1")).thenReturn(false);
+      when(transactionRepository.save(any(Transaction.class)))
+          .thenAnswer(
+              invocation -> {
+                Transaction tx = invocation.getArgument(0);
+                tx.setId(2001L);
+                tx.setCreatedAt(OffsetDateTime.now());
+                return tx;
+              });
 
-      // When & Then
-      assertThatThrownBy(
-              () ->
-                  walletService.processStockSell(
-                      TEST_USER_ID,
-                      TEST_LEAGUE_ID,
-                      new StockTransactionRequest(
-                          TEST_LEAGUE_ID,
-                          UUID.randomUUID(),
-                          new BigDecimal("10"),
-                          null,
-                          "idem-sell-1")))
-          .isInstanceOf(UnsupportedOperationException.class)
-          .hasMessageContaining("TODO");
+      var response =
+          walletService.processStockSell(
+              1002L,
+              2L,
+              new StockTransactionRequest(
+                  2L,
+                  UUID.randomUUID(),
+                  new BigDecimal("10"),
+                  null,
+                  "idem-sell-1"));
+
+      assertThat(response).isNotNull();
+      assertThat(response.type()).isEqualTo("STOCK_SELL");
+      assertThat(response.quantity()).isEqualByComparingTo(new BigDecimal("10"));
+      assertThat(response.totalCost()).isEqualByComparingTo(new BigDecimal("250.0000"));
     }
 
     @Test
-    @DisplayName("Should validate all parameters are passed")
+    @DisplayName("Should require exactly one of quantity or dollarAmount")
     void shouldValidateAllParametersArePassed() {
-      when(stockMarketServiceClient.getStock(any())).thenReturn(createActiveStockResponse());
-
       // When & Then
       assertThatThrownBy(
               () ->
@@ -554,8 +572,8 @@ class WalletServiceTest {
                       1002L,
                       2L,
                       new StockTransactionRequest(
-                          2L, UUID.randomUUID(), null, new BigDecimal("175.75"), "idem-sell-2")))
-          .isInstanceOf(UnsupportedOperationException.class);
+                          2L, UUID.randomUUID(), null, null, "idem-sell-2")))
+          .isInstanceOf(InvalidTradeRequestException.class);
     }
   }
 
