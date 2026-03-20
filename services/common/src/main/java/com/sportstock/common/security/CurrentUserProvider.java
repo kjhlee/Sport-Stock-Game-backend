@@ -21,12 +21,23 @@ public class CurrentUserProvider {
       throw new MissingAuthenticationException("No user id found in security context");
     }
 
+    return userId;
+  }
+
+  public String getCurrentUserEmail() {
+    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    if (authentication == null || authentication.getPrincipal() == null) {
+      throw new MissingAuthenticationException("No authenticated user found in security context");
+    }
+
+    AuthenticatedUser user = (AuthenticatedUser) authentication.getPrincipal();
+
     String email = user.email();
 
     if (email == null || email.isBlank()) {
       throw new MissingAuthenticationException("No user email found in security context");
     }
 
-    return userId;
+    return user.email();
   }
 }
