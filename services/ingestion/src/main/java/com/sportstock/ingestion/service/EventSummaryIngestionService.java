@@ -125,6 +125,10 @@ public class EventSummaryIngestionService {
 
     for (JsonNode teamEntry : teams) {
       String teamEspnId = teamEntry.path("team").path("id").asText();
+      if (teamEspnId == null || teamEspnId.isBlank()) {
+        log.warn("Team id missing in boxscore team entry, skipping team stats");
+        continue;
+      }
       Team team = teamRepository.findByEspnId(teamEspnId).orElse(null);
       if (team == null) {
         log.warn("Team {} not found during boxscore stat ingestion, skipping", teamEspnId);
@@ -157,6 +161,10 @@ public class EventSummaryIngestionService {
 
     for (JsonNode teamPlayerEntry : players) {
       String teamEspnId = teamPlayerEntry.path("team").path("id").asText();
+      if (teamEspnId == null || teamEspnId.isBlank()) {
+        log.warn("Team id missing in boxscore player entry, skipping player stats");
+        continue;
+      }
       Team team = teamRepository.findByEspnId(teamEspnId).orElse(null);
       if (team == null) {
         log.warn("Team {} not found during player stat ingestion, skipping", teamEspnId);
@@ -182,6 +190,10 @@ public class EventSummaryIngestionService {
 
         for (JsonNode athleteEntry : athletes) {
           String athleteEspnId = athleteEntry.path("athlete").path("id").asText();
+          if (athleteEspnId == null || athleteEspnId.isBlank()) {
+            log.warn("Athlete id missing in boxscore player entry, skipping stats");
+            continue;
+          }
           Athlete athlete = athleteRepository.findByEspnId(athleteEspnId).orElse(null);
           if (athlete == null) {
             athlete = createAthleteFromEventData(athleteEntry.path("athlete"), athleteEspnId);
