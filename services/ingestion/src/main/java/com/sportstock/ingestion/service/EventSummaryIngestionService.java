@@ -16,6 +16,7 @@ import com.sportstock.ingestion.entity.PlayerGameStat;
 import com.sportstock.ingestion.entity.Team;
 import com.sportstock.ingestion.exception.EntityNotFoundException;
 import com.sportstock.ingestion.exception.IngestionException;
+import com.sportstock.ingestion.mapper.AthleteMapper;
 import com.sportstock.ingestion.mapper.DtoMapper;
 import com.sportstock.ingestion.mapper.EventSummaryMapper;
 import com.sportstock.ingestion.mapper.JsonPayloadCodec;
@@ -28,6 +29,7 @@ import java.time.Instant;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -58,6 +60,9 @@ public class EventSummaryIngestionService {
 
     upsertTeamStats(root, event);
     upsertPlayerStats(root, event);
+
+    event.setIngestedAt(Instant.now());
+    eventRepository.save(event);
 
     log.info("Ingested summary for event {}", eventEspnId);
   }
@@ -179,8 +184,12 @@ public class EventSummaryIngestionService {
           String athleteEspnId = athleteEntry.path("athlete").path("id").asText();
           Athlete athlete = athleteRepository.findByEspnId(athleteEspnId).orElse(null);
           if (athlete == null) {
-            log.warn("Athlete {} not found during player stat ingestion, skipping", athleteEspnId);
-            continue;
+            athlete = createAthleteFromEventData(athleteEntry.path("athlete"), athleteEspnId);
+            if (athlete == null) {
+              log.warn("Could not create athlete {} from event data, skipping stats",
+                      athleteEspnId);
+              continue;
+            }
           }
 
           JsonNode statsArray = athleteEntry.path("stats");
@@ -220,6 +229,18 @@ public class EventSummaryIngestionService {
       return objectMapper.writeValueAsString(stats);
     } catch (JsonProcessingException e) {
       throw new IngestionException("Failed to serialize player stats JSON", e);
+    }
+  }
+
+  private Athlete createAthleteFromEventData (JsonNode athleteNode, String espnId) {
+    try {
+      Athlete athlete = new Athlete();
+      athlete.setEspnId(espnId);
+
+      AthleteMapper.applyFields(athleteNode, athlete);
+      return athleteRepository.save(athlete);
+    } catch (DataIntegrityViolationException e) {
+      return athleteRepository.findByEspnId(espnId).orElse(null);
     }
   }
 }
