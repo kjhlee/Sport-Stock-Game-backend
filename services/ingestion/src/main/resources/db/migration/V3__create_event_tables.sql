@@ -22,6 +22,7 @@ CREATE TABLE events (
     status_clock DECIMAL(10,1),
     broadcast VARCHAR(100),
     note_headline VARCHAR(200),
+    summary_ingested_at TIMESTAMPTZ,
     ingested_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
