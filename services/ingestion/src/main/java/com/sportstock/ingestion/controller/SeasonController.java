@@ -14,12 +14,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class SeasonController {
 
-    private final SeasonQueryService seasonQueryService;
+  private final SeasonQueryService seasonQueryService;
 
-    @GetMapping("/current-week")
-    @ResponseStatus(HttpStatus.OK)
-    public CurrentWeekResponse getCurrentWeek() {
-        return seasonQueryService.getCurrentWeek();
-    }
-
+  @GetMapping("/current-week")
+  @ResponseStatus(HttpStatus.OK)
+  public CurrentWeekResponse getCurrentWeek() {
+    return seasonQueryService.getCurrentWeek();
+  }
 }
