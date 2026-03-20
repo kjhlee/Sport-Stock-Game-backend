@@ -1,18 +1,26 @@
 package com.sportstock.transaction.service;
 
+import com.sportstock.common.dto.stock_market.StockResponse;
 import com.sportstock.common.dto.transaction.StipendResultResponse;
+import com.sportstock.common.dto.transaction.StockTransactionRequest;
+import com.sportstock.common.dto.transaction.StockTransactionResponse;
 import com.sportstock.common.dto.transaction.TransactionResponse;
 import com.sportstock.common.dto.transaction.WalletResponse;
 import com.sportstock.transaction.client.LeagueServiceClient;
+import com.sportstock.transaction.client.StockMarketServiceClient;
 import com.sportstock.transaction.entity.Transaction;
 import com.sportstock.transaction.entity.Wallet;
 import com.sportstock.transaction.enums.TransactionType;
+import com.sportstock.transaction.exception.InsufficientFundsException;
+import com.sportstock.transaction.exception.InvalidTradeRequestException;
+import com.sportstock.transaction.exception.StockNotActiveException;
 import com.sportstock.transaction.exception.WalletAlreadyExistsException;
 import com.sportstock.transaction.exception.WalletNotFoundException;
 import com.sportstock.transaction.mapper.DtoMapper;
 import com.sportstock.transaction.repo.TransactionRepository;
 import com.sportstock.transaction.repo.WalletRepository;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -23,6 +31,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
+
 @Service
 public class WalletService {
 
@@ -30,16 +39,19 @@ public class WalletService {
   private final TransactionRepository transactionRepository;
   private final TransactionTemplate transactionTemplate;
   private final LeagueServiceClient leagueServiceClient;
+  private final StockMarketServiceClient stockMarketServiceClient;
 
   public WalletService(
       WalletRepository walletRepository,
       TransactionRepository transactionRepository,
       PlatformTransactionManager txManager,
-      LeagueServiceClient leagueServiceClient) {
+      LeagueServiceClient leagueServiceClient,
+      StockMarketServiceClient stockMarketServiceClient) {
     this.walletRepository = walletRepository;
     this.transactionRepository = transactionRepository;
     this.transactionTemplate = new TransactionTemplate(txManager);
     this.leagueServiceClient = leagueServiceClient;
+    this.stockMarketServiceClient = stockMarketServiceClient;
   }
 
   @Transactional
@@ -153,28 +165,19 @@ public class WalletService {
     return new StipendResultResponse(leagueId, 0, stipendsIssued.get(), amount);
   }
 
-  @Transactional
-  public TransactionResponse processStockBuy(
-      Long userId, Long leagueId, BigDecimal amount, String referenceId, String description) {
-    // TODO: Implement stock buy (debit)
-    // - Lock wallet (findByUserIdAndLeagueIdForUpdate)
-    // - Check if wallet exists, throw WalletNotFoundException if not
-    // - Check if balance >= amount, throw InsufficientFundsException if not
-    // - Debit balance (subtract amount)
-    // - Create Transaction record with type STOCK_BUY
-    // - Return TransactionResponse
+  public StockTransactionResponse processStockBuy(
+      Long userId, Long leagueId, StockTransactionRequest request) {
+    validateTradeRequest(request);
+    StockResponse stock = stockMarketServiceClient.getStock(request.stockId());
+    validateStockActive(stock);
     throw new UnsupportedOperationException("TODO: Implement processStockBuy");
   }
 
-  @Transactional
-  public TransactionResponse processStockSell(
-      Long userId, Long leagueId, BigDecimal amount, String referenceId, String description) {
-    // TODO: Implement stock sell (credit)
-    // - Lock wallet (findByUserIdAndLeagueIdForUpdate)
-    // - Check if wallet exists, throw WalletNotFoundException if not
-    // - Credit balance (add amount)
-    // - Create Transaction record with type STOCK_SELL
-    // - Return TransactionResponse
+  public StockTransactionResponse processStockSell(
+      Long userId, Long leagueId, StockTransactionRequest request) {
+    validateTradeRequest(request);
+    StockResponse stock = stockMarketServiceClient.getStock(request.stockId());
+    validateStockActive(stock);
     throw new UnsupportedOperationException("TODO: Implement processStockSell");
   }
 
@@ -215,5 +218,96 @@ public class WalletService {
     } catch (DataIntegrityViolationException e) {
       // Another thread created it concurrently — that's fine
     }
+  }
+
+  private void validateTradeRequest(StockTransactionRequest request) {
+    boolean hasQuantity = request.quantity() != null;
+    boolean hasDollarAmount = request.dollarAmount() != null;
+    if (!hasQuantity && !hasDollarAmount) {
+      throw new InvalidTradeRequestException(
+          "Either one of 'quantity' or 'dollarAmount' must be provided");
+    }
+    if (hasQuantity && request.quantity().compareTo(BigDecimal.ZERO) <= 0) {
+      throw new InvalidTradeRequestException("Quantity must be greater than zero");
+    }
+    if (hasDollarAmount && request.dollarAmount().compareTo(BigDecimal.ZERO) <= 0) {
+      throw new InvalidTradeRequestException("Dollar amount must be greater than zero");
+    }
+  }
+
+  private void validateStockActive(StockResponse stock) {
+    if (!"ACTIVE".equals(stock.status())) {
+      throw new StockNotActiveException(stock.id().toString(), stock.status());
+    }
+  }
+
+  private BigDecimal resolveQuantity(StockTransactionRequest request, BigDecimal pricePerShare) {
+    if (request.quantity() != null) {
+      return request.quantity().setScale(4, RoundingMode.DOWN);
+    }
+    BigDecimal quantity = request.dollarAmount().divide(pricePerShare, 4, RoundingMode.DOWN);
+    if (quantity.compareTo(BigDecimal.ZERO) <= 0) {
+      throw new InvalidTradeRequestException(
+          "Dollar amount too small to purchase any shares at current price");
+    }
+    return quantity;
+  }
+
+  private Transaction creditWallet(
+      Wallet wallet,
+      BigDecimal amount,
+      TransactionType type,
+      String referenceId,
+      String description,
+      String idempotencyKey) {
+    BigDecimal balanceBefore = wallet.getBalance();
+    BigDecimal balanceAfter = balanceBefore.add(amount);
+
+    Transaction transaction = new Transaction();
+    transaction.setWallet(wallet);
+    transaction.setType(type);
+    transaction.setAmount(amount);
+    transaction.setBalanceBefore(balanceBefore);
+    transaction.setBalanceAfter(balanceAfter);
+    transaction.setLeagueId(wallet.getLeagueId());
+    transaction.setUserId(wallet.getUserId());
+    transaction.setReferenceId(referenceId);
+    transaction.setDescription(description);
+    transaction.setIdempotencyKey(idempotencyKey);
+
+    transactionRepository.save(transaction);
+    wallet.setBalance(balanceAfter);
+    return transaction;
+  }
+
+  private Transaction debitWallet(
+      Wallet wallet,
+      BigDecimal amount,
+      TransactionType type,
+      String referenceId,
+      String description,
+      String idempotencyKey) {
+    if (wallet.getBalance().compareTo(amount) < 0) {
+      throw new InsufficientFundsException(wallet.getBalance(), amount);
+    }
+
+    BigDecimal balanceBefore = wallet.getBalance();
+    BigDecimal balanceAfter = balanceBefore.subtract(amount);
+
+    Transaction transaction = new Transaction();
+    transaction.setWallet(wallet);
+    transaction.setType(type);
+    transaction.setAmount(amount);
+    transaction.setBalanceBefore(balanceBefore);
+    transaction.setBalanceAfter(balanceAfter);
+    transaction.setLeagueId(wallet.getLeagueId());
+    transaction.setUserId(wallet.getUserId());
+    transaction.setReferenceId(referenceId);
+    transaction.setDescription(description);
+    transaction.setIdempotencyKey(idempotencyKey);
+
+    transactionRepository.save(transaction);
+    wallet.setBalance(balanceAfter);
+    return transaction;
   }
 }

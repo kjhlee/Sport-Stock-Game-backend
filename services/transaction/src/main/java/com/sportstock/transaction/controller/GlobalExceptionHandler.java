@@ -1,7 +1,10 @@
 package com.sportstock.transaction.controller;
 
 import com.sportstock.common.exceptions.MissingAuthenticationException;
+import com.sportstock.transaction.exception.InvalidTradeRequestException;
 import com.sportstock.transaction.exception.InsufficientFundsException;
+import com.sportstock.transaction.exception.StockNotActiveException;
+import com.sportstock.transaction.exception.TransactionException;
 import com.sportstock.transaction.exception.TransactionStateException;
 import com.sportstock.transaction.exception.WalletAlreadyExistsException;
 import com.sportstock.transaction.exception.WalletNotFoundException;
@@ -32,6 +35,17 @@ public class GlobalExceptionHandler {
   public ResponseEntity<Map<String, Object>> handleInsufficientFunds(
       InsufficientFundsException ex) {
     return build(HttpStatus.BAD_REQUEST, "INSUFFICIENT_FUNDS", ex.getMessage());
+  }
+
+  @ExceptionHandler(StockNotActiveException.class)
+  public ResponseEntity<Map<String, Object>> handleStockNotActive(StockNotActiveException ex) {
+    return build(HttpStatus.BAD_REQUEST, "STOCK_NOT_ACTIVE", ex.getMessage());
+  }
+
+  @ExceptionHandler(InvalidTradeRequestException.class)
+  public ResponseEntity<Map<String, Object>> handleInvalidTradeRequest(
+      InvalidTradeRequestException ex) {
+    return build(HttpStatus.BAD_REQUEST, "INVALID_TRADE_REQUEST", ex.getMessage());
   }
 
   @ExceptionHandler(WalletAlreadyExistsException.class)
@@ -85,6 +99,12 @@ public class GlobalExceptionHandler {
   public ResponseEntity<Map<String, Object>> handleMissingAuthentication(
       MissingAuthenticationException ex) {
     return build(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", ex.getMessage());
+  }
+
+  @ExceptionHandler(TransactionException.class)
+  public ResponseEntity<Map<String, Object>> handleTransactionException(TransactionException ex) {
+    log.error("Transaction error: {}", ex.getMessage(), ex);
+    return build(HttpStatus.SERVICE_UNAVAILABLE, "SERVICE_UNAVAILABLE", ex.getMessage());
   }
 
   private ResponseEntity<Map<String, Object>> build(

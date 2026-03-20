@@ -9,9 +9,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.sportstock.common.dto.transaction.StipendResultResponse;
+import com.sportstock.common.dto.transaction.StockTransactionRequest;
 import com.sportstock.common.dto.transaction.TransactionResponse;
 import com.sportstock.common.dto.transaction.WalletResponse;
+import com.sportstock.common.dto.stock_market.StockResponse;
 import com.sportstock.transaction.client.LeagueServiceClient;
+import com.sportstock.transaction.client.StockMarketServiceClient;
 import com.sportstock.transaction.entity.Transaction;
 import com.sportstock.transaction.entity.Wallet;
 import com.sportstock.transaction.enums.TransactionType;
@@ -20,10 +23,12 @@ import com.sportstock.transaction.exception.WalletNotFoundException;
 import com.sportstock.transaction.repo.TransactionRepository;
 import com.sportstock.transaction.repo.WalletRepository;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -51,6 +56,7 @@ class WalletServiceTest {
   @Mock private PlatformTransactionManager txManager;
 
   @Mock private LeagueServiceClient leagueServiceClient;
+  @Mock private StockMarketServiceClient stockMarketServiceClient;
 
   private WalletService walletService;
 
@@ -63,7 +69,12 @@ class WalletServiceTest {
   @BeforeEach
   void setUp() {
     walletService =
-        new WalletService(walletRepository, transactionRepository, txManager, leagueServiceClient);
+        new WalletService(
+            walletRepository,
+            transactionRepository,
+            txManager,
+            leagueServiceClient,
+            stockMarketServiceClient);
   }
 
   @Nested
@@ -471,15 +482,20 @@ class WalletServiceTest {
     @Test
     @DisplayName("Should throw UnsupportedOperationException (not yet implemented)")
     void shouldThrowUnsupportedOperationForStockBuy() {
+      when(stockMarketServiceClient.getStock(any())).thenReturn(createActiveStockResponse());
+
       // When & Then
       assertThatThrownBy(
               () ->
                   walletService.processStockBuy(
                       TEST_USER_ID,
                       TEST_LEAGUE_ID,
-                      new BigDecimal("100.00"),
-                      "ATHLETE_123",
-                      "Buy 10 shares"))
+                      new StockTransactionRequest(
+                          TEST_LEAGUE_ID,
+                          UUID.randomUUID(),
+                          new BigDecimal("10"),
+                          null,
+                          "idem-buy-1")))
           .isInstanceOf(UnsupportedOperationException.class)
           .hasMessageContaining("TODO");
     }
@@ -487,11 +503,16 @@ class WalletServiceTest {
     @Test
     @DisplayName("Should validate all parameters are passed")
     void shouldValidateAllParametersArePassed() {
+      when(stockMarketServiceClient.getStock(any())).thenReturn(createActiveStockResponse());
+
       // When & Then
       assertThatThrownBy(
               () ->
                   walletService.processStockBuy(
-                      1001L, 1L, new BigDecimal("250.50"), "ATHLETE_456", "Purchase shares"))
+                      1001L,
+                      1L,
+                      new StockTransactionRequest(
+                          1L, UUID.randomUUID(), null, new BigDecimal("250.50"), "idem-buy-2")))
           .isInstanceOf(UnsupportedOperationException.class);
     }
   }
@@ -503,15 +524,20 @@ class WalletServiceTest {
     @Test
     @DisplayName("Should throw UnsupportedOperationException (not yet implemented)")
     void shouldThrowUnsupportedOperationForStockSell() {
+      when(stockMarketServiceClient.getStock(any())).thenReturn(createActiveStockResponse());
+
       // When & Then
       assertThatThrownBy(
               () ->
                   walletService.processStockSell(
                       TEST_USER_ID,
                       TEST_LEAGUE_ID,
-                      new BigDecimal("100.00"),
-                      "ATHLETE_123",
-                      "Sell 10 shares"))
+                      new StockTransactionRequest(
+                          TEST_LEAGUE_ID,
+                          UUID.randomUUID(),
+                          new BigDecimal("10"),
+                          null,
+                          "idem-sell-1")))
           .isInstanceOf(UnsupportedOperationException.class)
           .hasMessageContaining("TODO");
     }
@@ -519,11 +545,16 @@ class WalletServiceTest {
     @Test
     @DisplayName("Should validate all parameters are passed")
     void shouldValidateAllParametersArePassed() {
+      when(stockMarketServiceClient.getStock(any())).thenReturn(createActiveStockResponse());
+
       // When & Then
       assertThatThrownBy(
               () ->
                   walletService.processStockSell(
-                      1002L, 2L, new BigDecimal("175.75"), "ATHLETE_789", "Sell shares"))
+                      1002L,
+                      2L,
+                      new StockTransactionRequest(
+                          2L, UUID.randomUUID(), null, new BigDecimal("175.75"), "idem-sell-2")))
           .isInstanceOf(UnsupportedOperationException.class);
     }
   }
@@ -621,5 +652,17 @@ class WalletServiceTest {
     transaction.setUserId(wallet.getUserId());
     transaction.setCreatedAt(OffsetDateTime.now());
     return transaction;
+  }
+
+  private StockResponse createActiveStockResponse() {
+    return new StockResponse(
+        UUID.randomUUID(),
+        "espn-athlete-1",
+        "Test Player",
+        "QB",
+        "team-1",
+        new BigDecimal("25.00"),
+        "ACTIVE",
+        Instant.now());
   }
 }
