@@ -91,27 +91,12 @@ public class WalletService {
                     .orElseThrow(
                         () -> new WalletNotFoundException("Wallet not found for user: " + userId));
 
-            BigDecimal balanceBefore = wallet.getBalance();
-            BigDecimal balanceAfter = balanceBefore.add(amount);
-
-            Transaction transaction = new Transaction();
-            transaction.setWallet(wallet);
-            transaction.setType(TransactionType.INITIAL_STIPEND);
-            transaction.setAmount(amount);
-            transaction.setBalanceBefore(balanceBefore);
-            transaction.setBalanceAfter(balanceAfter);
-            transaction.setLeagueId(leagueId);
-            transaction.setUserId(userId);
-            transaction.setIdempotencyKey(idempotencyKey);
-
             try {
-              transactionRepository.save(transaction);
+              creditWallet(wallet, amount, TransactionType.INITIAL_STIPEND, null, null, idempotencyKey);
             } catch (DataIntegrityViolationException e) {
               status.setRollbackOnly();
               return;
             }
-
-            wallet.setBalance(balanceAfter);
             stipendsIssued.incrementAndGet();
           });
     }
@@ -138,27 +123,14 @@ public class WalletService {
                     .findByUserIdAndLeagueIdForUpdate(userId, leagueId)
                     .orElseThrow(
                         () -> new WalletNotFoundException("Wallet not found for user: " + userId));
-            BigDecimal balanceBefore = wallet.getBalance();
-            BigDecimal balanceAfter = balanceBefore.add(amount);
-
-            Transaction transaction = new Transaction();
-            transaction.setWallet(wallet);
-            transaction.setType(TransactionType.WEEKLY_STIPEND);
-            transaction.setAmount(amount);
-            transaction.setBalanceBefore(balanceBefore);
-            transaction.setBalanceAfter(balanceAfter);
-            transaction.setLeagueId(leagueId);
-            transaction.setUserId(userId);
-            transaction.setIdempotencyKey(idempotencyKey);
 
             try {
-              transactionRepository.save(transaction);
-            } catch (DataIntegrityViolationException e) {
-              status.setRollbackOnly();
-              return;
+                creditWallet(wallet, amount, TransactionType.WEEKLY_STIPEND, null, null, idempotencyKey);
             }
-
-            wallet.setBalance(balanceAfter);
+            catch (DataIntegrityViolationException e) {
+                status.setRollbackOnly();
+                return;
+            }
             stipendsIssued.incrementAndGet();
           });
     }
