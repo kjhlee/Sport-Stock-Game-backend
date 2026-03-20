@@ -519,8 +519,7 @@ class WalletServiceTest {
                   walletService.processStockBuy(
                       1001L,
                       1L,
-                      new StockTransactionRequest(
-                          1L, UUID.randomUUID(), null, null, "idem-buy-2")))
+                      new StockTransactionRequest(1L, UUID.randomUUID(), null, null, "idem-buy-2")))
           .isInstanceOf(InvalidTradeRequestException.class);
     }
   }
@@ -534,7 +533,8 @@ class WalletServiceTest {
     void shouldProcessStockSell() {
       when(stockMarketServiceClient.getStock(any())).thenReturn(createActiveStockResponse());
       Wallet wallet = createMockWallet(2L, 1002L, 2L, new BigDecimal("1000.00"));
-      when(walletRepository.findByUserIdAndLeagueIdForUpdate(1002L, 2L)).thenReturn(Optional.of(wallet));
+      when(walletRepository.findByUserIdAndLeagueIdForUpdate(1002L, 2L))
+          .thenReturn(Optional.of(wallet));
       when(transactionRepository.existsByIdempotencyKey("idem-sell-1")).thenReturn(false);
       when(transactionRepository.save(any(Transaction.class)))
           .thenAnswer(
@@ -550,11 +550,7 @@ class WalletServiceTest {
               1002L,
               2L,
               new StockTransactionRequest(
-                  2L,
-                  UUID.randomUUID(),
-                  new BigDecimal("10"),
-                  null,
-                  "idem-sell-1"));
+                  2L, UUID.randomUUID(), new BigDecimal("10"), null, "idem-sell-1"));
 
       assertThat(response).isNotNull();
       assertThat(response.type()).isEqualTo("STOCK_SELL");
