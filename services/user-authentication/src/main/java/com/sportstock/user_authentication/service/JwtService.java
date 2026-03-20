@@ -27,19 +27,20 @@ public class JwtService {
 
   // TODO: fix the extraClaims to be more specific to the user, such as user id, email, etc.
   // public String generateToken(Optional<Map<String, String>> extraClaims, String email) {
-  public String generateAccessToken(String email) {
-
+  public String generateAccessToken(String email, Long id) {
     return Jwts.builder()
         .subject(email)
+        .claim("userId", id)
         .issuedAt(new Date(System.currentTimeMillis()))
         .expiration(new Date(System.currentTimeMillis() + this.accessExpireInterval))
         .signWith(getSignInKey())
         .compact();
   }
 
-  public String generateRefreshToken(String email) {
+  public String generateRefreshToken(String email, Long id) {
     return Jwts.builder()
         .subject(email)
+        .claim("userId", id)
         .issuedAt(new Date(System.currentTimeMillis()))
         .expiration(new Date(System.currentTimeMillis() + this.refreshExpireInterval))
         .signWith(getSignInKey())
