@@ -38,6 +38,6 @@ public class CurrentUserProvider {
       throw new MissingAuthenticationException("No user email found in security context");
     }
 
-    return user.email();
+    return email;
   }
 }
