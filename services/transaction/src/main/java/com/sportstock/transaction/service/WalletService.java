@@ -23,6 +23,8 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -142,7 +144,58 @@ public class WalletService {
     validateTradeRequest(request);
     StockResponse stock = stockMarketServiceClient.getStock(request.stockId());
     validateStockActive(stock);
-    throw new UnsupportedOperationException("TODO: Implement processStockBuy");
+
+      BigDecimal pricePerShare = stock.currentPrice();
+      BigDecimal quantity = resolveQuantity(request, pricePerShare);
+      BigDecimal totalCost = quantity.multiply(pricePerShare).setScale(4, RoundingMode.DOWN);
+
+      AtomicReference<Transaction> result = new AtomicReference<>();
+      transactionTemplate.executeWithoutResult(
+              status -> {
+                  if (transactionRepository.existsByIdempotencyKey(request.idempotencyKey())) {
+                      Transaction existingTransaction = transactionRepository.findByIdempotencyKey(request.idempotencyKey()).orElseThrow();
+
+                      result.set(existingTransaction);
+                      return;
+                  }
+
+                  Wallet wallet = walletRepository.findByUserIdAndLeagueIdForUpdate(userId, leagueId).orElseThrow(
+                          () -> new WalletNotFoundException("Wallet not found for user: " + userId)
+                  );
+
+                  String description = String.format(
+                          "Buy %s shares of %s @ %s", quantity, stock.fullName(), pricePerShare
+                  );
+
+                  try {
+                      result.set(
+                              debitWallet(
+                                      wallet, totalCost, TransactionType.STOCK_BUY, "stock:" + request.stockId(), description, request.idempotencyKey()
+                              )
+                      );
+                  } catch (DataIntegrityViolationException e) {
+                      Transaction existingTransaction = transactionRepository.findByIdempotencyKey(request.idempotencyKey()).orElseThrow();
+                      result.set(existingTransaction);
+                      status.setRollbackOnly();
+                  }
+
+              }
+      );
+
+      Transaction transaction = result.get();
+      return new StockTransactionResponse(
+              transaction.getId(),
+              request.stockId(),
+              stock.fullName(),
+              pricePerShare,
+              quantity,
+              totalCost,
+              transaction.getBalanceBefore(),
+              transaction.getBalanceAfter(),
+              TransactionType.STOCK_BUY.name(),
+              transaction.getCreatedAt()
+      );
+
   }
 
   public StockTransactionResponse processStockSell(
@@ -150,7 +203,61 @@ public class WalletService {
     validateTradeRequest(request);
     StockResponse stock = stockMarketServiceClient.getStock(request.stockId());
     validateStockActive(stock);
-    throw new UnsupportedOperationException("TODO: Implement processStockSell");
+
+    BigDecimal pricePerShare = stock.currentPrice();
+    BigDecimal quantity = resolveQuantity(request, pricePerShare);
+    BigDecimal totalCredit = quantity.multiply(pricePerShare).setScale(4, RoundingMode.DOWN);
+
+    AtomicReference<Transaction> result = new AtomicReference<>();
+    transactionTemplate.executeWithoutResult(
+            status -> {
+                if (transactionRepository.existsByIdempotencyKey(request.idempotencyKey())) {
+                    Transaction existingTransaction = transactionRepository.findByIdempotencyKey(request.idempotencyKey()).orElseThrow();
+
+                    result.set(existingTransaction);
+                    return;
+                }
+
+                Wallet wallet = walletRepository.findByUserIdAndLeagueIdForUpdate(userId, leagueId).orElseThrow(
+                        () -> new WalletNotFoundException("Wallet not found for user: " + userId)
+                );
+
+                String description = String.format(
+                        "Sell %s shares of %s @ %s", quantity, stock.fullName(), pricePerShare
+                );
+
+                try {
+                    result.set(
+                            creditWallet(
+                                    wallet,
+                                    totalCredit,
+                                    TransactionType.STOCK_SELL,
+                                    "stock:" + request.stockId(),
+                                    description,
+                                    request.idempotencyKey()
+                            )
+                    );
+                } catch (DataIntegrityViolationException e) {
+                    Transaction existingTransaction = transactionRepository.findByIdempotencyKey(request.idempotencyKey()).orElseThrow();
+                    result.set(existingTransaction);
+                    status.setRollbackOnly();
+                }
+            }
+    );
+    Transaction transaction = result.get();
+    return new StockTransactionResponse(
+            transaction.getId(),
+            request.stockId(),
+            stock.fullName(),
+            pricePerShare,
+            quantity,
+            totalCredit,
+            transaction.getBalanceBefore(),
+            transaction.getBalanceAfter(),
+            TransactionType.STOCK_SELL.name(),
+            transaction.getCreatedAt()
+    );
+
   }
 
   @Transactional(readOnly = true)
@@ -195,9 +302,9 @@ public class WalletService {
   private void validateTradeRequest(StockTransactionRequest request) {
     boolean hasQuantity = request.quantity() != null;
     boolean hasDollarAmount = request.dollarAmount() != null;
-    if (!hasQuantity && !hasDollarAmount) {
+    if (hasQuantity == hasDollarAmount) {
       throw new InvalidTradeRequestException(
-          "Either one of 'quantity' or 'dollarAmount' must be provided");
+          "Exactly one of 'quantity' or 'dollarAmount' must be provided");
     }
     if (hasQuantity && request.quantity().compareTo(BigDecimal.ZERO) <= 0) {
       throw new InvalidTradeRequestException("Quantity must be greater than zero");
