@@ -24,7 +24,6 @@ import java.math.RoundingMode;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -32,7 +31,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
-
 
 @Service
 public class WalletService {
@@ -94,7 +92,8 @@ public class WalletService {
                         () -> new WalletNotFoundException("Wallet not found for user: " + userId));
 
             try {
-              creditWallet(wallet, amount, TransactionType.INITIAL_STIPEND, null, null, idempotencyKey);
+              creditWallet(
+                  wallet, amount, TransactionType.INITIAL_STIPEND, null, null, idempotencyKey);
             } catch (DataIntegrityViolationException e) {
               status.setRollbackOnly();
               return;
@@ -127,11 +126,11 @@ public class WalletService {
                         () -> new WalletNotFoundException("Wallet not found for user: " + userId));
 
             try {
-                creditWallet(wallet, amount, TransactionType.WEEKLY_STIPEND, null, null, idempotencyKey);
-            }
-            catch (DataIntegrityViolationException e) {
-                status.setRollbackOnly();
-                return;
+              creditWallet(
+                  wallet, amount, TransactionType.WEEKLY_STIPEND, null, null, idempotencyKey);
+            } catch (DataIntegrityViolationException e) {
+              status.setRollbackOnly();
+              return;
             }
             stipendsIssued.incrementAndGet();
           });
@@ -145,57 +144,59 @@ public class WalletService {
     StockResponse stock = stockMarketServiceClient.getStock(request.stockId());
     validateStockActive(stock);
 
-      BigDecimal pricePerShare = stock.currentPrice();
-      BigDecimal quantity = resolveQuantity(request, pricePerShare);
-      BigDecimal totalCost = quantity.multiply(pricePerShare).setScale(4, RoundingMode.DOWN);
+    BigDecimal pricePerShare = stock.currentPrice();
+    BigDecimal quantity = resolveQuantity(request, pricePerShare);
+    BigDecimal totalCost = quantity.multiply(pricePerShare).setScale(4, RoundingMode.DOWN);
 
-      AtomicReference<Transaction> result = new AtomicReference<>();
-      transactionTemplate.executeWithoutResult(
-              status -> {
-                  if (transactionRepository.existsByIdempotencyKey(request.idempotencyKey())) {
-                      Transaction existingTransaction = transactionRepository.findByIdempotencyKey(request.idempotencyKey()).orElseThrow();
+    AtomicReference<Transaction> result = new AtomicReference<>();
+    transactionTemplate.executeWithoutResult(
+        status -> {
+          if (transactionRepository.existsByIdempotencyKey(request.idempotencyKey())) {
+            Transaction existingTransaction =
+                transactionRepository.findByIdempotencyKey(request.idempotencyKey()).orElseThrow();
 
-                      result.set(existingTransaction);
-                      return;
-                  }
+            result.set(existingTransaction);
+            return;
+          }
 
-                  Wallet wallet = walletRepository.findByUserIdAndLeagueIdForUpdate(userId, leagueId).orElseThrow(
-                          () -> new WalletNotFoundException("Wallet not found for user: " + userId)
-                  );
+          Wallet wallet =
+              walletRepository
+                  .findByUserIdAndLeagueIdForUpdate(userId, leagueId)
+                  .orElseThrow(
+                      () -> new WalletNotFoundException("Wallet not found for user: " + userId));
 
-                  String description = String.format(
-                          "Buy %s shares of %s @ %s", quantity, stock.fullName(), pricePerShare
-                  );
+          String description =
+              String.format("Buy %s shares of %s @ %s", quantity, stock.fullName(), pricePerShare);
 
-                  try {
-                      result.set(
-                              debitWallet(
-                                      wallet, totalCost, TransactionType.STOCK_BUY, "stock:" + request.stockId(), description, request.idempotencyKey()
-                              )
-                      );
-                  } catch (DataIntegrityViolationException e) {
-                      Transaction existingTransaction = transactionRepository.findByIdempotencyKey(request.idempotencyKey()).orElseThrow();
-                      result.set(existingTransaction);
-                      status.setRollbackOnly();
-                  }
+          try {
+            result.set(
+                debitWallet(
+                    wallet,
+                    totalCost,
+                    TransactionType.STOCK_BUY,
+                    "stock:" + request.stockId(),
+                    description,
+                    request.idempotencyKey()));
+          } catch (DataIntegrityViolationException e) {
+            Transaction existingTransaction =
+                transactionRepository.findByIdempotencyKey(request.idempotencyKey()).orElseThrow();
+            result.set(existingTransaction);
+            status.setRollbackOnly();
+          }
+        });
 
-              }
-      );
-
-      Transaction transaction = result.get();
-      return new StockTransactionResponse(
-              transaction.getId(),
-              request.stockId(),
-              stock.fullName(),
-              pricePerShare,
-              quantity,
-              totalCost,
-              transaction.getBalanceBefore(),
-              transaction.getBalanceAfter(),
-              TransactionType.STOCK_BUY.name(),
-              transaction.getCreatedAt()
-      );
-
+    Transaction transaction = result.get();
+    return new StockTransactionResponse(
+        transaction.getId(),
+        request.stockId(),
+        stock.fullName(),
+        pricePerShare,
+        quantity,
+        totalCost,
+        transaction.getBalanceBefore(),
+        transaction.getBalanceAfter(),
+        TransactionType.STOCK_BUY.name(),
+        transaction.getCreatedAt());
   }
 
   public StockTransactionResponse processStockSell(
@@ -210,54 +211,52 @@ public class WalletService {
 
     AtomicReference<Transaction> result = new AtomicReference<>();
     transactionTemplate.executeWithoutResult(
-            status -> {
-                if (transactionRepository.existsByIdempotencyKey(request.idempotencyKey())) {
-                    Transaction existingTransaction = transactionRepository.findByIdempotencyKey(request.idempotencyKey()).orElseThrow();
+        status -> {
+          if (transactionRepository.existsByIdempotencyKey(request.idempotencyKey())) {
+            Transaction existingTransaction =
+                transactionRepository.findByIdempotencyKey(request.idempotencyKey()).orElseThrow();
 
-                    result.set(existingTransaction);
-                    return;
-                }
+            result.set(existingTransaction);
+            return;
+          }
 
-                Wallet wallet = walletRepository.findByUserIdAndLeagueIdForUpdate(userId, leagueId).orElseThrow(
-                        () -> new WalletNotFoundException("Wallet not found for user: " + userId)
-                );
+          Wallet wallet =
+              walletRepository
+                  .findByUserIdAndLeagueIdForUpdate(userId, leagueId)
+                  .orElseThrow(
+                      () -> new WalletNotFoundException("Wallet not found for user: " + userId));
 
-                String description = String.format(
-                        "Sell %s shares of %s @ %s", quantity, stock.fullName(), pricePerShare
-                );
+          String description =
+              String.format("Sell %s shares of %s @ %s", quantity, stock.fullName(), pricePerShare);
 
-                try {
-                    result.set(
-                            creditWallet(
-                                    wallet,
-                                    totalCredit,
-                                    TransactionType.STOCK_SELL,
-                                    "stock:" + request.stockId(),
-                                    description,
-                                    request.idempotencyKey()
-                            )
-                    );
-                } catch (DataIntegrityViolationException e) {
-                    Transaction existingTransaction = transactionRepository.findByIdempotencyKey(request.idempotencyKey()).orElseThrow();
-                    result.set(existingTransaction);
-                    status.setRollbackOnly();
-                }
-            }
-    );
+          try {
+            result.set(
+                creditWallet(
+                    wallet,
+                    totalCredit,
+                    TransactionType.STOCK_SELL,
+                    "stock:" + request.stockId(),
+                    description,
+                    request.idempotencyKey()));
+          } catch (DataIntegrityViolationException e) {
+            Transaction existingTransaction =
+                transactionRepository.findByIdempotencyKey(request.idempotencyKey()).orElseThrow();
+            result.set(existingTransaction);
+            status.setRollbackOnly();
+          }
+        });
     Transaction transaction = result.get();
     return new StockTransactionResponse(
-            transaction.getId(),
-            request.stockId(),
-            stock.fullName(),
-            pricePerShare,
-            quantity,
-            totalCredit,
-            transaction.getBalanceBefore(),
-            transaction.getBalanceAfter(),
-            TransactionType.STOCK_SELL.name(),
-            transaction.getCreatedAt()
-    );
-
+        transaction.getId(),
+        request.stockId(),
+        stock.fullName(),
+        pricePerShare,
+        quantity,
+        totalCredit,
+        transaction.getBalanceBefore(),
+        transaction.getBalanceAfter(),
+        TransactionType.STOCK_SELL.name(),
+        transaction.getCreatedAt());
   }
 
   @Transactional(readOnly = true)
