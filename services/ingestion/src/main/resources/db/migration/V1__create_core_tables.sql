@@ -22,6 +22,7 @@ CREATE TABLE teams
     division_id        VARCHAR(15),
     conference_id      VARCHAR(15),
     standing_summary   VARCHAR(50),
+    roster_synced_at TIMESTAMPTZ,
     ingested_at        TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     updated_at         TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );

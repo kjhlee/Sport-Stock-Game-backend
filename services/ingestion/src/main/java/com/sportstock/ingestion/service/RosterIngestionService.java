@@ -15,6 +15,8 @@ import com.sportstock.ingestion.repo.CoachRepository;
 import com.sportstock.ingestion.repo.TeamRepository;
 import com.sportstock.ingestion.repo.TeamRosterEntryRepository;
 import jakarta.persistence.EntityManager;
+
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -123,6 +125,9 @@ public class RosterIngestionService {
 
     log.info(
         "Ingested {} roster entries for team {} ({})", count, team.getDisplayName(), teamEspnId);
+
+    team.setRosterSyncedAt(Instant.now());
+    teamRepository.save(team);
   }
 
   private Athlete upsertAthlete(JsonNode athleteNode) {
