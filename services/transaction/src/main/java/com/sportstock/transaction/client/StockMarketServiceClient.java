@@ -1,12 +1,10 @@
 package com.sportstock.transaction.client;
 
 import com.sportstock.common.dto.stock_market.StockResponse;
-import com.sportstock.common.security.RequestContextAuthorizationHeaderResolver;
 import com.sportstock.transaction.exception.TransactionException;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
@@ -23,9 +21,6 @@ public class StockMarketServiceClient {
       return stockMarketRestClient
           .get()
           .uri("/api/v1/stocks/{stockId}", stockId)
-          .header(
-              HttpHeaders.AUTHORIZATION,
-              RequestContextAuthorizationHeaderResolver.resolveBearerAuthorizationHeader())
           .retrieve()
           .body(StockResponse.class);
     } catch (RestClientResponseException e) {
