@@ -6,6 +6,7 @@ import com.sportstock.common.dto.league.JoinLeagueRequest;
 import com.sportstock.common.dto.league.LeagueInviteResponse;
 import com.sportstock.common.dto.league.LeagueMemberResponse;
 import com.sportstock.common.dto.league.LeagueResponse;
+import com.sportstock.common.dto.league.StipendEligibleLeagueResponse;
 import com.sportstock.common.security.CurrentUserProvider;
 import com.sportstock.league.service.LeagueService;
 import jakarta.validation.Valid;
@@ -101,6 +102,13 @@ public class LeagueController {
   @ResponseStatus(HttpStatus.OK)
   public List<Long> getMemberUserIds(@PathVariable Long leagueId) {
     return leagueService.getMemberUserIds(leagueId);
+  }
+
+  @GetMapping("/internal/stipend-eligible")
+  @ResponseStatus(HttpStatus.OK)
+  public List<StipendEligibleLeagueResponse> getStipendEligibleLeagues(
+      @RequestParam Short payoutDay) {
+    return leagueService.getStipendEligibleLeagues(payoutDay);
   }
 
   @GetMapping("/{leagueId}/members")
