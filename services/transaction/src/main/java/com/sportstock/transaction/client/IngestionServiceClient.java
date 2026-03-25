@@ -1,6 +1,7 @@
 package com.sportstock.transaction.client;
 
 import com.sportstock.common.dto.ingestion.CurrentWeekResponse;
+import com.sportstock.transaction.exception.TransactionException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -23,7 +24,7 @@ public class IngestionServiceClient {
           .body(CurrentWeekResponse.class);
     } catch (RestClientResponseException e) {
       log.error("Failed to fetch current week: {}", e.getMessage());
-      throw new RuntimeException("Ingestion service unavailable", e);
+      throw new TransactionException("Ingestion service unavailable", e);
     }
   }
 }

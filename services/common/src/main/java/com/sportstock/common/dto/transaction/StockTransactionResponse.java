@@ -10,7 +10,7 @@ public record StockTransactionResponse(
     String stockName,
     BigDecimal pricePerShare,
     BigDecimal quantity,
-    BigDecimal totalCost,
+    BigDecimal totalAmount,
     BigDecimal balanceBefore,
     BigDecimal balanceAfter,
     String type,

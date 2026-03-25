@@ -1,6 +1,7 @@
 package com.sportstock.transaction.client;
 
 import com.sportstock.common.dto.league.StipendEligibleLeagueResponse;
+import com.sportstock.transaction.exception.TransactionException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,7 +26,7 @@ public class LeagueServiceClient {
           .body(new ParameterizedTypeReference<>() {});
     } catch (RestClientResponseException e) {
       log.error("Failed to fetch member IDs for league {}: {}", leagueId, e.getMessage());
-      throw new RuntimeException("League service unavailable", e);
+      throw new TransactionException("League service unavailable", e);
     }
   }
 
@@ -43,7 +44,7 @@ public class LeagueServiceClient {
           .body(new ParameterizedTypeReference<>() {});
     } catch (RestClientResponseException e) {
       log.error("Failed to fetch stipend-eligible leagues: {}", e.getMessage());
-      throw new RuntimeException("League service unavailable", e);
+      throw new TransactionException("League service unavailable", e);
     }
   }
 }
