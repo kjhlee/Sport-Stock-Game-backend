@@ -1,7 +1,6 @@
 package com.sportstock.transaction.client;
 
 import com.sportstock.common.dto.league.StipendEligibleLeagueResponse;
-import com.sportstock.common.security.RequestContextAuthorizationHeaderResolver;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

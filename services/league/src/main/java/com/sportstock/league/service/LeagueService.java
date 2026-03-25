@@ -1,12 +1,12 @@
 package com.sportstock.league.service;
 
 import com.sportstock.common.dto.league.CreateInviteRequest;
-import com.sportstock.common.dto.league.StipendEligibleLeagueResponse;
 import com.sportstock.common.dto.league.CreateLeagueRequest;
 import com.sportstock.common.dto.league.JoinLeagueRequest;
 import com.sportstock.common.dto.league.LeagueInviteResponse;
 import com.sportstock.common.dto.league.LeagueMemberResponse;
 import com.sportstock.common.dto.league.LeagueResponse;
+import com.sportstock.common.dto.league.StipendEligibleLeagueResponse;
 import com.sportstock.league.client.TransactionServiceClient;
 import com.sportstock.league.entity.League;
 import com.sportstock.league.entity.LeagueInvite;

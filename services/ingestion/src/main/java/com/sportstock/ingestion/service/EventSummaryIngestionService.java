@@ -198,8 +198,8 @@ public class EventSummaryIngestionService {
           if (athlete == null) {
             athlete = createAthleteFromEventData(athleteEntry.path("athlete"), athleteEspnId);
             if (athlete == null) {
-              log.warn("Could not create athlete {} from event data, skipping stats",
-                      athleteEspnId);
+              log.warn(
+                  "Could not create athlete {} from event data, skipping stats", athleteEspnId);
               continue;
             }
           }
@@ -244,7 +244,7 @@ public class EventSummaryIngestionService {
     }
   }
 
-  private Athlete createAthleteFromEventData (JsonNode athleteNode, String espnId) {
+  private Athlete createAthleteFromEventData(JsonNode athleteNode, String espnId) {
     try {
       Athlete athlete = new Athlete();
       athlete.setEspnId(espnId);

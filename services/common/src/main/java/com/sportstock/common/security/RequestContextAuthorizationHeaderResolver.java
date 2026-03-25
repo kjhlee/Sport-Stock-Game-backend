@@ -20,8 +20,7 @@ public final class RequestContextAuthorizationHeaderResolver {
       throw new MissingAuthenticationException("Missing Authorization header on incoming request");
     }
     if (!authorizationHeader.startsWith("Bearer ")) {
-      throw new MissingAuthenticationException(
-          "Authorization header must use Bearer token format");
+      throw new MissingAuthenticationException("Authorization header must use Bearer token format");
     }
     return authorizationHeader;
   }

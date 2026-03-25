@@ -15,7 +15,6 @@ import com.sportstock.ingestion.repo.CoachRepository;
 import com.sportstock.ingestion.repo.TeamRepository;
 import com.sportstock.ingestion.repo.TeamRosterEntryRepository;
 import jakarta.persistence.EntityManager;
-
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -190,7 +189,7 @@ public class RosterIngestionService {
 
   public void ingestRostersNeedingSync(Integer seasonYear, Instant cutoff) {
     List<Team> teams = teamRepository.findTeamsNeedingRosterSync(cutoff);
-    if (teams.isEmpty()){
+    if (teams.isEmpty()) {
       log.info("No teams need roster sync");
     }
 
@@ -211,6 +210,4 @@ public class RosterIngestionService {
     }
     log.info("Ingested rosters for {} teams ({} failed)", success, failed);
   }
-
-
 }

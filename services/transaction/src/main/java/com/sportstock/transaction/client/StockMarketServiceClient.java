@@ -6,7 +6,6 @@ import com.sportstock.transaction.exception.TransactionException;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.tomcat.util.http.fileupload.RequestContext;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -24,7 +23,9 @@ public class StockMarketServiceClient {
       return stockMarketRestClient
           .get()
           .uri("/api/v1/stocks/{stockId}", stockId)
-          .header(HttpHeaders.AUTHORIZATION, RequestContextAuthorizationHeaderResolver.resolveBearerAuthorizationHeader())
+          .header(
+              HttpHeaders.AUTHORIZATION,
+              RequestContextAuthorizationHeaderResolver.resolveBearerAuthorizationHeader())
           .retrieve()
           .body(StockResponse.class);
     } catch (RestClientResponseException e) {

@@ -2,7 +2,6 @@ package com.sportstock.ingestion.repo;
 
 import com.sportstock.ingestion.entity.Event;
 import jakarta.persistence.LockModeType;
-
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -26,17 +25,18 @@ public interface EventRepository extends JpaRepository<Event, Long> {
 
   List<Event> findBySeasonYearAndStatusCompletedTrue(Integer seasonYear);
 
-  @Query("""
+  @Query(
+      """
     SELECT CASE WHEN COUNT(e) > 0 THEN true ELSE false END FROM Event e
     WHERE e.date >= :rangeStart
       AND e.date < :rangeEnd
       AND (e.statusCompleted = false OR e.statusCompleted IS NULL)
     """)
   boolean hasIncompleteEventsInRange(
-          @Param("rangeStart") Instant rangeStart,
-          @Param("rangeEnd") Instant rangeEnd);
+      @Param("rangeStart") Instant rangeStart, @Param("rangeEnd") Instant rangeEnd);
 
-  @Query("""
+  @Query(
+      """
     SELECT e FROM Event e
     WHERE e.statusCompleted = true
       AND e.summaryIngestedAt IS NULL
@@ -45,6 +45,5 @@ public interface EventRepository extends JpaRepository<Event, Long> {
     ORDER BY e.date ASC
     """)
   List<Event> findCompletedEventsNeedingSummary(
-          @Param("rangeStart") Instant rangeStart,
-          @Param("rangeEnd") Instant rangeEnd);
+      @Param("rangeStart") Instant rangeStart, @Param("rangeEnd") Instant rangeEnd);
 }

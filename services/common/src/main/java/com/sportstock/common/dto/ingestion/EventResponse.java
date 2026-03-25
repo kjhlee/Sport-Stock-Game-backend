@@ -23,5 +23,4 @@ public record EventResponse(
     BigDecimal statusClock,
     String broadcast,
     String noteHeadline,
-    Instant summaryIngestedAt
-) {}
+    Instant summaryIngestedAt) {}
