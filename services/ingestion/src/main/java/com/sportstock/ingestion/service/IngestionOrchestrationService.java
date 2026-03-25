@@ -66,7 +66,8 @@ public class IngestionOrchestrationService {
         }
       }
       if (EXCLUSIVE_TYPES.contains(syncType) && !activeSyncs.isEmpty()) {
-        log.warn("Skipping sync type {} because it is exclusive and another sync is active", syncType);
+        log.warn(
+            "Skipping sync type {} because it is exclusive and another sync is active", syncType);
         return false;
       }
       if (syncType == SyncType.DAILY_CATCHUP && activeSyncs.contains(SyncType.WEEKLY_CATCHUP)) {
@@ -80,7 +81,6 @@ public class IngestionOrchestrationService {
 
       activeSyncs.add(syncType);
       return true;
-
     }
   }
 
@@ -118,7 +118,6 @@ public class IngestionOrchestrationService {
     }
   }
 
-
   @Async("ingestionExecutor")
   public void runGameRefresh(int seasonYear, int seasonType, int week) {
     try {
@@ -127,7 +126,8 @@ public class IngestionOrchestrationService {
       Instant rangeEnd = today.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
 
       boolean hasIncompleteEvents = eventIngestionService.hasIncompleteEvents(rangeStart, rangeEnd);
-      List<String> needingSummary = eventIngestionService.getCompletedEventsNeedingSummary(rangeStart, rangeEnd);
+      List<String> needingSummary =
+          eventIngestionService.getCompletedEventsNeedingSummary(rangeStart, rangeEnd);
 
       if (!hasIncompleteEvents && needingSummary.isEmpty()) {
         return;
@@ -141,7 +141,7 @@ public class IngestionOrchestrationService {
           return;
         }
         needingSummary =
-                eventIngestionService.getCompletedEventsNeedingSummary(rangeStart, rangeEnd);
+            eventIngestionService.getCompletedEventsNeedingSummary(rangeStart, rangeEnd);
       }
 
       for (String eventEspnId : needingSummary) {
@@ -162,9 +162,10 @@ public class IngestionOrchestrationService {
       log.info("Starting daily catchup for season {}, week {}", seasonYear, week);
 
       Instant now = Instant.now();
-      Instant rangeStart = now.minusSeconds(36 * 3600); //36 hrs
+      Instant rangeStart = now.minusSeconds(36 * 3600); // 36 hrs
 
-      List<String> eventsNeedingSummary = eventIngestionService.getCompletedEventsNeedingSummary(rangeStart, now);
+      List<String> eventsNeedingSummary =
+          eventIngestionService.getCompletedEventsNeedingSummary(rangeStart, now);
       int summaryCount = 0;
 
       for (String eventEspnId : eventsNeedingSummary) {
@@ -173,8 +174,7 @@ public class IngestionOrchestrationService {
       Instant todayStart = LocalDate.now(ZoneOffset.UTC).atStartOfDay(ZoneOffset.UTC).toInstant();
       rosterIngestionService.ingestRostersNeedingSync(seasonYear, todayStart);
 
-      log.info(
-              "DAILY_CATCHUP complete: {} summaries ingested, roster sync done", summaryCount);
+      log.info("DAILY_CATCHUP complete: {} summaries ingested, roster sync done", summaryCount);
     } catch (Exception e) {
       log.error("DAILY_CATCHUP failed: {}", e.getMessage());
     } finally {
@@ -188,7 +188,6 @@ public class IngestionOrchestrationService {
       log.info("Starting WEEKLY_CATCHUP");
       Instant now = Instant.now();
       Instant rangeStart = now.minusSeconds(8 * 24 * 3600); // 8 days ago
-
 
       List<String> needingSummary =
           eventIngestionService.getCompletedEventsNeedingSummary(rangeStart, now);
@@ -204,15 +203,14 @@ public class IngestionOrchestrationService {
         CurrentWeekResponse nw = nextWeek.get();
         try {
           eventIngestionService.ingestScoreboard(
-              nw.seasonYear(),
-              Integer.parseInt(nw.seasonType()),
-              nw.week());
+              nw.seasonYear(), Integer.parseInt(nw.seasonType()), nw.week());
           log.info(
               "WEEKLY_CATCHUP: pre-ingested schedule for {} {} Week {}",
-              nw.seasonYear(), nw.seasonTypeName(), nw.week());
+              nw.seasonYear(),
+              nw.seasonTypeName(),
+              nw.week());
         } catch (Exception e) {
-          log.warn(
-              "WEEKLY_CATCHUP: failed to pre-ingest next week schedule: {}", e.getMessage());
+          log.warn("WEEKLY_CATCHUP: failed to pre-ingest next week schedule: {}", e.getMessage());
         }
       } else {
         log.info("WEEKLY_CATCHUP: no next week found — may be end of season");
@@ -227,22 +225,24 @@ public class IngestionOrchestrationService {
     }
   }
 
-
   @Async("ingestionExecutor")
   public void runAdminSync(
       int seasonYear, int seasonType, int week, boolean force, List<String> teamEspnIds) {
     try {
       log.info(
-              "Starting ADMIN_SYNC for season {} type {} week {} (force={})",
-              seasonYear, seasonType, week, force);
+          "Starting ADMIN_SYNC for season {} type {} week {} (force={})",
+          seasonYear,
+          seasonType,
+          week,
+          force);
 
       teamIngestionService.ingestTeams();
       eventIngestionService.ingestScoreboard(seasonYear, seasonType, week);
 
       var teams =
-              (teamEspnIds != null && !teamEspnIds.isEmpty())
-                      ? teamEspnIds.stream().map(teamIngestionService::getTeamByEspnId).toList()
-                      : teamIngestionService.listTeams();
+          (teamEspnIds != null && !teamEspnIds.isEmpty())
+              ? teamEspnIds.stream().map(teamIngestionService::getTeamByEspnId).toList()
+              : teamIngestionService.listTeams();
 
       int teamSuccess = 0;
       int teamFailed = 0;
@@ -250,7 +250,7 @@ public class IngestionOrchestrationService {
       for (var team : teams) {
         try {
           transactionTemplate.executeWithoutResult(
-                  status -> teamIngestionService.ingestTeamDetail(team.espnId(), seasonYear));
+              status -> teamIngestionService.ingestTeamDetail(team.espnId(), seasonYear));
           teamSuccess++;
         } catch (Exception e) {
           teamFailed++;
@@ -259,9 +259,10 @@ public class IngestionOrchestrationService {
         }
       }
       log.info(
-              "Ingested {} team details ({} failed{})",
-              teamSuccess, teamFailed,
-              teamFailedIds.isEmpty() ? "" : ", IDs: " + teamFailedIds);
+          "Ingested {} team details ({} failed{})",
+          teamSuccess,
+          teamFailed,
+          teamFailedIds.isEmpty() ? "" : ", IDs: " + teamFailedIds);
 
       rosterIngestionService.ingestAllRosters(seasonYear, null, teamEspnIds);
 
@@ -273,19 +274,19 @@ public class IngestionOrchestrationService {
         if (!force && event.summaryIngestedAt() != null) continue;
         try {
           transactionTemplate.executeWithoutResult(
-                  status -> eventSummaryIngestionService.ingestEventSummary(event.espnId()));
+              status -> eventSummaryIngestionService.ingestEventSummary(event.espnId()));
           eventSuccess++;
         } catch (Exception e) {
           eventFailed++;
           eventFailedIds.add(event.espnId());
-          log.error(
-                  "Failed to ingest event summary for {}: {}", event.espnId(), e.getMessage());
+          log.error("Failed to ingest event summary for {}: {}", event.espnId(), e.getMessage());
         }
       }
       log.info(
-              "Ingested {} event summaries ({} failed{})",
-              eventSuccess, eventFailed,
-              eventFailedIds.isEmpty() ? "" : ", IDs: " + eventFailedIds);
+          "Ingested {} event summaries ({} failed{})",
+          eventSuccess,
+          eventFailed,
+          eventFailedIds.isEmpty() ? "" : ", IDs: " + eventFailedIds);
 
       log.info("ADMIN_SYNC complete");
     } finally {
@@ -296,25 +297,23 @@ public class IngestionOrchestrationService {
   public boolean enqueueSummary(String eventEspnId) {
     try {
       transactionTemplate.executeWithoutResult(
-              status -> eventSummaryIngestionService.ingestEventSummary(eventEspnId));
+          status -> eventSummaryIngestionService.ingestEventSummary(eventEspnId));
       return true;
     } catch (Exception e) {
       log.error("Failed to ingest summary for event {}: {}", eventEspnId, e.getMessage());
       return false;
     }
   }
+
   private void verifyPriorSeasonData(int priorSeasonYear) {
     var events = eventIngestionService.listEvents(priorSeasonYear, null, null);
     long missingCount = events.stream().filter(e -> e.summaryIngestedAt() == null).count();
     if (missingCount > 0) {
       log.warn(
-              "Prior season {} has {} events with missing summaries — "
-                      + "run ADMIN_SYNC with force=true to backfill",
-              priorSeasonYear, missingCount);
+          "Prior season {} has {} events with missing summaries — "
+              + "run ADMIN_SYNC with force=true to backfill",
+          priorSeasonYear,
+          missingCount);
     }
-
   }
-
-
-  }
-
+}

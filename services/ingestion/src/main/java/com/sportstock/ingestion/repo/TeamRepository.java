@@ -1,7 +1,6 @@
 package com.sportstock.ingestion.repo;
 
 import com.sportstock.ingestion.entity.Team;
-
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -15,7 +14,8 @@ public interface TeamRepository extends JpaRepository<Team, Long> {
 
   List<Team> findAllByOrderByDisplayNameAsc();
 
-  @Query("""
+  @Query(
+      """
     SELECT t FROM Team t
     WHERE t.rosterSyncedAt IS NULL
        OR t.rosterSyncedAt < :cutoff

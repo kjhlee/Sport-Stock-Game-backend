@@ -23,8 +23,7 @@ public interface SeasonWeekRepository extends JpaRepository<SeasonWeek, Long> {
     ORDER BY sw.seasonTypeValue ASC
     """)
   Optional<SeasonWeek> findCurrentWeek(
-      @Param("now") Instant now,
-      @Param("seasonTypes") List<String> seasonTypes);
+      @Param("now") Instant now, @Param("seasonTypes") List<String> seasonTypes);
 
   @Query(
       """
@@ -36,8 +35,7 @@ public interface SeasonWeekRepository extends JpaRepository<SeasonWeek, Long> {
     LIMIT 1
     """)
   Optional<SeasonWeek> findNextWeek(
-      @Param("now") Instant now,
-      @Param("seasonTypes") List<String> seasonTypes);
+      @Param("now") Instant now, @Param("seasonTypes") List<String> seasonTypes);
 
   @Query(
       """
@@ -47,8 +45,7 @@ public interface SeasonWeekRepository extends JpaRepository<SeasonWeek, Long> {
       AND sw.seasonTypeValue = :seasonType
     """)
   Optional<Integer> findMaxWeekForSeasonType(
-      @Param("seasonYear") Integer seasonYear,
-      @Param("seasonType") String seasonType);
+      @Param("seasonYear") Integer seasonYear, @Param("seasonType") String seasonType);
 
   @Query(
       "SELECT CASE WHEN COUNT(sw) > 0 THEN true ELSE false END FROM SeasonWeek sw JOIN sw.season s WHERE s.year = :year")

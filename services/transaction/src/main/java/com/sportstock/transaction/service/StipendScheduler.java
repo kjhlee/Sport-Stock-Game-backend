@@ -1,15 +1,13 @@
 package com.sportstock.transaction.service;
 
-import java.time.DayOfWeek;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneOffset;
-import java.util.List;
-
 import com.sportstock.common.dto.ingestion.CurrentWeekResponse;
 import com.sportstock.common.dto.league.StipendEligibleLeagueResponse;
 import com.sportstock.transaction.client.IngestionServiceClient;
 import com.sportstock.transaction.client.LeagueServiceClient;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -64,14 +62,19 @@ public class StipendScheduler {
       }
 
       try {
-        walletService.issueWeeklyStipends(league.leagueId(), league.weeklyStipendAmount(), currentWeek.week());
+        walletService.issueWeeklyStipends(
+            league.leagueId(), league.weeklyStipendAmount(), currentWeek.week());
       } catch (Exception e) {
-        log.error("Failed to issue weekly stipends for league {}: {}", league.leagueId(), e.getMessage());
+        log.error(
+            "Failed to issue weekly stipends for league {}: {}", league.leagueId(), e.getMessage());
         failed++;
       }
     }
 
-    log.info("Successfully issued stipends for {} leagues, failed for {} leagues, skipped {} leagues", success, failed, skipped);
-
+    log.info(
+        "Successfully issued stipends for {} leagues, failed for {} leagues, skipped {} leagues",
+        success,
+        failed,
+        skipped);
   }
 }
