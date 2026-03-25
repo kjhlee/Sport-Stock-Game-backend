@@ -71,7 +71,7 @@ public class WalletService {
   }
 
   public StipendResultResponse issueInitialStipends(Long leagueId, BigDecimal amount) {
-    List<Long> userIds = leagueServiceClient.getMemberUserIds(leagueId);
+    List<Long> userIds = leagueServiceClient.getMemberUserIdsInternal(leagueId);
     AtomicInteger walletsCreated = new AtomicInteger(0);
     AtomicInteger stipendsIssued = new AtomicInteger(0);
 
@@ -107,7 +107,7 @@ public class WalletService {
 
   public StipendResultResponse issueWeeklyStipends(
       Long leagueId, BigDecimal amount, Integer weekNumber) {
-    List<Long> userIds = leagueServiceClient.getMemberUserIds(leagueId);
+    List<Long> userIds = leagueServiceClient.getMemberUserIdsInternal(leagueId);
     AtomicInteger stipendsIssued = new AtomicInteger(0);
 
     for (Long userId : userIds) {
