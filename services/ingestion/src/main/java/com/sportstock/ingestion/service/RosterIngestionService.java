@@ -187,4 +187,30 @@ public class RosterIngestionService {
         failed,
         failedIds.isEmpty() ? "" : ", IDs: " + failedIds);
   }
+
+  public void ingestRostersNeedingSync(Integer seasonYear, Instant cutoff) {
+    List<Team> teams = teamRepository.findTeamsNeedingRosterSync(cutoff);
+    if (teams.isEmpty()){
+      log.info("No teams need roster sync");
+    }
+
+    log.info("Syncing rosters for {} teams not synced since {}", teams.size(), cutoff);
+
+    int success = 0;
+    int failed = 0;
+
+    for (Team team : teams) {
+      try {
+        transactionTemplate.executeWithoutResult(
+            status -> ingestTeamRosterInternal(team.getEspnId(), seasonYear, null));
+        success++;
+      } catch (Exception e) {
+        failed++;
+        log.error("Failed to ingest roster for team {}: {}", team.getEspnId(), e.getMessage());
+      }
+    }
+    log.info("Ingested rosters for {} teams ({} failed)", success, failed);
+  }
+
+
 }
