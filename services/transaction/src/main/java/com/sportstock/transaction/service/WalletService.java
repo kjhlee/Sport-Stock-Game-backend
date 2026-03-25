@@ -357,6 +357,7 @@ public class WalletService {
 
     transactionRepository.save(transaction);
     wallet.setBalance(balanceAfter);
+    walletRepository.save(wallet);
     return transaction;
   }
 
@@ -388,6 +389,7 @@ public class WalletService {
 
     transactionRepository.save(transaction);
     wallet.setBalance(balanceAfter);
+    walletRepository.save(wallet);
     return transaction;
   }
 }

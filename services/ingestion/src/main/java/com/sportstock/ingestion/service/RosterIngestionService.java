@@ -191,6 +191,7 @@ public class RosterIngestionService {
     List<Team> teams = teamRepository.findTeamsNeedingRosterSync(cutoff);
     if (teams.isEmpty()) {
       log.info("No teams need roster sync");
+      return;
     }
 
     log.info("Syncing rosters for {} teams not synced since {}", teams.size(), cutoff);

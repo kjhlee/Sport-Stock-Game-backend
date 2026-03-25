@@ -64,6 +64,7 @@ public class StipendScheduler {
       try {
         walletService.issueWeeklyStipends(
             league.leagueId(), league.weeklyStipendAmount(), currentWeek.week());
+        success++;
       } catch (Exception e) {
         log.error(
             "Failed to issue weekly stipends for league {}: {}", league.leagueId(), e.getMessage());
