@@ -113,6 +113,7 @@ public class IngestionOrchestrationService {
 
       log.info("PRESEASON_LOAD complete for season {}", seasonYear);
     } catch (Exception e) {
+      log.error("PRESEASON_LOAD failed for season {}: {}", seasonYear, e.getMessage());
     } finally {
       release(SyncType.PRESEASON_LOAD);
     }
