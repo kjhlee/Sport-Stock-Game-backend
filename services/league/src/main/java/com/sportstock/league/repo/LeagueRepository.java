@@ -21,4 +21,7 @@ public interface LeagueRepository extends JpaRepository<League, Long> {
   List<League> findByStatusOrderByCreatedAtDesc(LeagueStatus status);
 
   List<League> findByOwnerUserIdAndStatus(Long ownerUserId, LeagueStatus status);
+
+  List<League> findByStatusAndStartedAtIsNotNullAndWeeklyPayoutDowUtcOrderByIdAsc(
+      LeagueStatus status, Short weeklyPayoutDowUtc);
 }
