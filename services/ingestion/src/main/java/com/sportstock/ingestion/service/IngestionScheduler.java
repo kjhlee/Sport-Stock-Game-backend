@@ -39,7 +39,7 @@ public class IngestionScheduler {
     }
   }
 
-  @Scheduled(cron = "0 0 0 1 8 *")
+  @Scheduled(cron = "0 0 0 1 8 *", zone = "UTC")
   public void scheduledPreseasonLoad() {
     int year = LocalDate.now(ZoneOffset.UTC).getYear();
     log.info("Scheduled PRESEASON_LOAD for season {}", year);
@@ -63,7 +63,7 @@ public class IngestionScheduler {
     }
   }
 
-  @Scheduled(cron = "0 0 6 * * *")
+  @Scheduled(cron = "0 0 6 * * *", zone = "UTC")
   public void runDailyCatchup() {
     CurrentWeekResponse currentWeek;
     try {
@@ -79,7 +79,7 @@ public class IngestionScheduler {
     }
   }
 
-  @Scheduled(cron = "0 0 10 * * TUE")
+  @Scheduled(cron = "0 0 10 * * TUE", zone = "UTC")
   public void runWeeklyCatchup() {
     CurrentWeekResponse currentWeek;
     try {
