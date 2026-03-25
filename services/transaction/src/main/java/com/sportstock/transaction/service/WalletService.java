@@ -146,7 +146,7 @@ public class WalletService {
 
     BigDecimal pricePerShare = stock.currentPrice();
     BigDecimal quantity = resolveQuantity(request, pricePerShare);
-    BigDecimal totalCost = quantity.multiply(pricePerShare).setScale(4, RoundingMode.DOWN);
+    BigDecimal totalAmount = quantity.multiply(pricePerShare).setScale(4, RoundingMode.DOWN);
 
     AtomicReference<Transaction> result = new AtomicReference<>();
     transactionTemplate.executeWithoutResult(
@@ -172,7 +172,7 @@ public class WalletService {
             result.set(
                 debitWallet(
                     wallet,
-                    totalCost,
+                    totalAmount,
                     TransactionType.STOCK_BUY,
                     "stock:" + request.stockId(),
                     description,
@@ -193,7 +193,7 @@ public class WalletService {
         stock.fullName(),
         pricePerShare,
         quantity,
-        totalCost,
+        totalAmount,
         transaction.getBalanceBefore(),
         transaction.getBalanceAfter(),
         TransactionType.STOCK_BUY.name(),
@@ -301,6 +301,12 @@ public class WalletService {
   }
 
   private void validateTradeRequest(StockTransactionRequest request) {
+    if (request.stockId() == null) {
+      throw new InvalidTradeRequestException("stockId is required");
+    }
+    if (request.idempotencyKey() == null || request.idempotencyKey().isBlank()) {
+      throw new InvalidTradeRequestException("idempotencyKey is required");
+    }
     boolean hasQuantity = request.quantity() != null;
     boolean hasDollarAmount = request.dollarAmount() != null;
     if (hasQuantity == hasDollarAmount) {
@@ -324,6 +330,9 @@ public class WalletService {
   private BigDecimal resolveQuantity(StockTransactionRequest request, BigDecimal pricePerShare) {
     if (request.quantity() != null) {
       return request.quantity().setScale(4, RoundingMode.DOWN);
+    }
+    if (pricePerShare == null || pricePerShare.compareTo(BigDecimal.ZERO) <= 0) {
+      throw new InvalidTradeRequestException("Stock price is unavailable or invalid");
     }
     BigDecimal quantity = request.dollarAmount().divide(pricePerShare, 4, RoundingMode.DOWN);
     if (quantity.compareTo(BigDecimal.ZERO) <= 0) {

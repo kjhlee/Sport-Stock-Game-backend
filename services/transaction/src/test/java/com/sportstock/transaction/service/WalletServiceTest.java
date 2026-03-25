@@ -510,7 +510,7 @@ class WalletServiceTest {
       assertThat(response).isNotNull();
       assertThat(response.type()).isEqualTo("STOCK_BUY");
       assertThat(response.quantity()).isEqualByComparingTo(new BigDecimal("10"));
-      assertThat(response.totalCost()).isEqualByComparingTo(new BigDecimal("250.0000"));
+      assertThat(response.totalAmount()).isEqualByComparingTo(new BigDecimal("250.0000"));
     }
 
     @Test
@@ -558,7 +558,7 @@ class WalletServiceTest {
       assertThat(response).isNotNull();
       assertThat(response.type()).isEqualTo("STOCK_SELL");
       assertThat(response.quantity()).isEqualByComparingTo(new BigDecimal("10"));
-      assertThat(response.totalCost()).isEqualByComparingTo(new BigDecimal("250.0000"));
+      assertThat(response.totalAmount()).isEqualByComparingTo(new BigDecimal("250.0000"));
     }
 
     @Test

@@ -33,7 +33,6 @@ public class IngestionOrchestrationService {
   private final RosterIngestionService rosterIngestionService;
   private final EventIngestionService eventIngestionService;
   private final EventSummaryIngestionService eventSummaryIngestionService;
-  private final SeasonIngestionService seasonIngestionService;
   private final SeasonQueryService seasonQueryService;
   private final TransactionTemplate transactionTemplate;
 
@@ -45,14 +44,12 @@ public class IngestionOrchestrationService {
       RosterIngestionService rosterIngestionService,
       EventIngestionService eventIngestionService,
       EventSummaryIngestionService eventSummaryIngestionService,
-      SeasonIngestionService seasonIngestionService,
       SeasonQueryService seasonQueryService,
       TransactionTemplate transactionTemplate) {
     this.teamIngestionService = teamIngestionService;
     this.rosterIngestionService = rosterIngestionService;
     this.eventIngestionService = eventIngestionService;
     this.eventSummaryIngestionService = eventSummaryIngestionService;
-    this.seasonIngestionService = seasonIngestionService;
     this.seasonQueryService = seasonQueryService;
     this.transactionTemplate = transactionTemplate;
   }
