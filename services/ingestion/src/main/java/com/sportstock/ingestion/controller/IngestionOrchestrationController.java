@@ -31,14 +31,14 @@ public class IngestionOrchestrationController {
 
   @PostMapping("/sync/full")
   public ResponseEntity<Map<String, Object>> syncFull(
-      @RequestParam @Min(2000) @Max(2100) Integer seasonYear,
-      @RequestParam @Min(1) @Max(4) Integer seasonType,
-      @RequestParam @Min(1) @Max(25) Integer week,
-      @RequestParam(defaultValue = "false") Boolean force,
-      @RequestParam(required = false) @Size(max = 32)
+          @RequestParam @Min(2000) @Max(2100) Integer seasonYear,
+          @RequestParam @Min(1) @Max(4) Integer seasonType,
+          @RequestParam @Min(1) @Max(25) Integer week,
+          @RequestParam(defaultValue = "false") Boolean force,
+          @RequestParam(required = false) @Size(max = 32)
           List<@Pattern(regexp = ESPN_ID_PATTERN) String> teamEspnIds) {
     if (!orchestrationService.tryAcquire(
-        IngestionOrchestrationService.SyncType.ADMIN_SYNC)) {
+            IngestionOrchestrationService.SyncType.ADMIN_SYNC)) {
       return rejected("ADMIN_SYNC", "Another sync is running or admin sync is already active");
     }
     try {
@@ -46,18 +46,15 @@ public class IngestionOrchestrationController {
     } catch (RejectedExecutionException e) {
       orchestrationService.release(IngestionOrchestrationService.SyncType.ADMIN_SYNC);
       return unavailable("ADMIN_SYNC");
-    } catch (Exception e) {
-      orchestrationService.release(IngestionOrchestrationService.SyncType.ADMIN_SYNC);
-      throw e;
     }
     return ResponseEntity.accepted().body(accepted("ADMIN_SYNC"));
   }
 
   @PostMapping("/sync/preseason")
   public ResponseEntity<Map<String, Object>> syncPreseason(
-      @RequestParam @Min(2000) @Max(2100) Integer seasonYear) {
+          @RequestParam @Min(2000) @Max(2100) Integer seasonYear) {
     if (!orchestrationService.tryAcquire(
-        IngestionOrchestrationService.SyncType.PRESEASON_LOAD)) {
+            IngestionOrchestrationService.SyncType.PRESEASON_LOAD)) {
       return rejected("PRESEASON_LOAD", "Another sync is running");
     }
     try {
@@ -65,9 +62,6 @@ public class IngestionOrchestrationController {
     } catch (RejectedExecutionException e) {
       orchestrationService.release(IngestionOrchestrationService.SyncType.PRESEASON_LOAD);
       return unavailable("PRESEASON_LOAD");
-    } catch (Exception e) {
-      orchestrationService.release(IngestionOrchestrationService.SyncType.PRESEASON_LOAD);
-      throw e;
     }
     return ResponseEntity.accepted().body(accepted("PRESEASON_LOAD"));
   }
