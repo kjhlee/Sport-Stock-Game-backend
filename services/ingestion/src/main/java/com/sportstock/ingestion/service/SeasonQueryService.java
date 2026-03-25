@@ -6,9 +6,8 @@ import com.sportstock.ingestion.exception.EntityNotFoundException;
 import com.sportstock.ingestion.repo.SeasonWeekRepository;
 import jakarta.transaction.Transactional;
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -24,13 +23,9 @@ public class SeasonQueryService {
   @Transactional
   public CurrentWeekResponse getCurrentWeek() {
     Instant now = Instant.now();
-
-    int currentYear = LocalDate.now(ZoneOffset.UTC).getYear();
-
     SeasonWeek sw =
         seasonWeekRepository
-            .findCurrentWeek(now, currentYear, SEASON_TYPES)
-            .or(() -> seasonWeekRepository.findCurrentWeek(now, currentYear - 1, SEASON_TYPES))
+            .findCurrentWeek(now, SEASON_TYPES)
             .orElseThrow(
                 () ->
                     new EntityNotFoundException(
@@ -43,5 +38,22 @@ public class SeasonQueryService {
         sw.getLabel(),
         sw.getStartDate(),
         sw.getEndDate());
+  }
+
+  @Transactional
+  public Optional<CurrentWeekResponse> getNextWeek() {
+    Instant now = Instant.now();
+    return seasonWeekRepository
+        .findNextWeek(now, SEASON_TYPES)
+        .map(
+            sw ->
+                new CurrentWeekResponse(
+                    sw.getSeason().getYear(),
+                    sw.getSeasonTypeValue(),
+                    sw.getSeason().getSeasonTypeName(),
+                    Integer.parseInt(sw.getWeekValue()),
+                    sw.getLabel(),
+                    sw.getStartDate(),
+                    sw.getEndDate()));
   }
 }

@@ -61,7 +61,7 @@ public class EventSummaryIngestionService {
     upsertTeamStats(root, event);
     upsertPlayerStats(root, event);
 
-    event.setIngestedAt(Instant.now());
+    event.setSummaryIngestedAt(Instant.now());
     eventRepository.save(event);
 
     log.info("Ingested summary for event {}", eventEspnId);
