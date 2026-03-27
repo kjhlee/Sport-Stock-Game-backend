@@ -1,12 +1,6 @@
 package com.sportstock.common.security;
 
 import com.sportstock.common.exceptions.MissingAuthenticationException;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import javax.sql.DataSource;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -14,56 +8,36 @@ import org.springframework.stereotype.Component;
 @Component
 public class CurrentUserProvider {
 
-  private static final String USER_ID_QUERY = "SELECT id FROM users.userinfo WHERE email = ?";
-
-  @Autowired DataSource dataSource;
-
   public Long getCurrentUserId() {
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
     if (authentication == null || authentication.getPrincipal() == null) {
       throw new MissingAuthenticationException("No authenticated user found in security context");
     }
 
-    String email = authentication.getPrincipal().toString();
+    AuthenticatedUser user = (AuthenticatedUser) authentication.getPrincipal();
+    Long userId = user.userId();
+
+    if (userId == null) {
+      throw new MissingAuthenticationException("No user id found in security context");
+    }
+
+    return userId;
+  }
+
+  public String getCurrentUserEmail() {
+    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    if (authentication == null || authentication.getPrincipal() == null) {
+      throw new MissingAuthenticationException("No authenticated user found in security context");
+    }
+
+    AuthenticatedUser user = (AuthenticatedUser) authentication.getPrincipal();
+
+    String email = user.email();
+
     if (email == null || email.isBlank()) {
       throw new MissingAuthenticationException("No user email found in security context");
     }
 
-    String rawUserId = fetchUserIdByEmail(email);
-    try {
-      return Long.parseLong(rawUserId);
-    } catch (NumberFormatException e) {
-      throw new MissingAuthenticationException(
-          "User ID is not numeric and cannot be mapped to Long. email="
-              + email
-              + ", userId="
-              + rawUserId,
-          e);
-    }
-  }
-
-  private String fetchUserIdByEmail(String email) {
-    try {
-      return queryForUserId(email, USER_ID_QUERY);
-    } catch (SQLException e) {
-      throw new MissingAuthenticationException("Failed to query user id for email: " + email, e);
-    }
-  }
-
-  private String queryForUserId(String email, String query) throws SQLException {
-    try (Connection connection = dataSource.getConnection();
-        PreparedStatement statement = connection.prepareStatement(query)) {
-      statement.setString(1, email);
-      try (ResultSet rs = statement.executeQuery()) {
-        if (!rs.next()) {
-          throw new MissingAuthenticationException("No user found for email: " + email);
-        }
-        String userId = rs.getString("id");
-        if (userId == null || userId.isBlank()) {
-          throw new MissingAuthenticationException("User id is null for email: " + email);
-        }
-        return userId;
-      }
-    }
+    return email;
   }
 }
