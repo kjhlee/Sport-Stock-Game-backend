@@ -1,8 +1,7 @@
 package com.sportstock.transaction.client;
 
-import com.sportstock.common.dto.stock_market.StockResponse;
+import com.sportstock.common.dto.ingestion.CurrentWeekResponse;
 import com.sportstock.transaction.exception.TransactionException;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -12,20 +11,20 @@ import org.springframework.web.client.RestClientResponseException;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class StockMarketServiceClient {
+public class IngestionServiceClient {
 
-  private final RestClient stockMarketRestClient;
+  private final RestClient ingestionRestClient;
 
-  public StockResponse getStock(UUID stockId) {
+  public CurrentWeekResponse getCurrentWeek() {
     try {
-      return stockMarketRestClient
+      return ingestionRestClient
           .get()
-          .uri("/api/v1/stocks/{stockId}", stockId)
+          .uri("/api/v1/ingestion/seasons/current-week")
           .retrieve()
-          .body(StockResponse.class);
+          .body(CurrentWeekResponse.class);
     } catch (RestClientResponseException e) {
-      log.error("Failed to fetch stock {}: {}", stockId, e.getMessage());
-      throw new TransactionException("Stock market service unavailable", e);
+      log.error("Failed to fetch current week: {}", e.getMessage());
+      throw new TransactionException("Ingestion service unavailable", e);
     }
   }
 }

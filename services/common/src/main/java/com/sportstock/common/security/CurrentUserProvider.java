@@ -14,7 +14,10 @@ public class CurrentUserProvider {
       throw new MissingAuthenticationException("No authenticated user found in security context");
     }
 
-    AuthenticatedUser user = (AuthenticatedUser) authentication.getPrincipal();
+    if (!(authentication.getPrincipal() instanceof AuthenticatedUser user)) {
+      throw new MissingAuthenticationException(
+          "Unexpected principal type: " + authentication.getPrincipal().getClass().getName());
+    }
     Long userId = user.userId();
 
     if (userId == null) {
@@ -30,7 +33,10 @@ public class CurrentUserProvider {
       throw new MissingAuthenticationException("No authenticated user found in security context");
     }
 
-    AuthenticatedUser user = (AuthenticatedUser) authentication.getPrincipal();
+    if (!(authentication.getPrincipal() instanceof AuthenticatedUser user)) {
+      throw new MissingAuthenticationException(
+          "Unexpected principal type: " + authentication.getPrincipal().getClass().getName());
+    }
 
     String email = user.email();
 

@@ -6,6 +6,7 @@ import com.sportstock.common.dto.league.JoinLeagueRequest;
 import com.sportstock.common.dto.league.LeagueInviteResponse;
 import com.sportstock.common.dto.league.LeagueMemberResponse;
 import com.sportstock.common.dto.league.LeagueResponse;
+import com.sportstock.common.dto.league.StipendEligibleLeagueResponse;
 import com.sportstock.league.client.TransactionServiceClient;
 import com.sportstock.league.entity.League;
 import com.sportstock.league.entity.LeagueInvite;
@@ -270,6 +271,19 @@ public class LeagueService {
     findLeagueOrThrow(leagueId);
     return leagueMemberRepository.findAllByLeagueId(leagueId).stream()
         .map(LeagueMember::getUserId)
+        .toList();
+  }
+
+  @Transactional(readOnly = true)
+  public List<StipendEligibleLeagueResponse> getStipendEligibleLeagues(Short payoutDay) {
+    List<League> leagues =
+        leagueRepository.findByStatusAndStartedAtIsNotNullAndWeeklyPayoutDowUtcOrderByIdAsc(
+            LeagueStatus.ACTIVE, payoutDay);
+    return leagues.stream()
+        .map(
+            l ->
+                new StipendEligibleLeagueResponse(
+                    l.getId(), l.getWeeklyStipendAmount(), l.getInitialStipendIssuedAt()))
         .toList();
   }
 

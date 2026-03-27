@@ -16,6 +16,7 @@ import com.sportstock.ingestion.repo.EventCompetitorLinescoreRepository;
 import com.sportstock.ingestion.repo.EventCompetitorRepository;
 import com.sportstock.ingestion.repo.EventRepository;
 import com.sportstock.ingestion.repo.TeamRepository;
+import java.time.Instant;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -135,5 +136,15 @@ public class EventIngestionService {
       EventMapper.applyLinescoreFields(lsNode, linescore, competitor);
       eventCompetitorLinescoreRepository.save(linescore);
     }
+  }
+
+  public List<String> getCompletedEventsNeedingSummary(Instant start, Instant end) {
+    return eventRepository.findCompletedEventsNeedingSummary(start, end).stream()
+        .map(Event::getEspnId)
+        .toList();
+  }
+
+  public boolean hasIncompleteEvents(Instant start, Instant end) {
+    return eventRepository.hasIncompleteEventsInRange(start, end);
   }
 }

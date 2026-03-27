@@ -27,73 +27,41 @@ public class IngestionOrchestrationController {
 
   private static final String ESPN_ID_PATTERN = "\\d{1,15}";
 
-  private final IngestionOrchestrationService ingestionOrchestrationService;
-
-  @PostMapping("/sync/foundation")
-  public ResponseEntity<Map<String, Object>> syncFoundation(
-      @RequestParam @Min(2000) @Max(2100) Integer seasonYear,
-      @RequestParam @Min(1) @Max(4) Integer seasonType,
-      @RequestParam @Min(1) @Max(25) Integer week) {
-    if (!ingestionOrchestrationService.tryStartFoundationSync(seasonYear, seasonType, week)) {
-      return rejected(
-          "foundationSync",
-          "Another sync job is already running for this season window or a full sync is in progress");
-    }
-    try {
-      ingestionOrchestrationService.runFoundationSync(seasonYear, seasonType, week);
-    } catch (RejectedExecutionException e) {
-      ingestionOrchestrationService.cancelFoundationSyncStart(seasonYear, seasonType, week);
-      return unavailable("foundationSync");
-    }
-    return ResponseEntity.accepted().body(accepted("foundationSync"));
-  }
-
-  @PostMapping("/sync/weekly")
-  public ResponseEntity<Map<String, Object>> syncWeekly(
-      @RequestParam @Min(2000) @Max(2100) Integer seasonYear,
-      @RequestParam @Min(1) @Max(4) Integer seasonType,
-      @RequestParam @Min(1) @Max(25) Integer week) {
-    if (!ingestionOrchestrationService.tryStartWeeklySync(seasonYear, seasonType, week)) {
-      return rejected(
-          "weeklySync",
-          "Another sync job is already running for this season window or a full sync is in progress");
-    }
-    try {
-      ingestionOrchestrationService.runWeeklySync(seasonYear, seasonType, week);
-    } catch (RejectedExecutionException e) {
-      ingestionOrchestrationService.cancelWeeklySyncStart(seasonYear, seasonType, week);
-      return unavailable("weeklySync");
-    }
-    return ResponseEntity.accepted().body(accepted("weeklySync"));
-  }
+  private final IngestionOrchestrationService orchestrationService;
 
   @PostMapping("/sync/full")
   public ResponseEntity<Map<String, Object>> syncFull(
       @RequestParam @Min(2000) @Max(2100) Integer seasonYear,
       @RequestParam @Min(1) @Max(4) Integer seasonType,
       @RequestParam @Min(1) @Max(25) Integer week,
-      @RequestParam(defaultValue = "500") @Min(1) @Max(500) Integer rosterLimit,
-      @RequestParam(defaultValue = "500") @Min(1) @Max(1000) Integer athletePageSize,
-      @RequestParam(defaultValue = "50") @Min(1) @Max(10000) Integer athletePageCount,
+      @RequestParam(defaultValue = "false") Boolean force,
       @RequestParam(required = false) @Size(max = 32)
           List<@Pattern(regexp = ESPN_ID_PATTERN) String> teamEspnIds) {
-    if (!ingestionOrchestrationService.tryStartFullSync()) {
-      return rejected("fullSync", "Another full sync is already running or window jobs are active");
+    if (!orchestrationService.tryAcquire(IngestionOrchestrationService.SyncType.ADMIN_SYNC)) {
+      return rejected("ADMIN_SYNC", "Another sync is running or admin sync is already active");
     }
     try {
-      ingestionOrchestrationService.runFullSync(
-          seasonYear,
-          seasonType,
-          week,
-          rosterLimit,
-          athletePageSize,
-          athletePageCount,
-          teamEspnIds);
+      orchestrationService.runAdminSync(seasonYear, seasonType, week, force, teamEspnIds);
     } catch (RejectedExecutionException e) {
-      ingestionOrchestrationService.cancelFullSyncStart();
-      return unavailable("fullSync");
+      orchestrationService.release(IngestionOrchestrationService.SyncType.ADMIN_SYNC);
+      return unavailable("ADMIN_SYNC");
     }
-    return ResponseEntity.accepted().body(accepted("fullSync"));
+    return ResponseEntity.accepted().body(accepted("ADMIN_SYNC"));
+  }
+
+  @PostMapping("/sync/preseason")
+  public ResponseEntity<Map<String, Object>> syncPreseason(
+      @RequestParam @Min(2000) @Max(2100) Integer seasonYear) {
+    if (!orchestrationService.tryAcquire(IngestionOrchestrationService.SyncType.PRESEASON_LOAD)) {
+      return rejected("PRESEASON_LOAD", "Another sync is running");
+    }
+    try {
+      orchestrationService.runPreseasonLoad(seasonYear);
+    } catch (RejectedExecutionException e) {
+      orchestrationService.release(IngestionOrchestrationService.SyncType.PRESEASON_LOAD);
+      return unavailable("PRESEASON_LOAD");
+    }
+    return ResponseEntity.accepted().body(accepted("PRESEASON_LOAD"));
   }
 
   private Map<String, Object> accepted(String jobName) {

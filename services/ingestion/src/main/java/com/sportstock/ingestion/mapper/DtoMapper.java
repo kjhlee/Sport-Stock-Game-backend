@@ -93,7 +93,8 @@ public final class DtoMapper {
         entity.getStatusPeriod(),
         entity.getStatusClock(),
         entity.getBroadcast(),
-        entity.getNoteHeadline());
+        entity.getNoteHeadline(),
+        entity.getSummaryIngestedAt());
   }
 
   public static PlayerGameStatResponse toPlayerGameStatResponse(

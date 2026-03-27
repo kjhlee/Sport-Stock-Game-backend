@@ -328,7 +328,7 @@
       "name": "2. Ingestion Service (Port 8090)",
       "item": [
         {
-          "name": "Sync Foundation Data (Teams, Athletes, Rosters)",
+          "name": "Sync Preseason Load",
           "event": [
             {
               "listen": "test",
@@ -336,6 +336,10 @@
                 "exec": [
                   "pm.test(\"Status code is 202\", function () {",
                   "    pm.response.to.have.status(202);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"Preseason sync accepted\", function () {",
+                  "    pm.expect(jsonData.status).to.eql(\"ACCEPTED\");",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -345,14 +349,9 @@
           "id": "50b99320-87e5-4684-8a4d-3ee98e88b483",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{player1_accessToken}}"
-              }
-            ],
+            "header": [],
             "url": {
-              "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/sync/foundation?seasonYear=2024&seasonType=2&week=1",
+              "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/sync/preseason?seasonYear={{seasonYear}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -362,20 +361,12 @@
                 "v1",
                 "ingestion",
                 "sync",
-                "foundation"
+                "preseason"
               ],
               "query": [
                 {
                   "key": "seasonYear",
-                  "value": "2024"
-                },
-                {
-                  "key": "seasonType",
-                  "value": "2"
-                },
-                {
-                  "key": "week",
-                  "value": "1"
+                  "value": "{{seasonYear}}"
                 }
               ]
             }
@@ -383,15 +374,22 @@
           "response": []
         },
         {
-          "name": "Sync Weekly Foundation Window",
+          "name": "Get Current Week",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test(\"Status code is 202\", function () {",
-                  "    pm.response.to.have.status(202);",
-                  "});"
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"Current week payload has week\", function () {",
+                  "    pm.expect(jsonData).to.have.property(\"week\");",
+                  "});",
+                  "if (jsonData.seasonYear) { pm.collectionVariables.set(\"seasonYear\", String(jsonData.seasonYear)); }",
+                  "if (jsonData.seasonType) { pm.collectionVariables.set(\"seasonType\", String(jsonData.seasonType)); }",
+                  "if (jsonData.week) { pm.collectionVariables.set(\"weekNumber\", String(jsonData.week)); }"
                 ],
                 "type": "text/javascript"
               }
@@ -399,15 +397,10 @@
           ],
           "id": "e9e8a89a-8b7a-4f6a-a2d5-4d2f84e4f9b5",
           "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{player1_accessToken}}"
-              }
-            ],
+            "method": "GET",
+            "header": [],
             "url": {
-              "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/sync/weekly?seasonYear=2024&seasonType=2&week=1",
+              "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/seasons/current-week",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -416,22 +409,8 @@
                 "api",
                 "v1",
                 "ingestion",
-                "sync",
-                "weekly"
-              ],
-              "query": [
-                {
-                  "key": "seasonYear",
-                  "value": "2024"
-                },
-                {
-                  "key": "seasonType",
-                  "value": "2"
-                },
-                {
-                  "key": "week",
-                  "value": "1"
-                }
+                "seasons",
+                "current-week"
               ]
             }
           },
@@ -446,6 +425,10 @@
                 "exec": [
                   "pm.test(\"Status code is 202\", function () {",
                   "    pm.response.to.have.status(202);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"Full sync accepted\", function () {",
+                  "    pm.expect(jsonData.status).to.eql(\"ACCEPTED\");",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -455,14 +438,9 @@
           "id": "f5f6d5d9-3e5a-41eb-8d8e-ef3f1d6d8f9c",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{player1_accessToken}}"
-              }
-            ],
+            "header": [],
             "url": {
-              "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/sync/full?seasonYear=2024&seasonType=2&week=1&rosterLimit=500&athletePageSize=500&athletePageCount=1",
+              "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/sync/full?seasonYear={{seasonYear}}&seasonType={{seasonType}}&week={{weekNumber}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -477,27 +455,15 @@
               "query": [
                 {
                   "key": "seasonYear",
-                  "value": "2024"
+                  "value": "{{seasonYear}}"
                 },
                 {
                   "key": "seasonType",
-                  "value": "2"
+                  "value": "{{seasonType}}"
                 },
                 {
                   "key": "week",
-                  "value": "1"
-                },
-                {
-                  "key": "rosterLimit",
-                  "value": "500"
-                },
-                {
-                  "key": "athletePageSize",
-                  "value": "500"
-                },
-                {
-                  "key": "athletePageCount",
-                  "value": "1"
+                  "value": "{{weekNumber}}"
                 }
               ]
             }
@@ -522,12 +488,7 @@
           "id": "a1d81a53-a7b8-4c5b-81c5-d9e66ad7218a",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{player1_accessToken}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/sync/athletes?pageSize=100&pageCount=1",
               "host": [
@@ -580,12 +541,7 @@
           "id": "134c3df0-bacd-4f7f-8548-dd4f0f74175e",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{player1_accessToken}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/athletes?positionAbbreviation=QB&includeStubs=false",
               "host": [
@@ -634,12 +590,7 @@
           "id": "a6daf3e6-3aa7-4e5a-a593-99c6cdffdeb1",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{player1_accessToken}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/athletes/{{athleteEspnId}}",
               "host": [
@@ -675,12 +626,7 @@
           "id": "cc171c96-1958-44f4-ade2-63bb8a86de4f",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{player1_accessToken}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/sync/teams",
               "host": [
@@ -703,14 +649,9 @@
           "id": "29330efc-0ed5-46e8-9bd8-97000f161084",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{player1_accessToken}}"
-              }
-            ],
+            "header": [],
             "url": {
-              "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/sync/scoreboard?seasonYear=2024&seasonType=2&week=1",
+              "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/sync/scoreboard?seasonYear={{seasonYear}}&seasonType={{seasonType}}&week={{weekNumber}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -725,15 +666,15 @@
               "query": [
                 {
                   "key": "seasonYear",
-                  "value": "2024"
+                  "value": "{{seasonYear}}"
                 },
                 {
                   "key": "seasonType",
-                  "value": "2"
+                  "value": "{{seasonType}}"
                 },
                 {
                   "key": "week",
-                  "value": "1"
+                  "value": "{{weekNumber}}"
                 }
               ]
             }
@@ -765,12 +706,7 @@
           "id": "67db7fb2-9db6-4015-980a-7a11dd439788",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{player1_accessToken}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/teams",
               "host": [
@@ -809,12 +745,7 @@
           "id": "f5dfd4a7-ec70-4f2d-9d5b-1f5f3f6c8c17",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{player1_accessToken}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/teams/{{teamEspnId}}",
               "host": [
@@ -850,14 +781,9 @@
           "id": "f0a9c6f5-7f8b-4bb9-a0b6-6cc2a8a8b4a1",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{player1_accessToken}}"
-              }
-            ],
+            "header": [],
             "url": {
-              "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/sync/teams/{{teamEspnId}}?seasonYear=2024",
+              "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/sync/teams/{{teamEspnId}}?seasonYear={{seasonYear}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -873,7 +799,7 @@
               "query": [
                 {
                   "key": "seasonYear",
-                  "value": "2024"
+                  "value": "{{seasonYear}}"
                 }
               ]
             }
@@ -898,14 +824,9 @@
           "id": "ebd7f0c8-4b1e-4c9a-aad4-7f3b4b8ec9a4",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{player1_accessToken}}"
-              }
-            ],
+            "header": [],
             "url": {
-              "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/sync/teams/details?seasonYear=2024",
+              "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/sync/teams/details?seasonYear={{seasonYear}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -921,7 +842,7 @@
               "query": [
                 {
                   "key": "seasonYear",
-                  "value": "2024"
+                  "value": "{{seasonYear}}"
                 }
               ]
             }
@@ -946,14 +867,9 @@
           "id": "f4f9aa4d-6eaf-47f0-9f0e-6ce7cbe8f7d8",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{player1_accessToken}}"
-              }
-            ],
+            "header": [],
             "url": {
-              "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/sync/rosters?seasonYear=2024&rosterLimit=200",
+              "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/sync/rosters?seasonYear={{seasonYear}}&rosterLimit=200",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -968,7 +884,7 @@
               "query": [
                 {
                   "key": "seasonYear",
-                  "value": "2024"
+                  "value": "{{seasonYear}}"
                 },
                 {
                   "key": "rosterLimit",
@@ -997,14 +913,9 @@
           "id": "f67de2bf-3fc6-46a3-8f6f-b58f6d5dcb16",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{player1_accessToken}}"
-              }
-            ],
+            "header": [],
             "url": {
-              "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/teams/{{teamEspnId}}/records?seasonYear=2024",
+              "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/teams/{{teamEspnId}}/records?seasonYear={{seasonYear}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -1020,7 +931,54 @@
               "query": [
                 {
                   "key": "seasonYear",
-                  "value": "2024"
+                  "value": "{{seasonYear}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Team Record by Type",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"Record type matches request\", function () {",
+                  "    pm.expect(String(jsonData.recordType).toLowerCase()).to.eql(String(pm.collectionVariables.get(\"recordType\")).toLowerCase());",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/teams/{{teamEspnId}}/records/{{recordType}}?seasonYear={{seasonYear}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "port": "{{ingestionPort}}",
+              "path": [
+                "api",
+                "v1",
+                "ingestion",
+                "teams",
+                "{{teamEspnId}}",
+                "records",
+                "{{recordType}}"
+              ],
+              "query": [
+                {
+                  "key": "seasonYear",
+                  "value": "{{seasonYear}}"
                 }
               ]
             }
@@ -1052,14 +1010,9 @@
           "id": "17058112-28ce-4723-a11b-29e0f5d11f49",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{player1_accessToken}}"
-              }
-            ],
+            "header": [],
             "url": {
-              "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/events?seasonYear=2024&seasonType=2&weekNumber=1",
+              "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/events?seasonYear={{seasonYear}}&seasonType={{seasonType}}&weekNumber={{weekNumber}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -1073,15 +1026,15 @@
               "query": [
                 {
                   "key": "seasonYear",
-                  "value": "2024"
+                  "value": "{{seasonYear}}"
                 },
                 {
                   "key": "seasonType",
-                  "value": "2"
+                  "value": "{{seasonType}}"
                 },
                 {
                   "key": "weekNumber",
-                  "value": "1"
+                  "value": "{{weekNumber}}"
                 }
               ]
             }
@@ -1106,12 +1059,7 @@
           "id": "e4fbad35-6f89-4bbf-ae3e-ec0ea95f8a77",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{player1_accessToken}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/sync/events/{{eventEspnId}}/summary",
               "host": [
@@ -1153,12 +1101,7 @@
           "id": "c3e4c0ca-7ef8-45df-b5cc-6f9fbb3f8c0d",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{player1_accessToken}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/events/{{eventEspnId}}",
               "host": [
@@ -1194,12 +1137,7 @@
           "id": "f9d5bc2f-8f16-4d44-b2de-2f8f2f7f16e7",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{player1_accessToken}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/events/{{eventEspnId}}/player-stats",
               "host": [
@@ -1236,12 +1174,7 @@
           "id": "d9f3c2d3-4f5b-4b35-aad8-4b8d1d7a8e8f",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{player1_accessToken}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/events/{{eventEspnId}}/player-stats/{{athleteEspnId}}",
               "host": [
@@ -1279,12 +1212,7 @@
           "id": "f53d7f0b-8b6a-4b67-9f45-5b7f4c6f1c2d",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{player1_accessToken}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/events/{{eventEspnId}}/team-stats",
               "host": [
@@ -1387,7 +1315,7 @@
                   "});",
                   "var jsonData = pm.response.json();",
                   "if (pm.collectionVariables.get('stockId')) {",
-                  "    pm.expect(jsonData.id).to.eql(pm.collectionVariables.get('stockId'));",
+                  "    pm.expect(String(jsonData.id)).to.eql(String(pm.collectionVariables.get('stockId')));",
                   "}"
                 ],
                 "type": "text/javascript"
@@ -1489,7 +1417,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}:{{stockMarketPort}}/api/v1/stocks/{{stockId}}/price-history?seasonYear=2024&seasonType=2",
+              "raw": "{{baseUrl}}:{{stockMarketPort}}/api/v1/stocks/{{stockId}}/price-history?seasonYear={{seasonYear}}&seasonType={{seasonType}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -1504,11 +1432,11 @@
               "query": [
                 {
                   "key": "seasonYear",
-                  "value": "2024"
+                  "value": "{{seasonYear}}"
                 },
                 {
                   "key": "seasonType",
-                  "value": "2"
+                  "value": "{{seasonType}}"
                 }
               ]
             }
@@ -1544,7 +1472,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}:{{stockMarketPort}}/api/v1/stocks/update-prices?seasonYear=2024&seasonType=2&weekNumber=1",
+              "raw": "{{baseUrl}}:{{stockMarketPort}}/api/v1/stocks/update-prices?seasonYear={{seasonYear}}&seasonType={{seasonType}}&weekNumber={{weekNumber}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -1558,15 +1486,15 @@
               "query": [
                 {
                   "key": "seasonYear",
-                  "value": "2024"
+                  "value": "{{seasonYear}}"
                 },
                 {
                   "key": "seasonType",
-                  "value": "2"
+                  "value": "{{seasonType}}"
                 },
                 {
                   "key": "weekNumber",
-                  "value": "1"
+                  "value": "{{weekNumber}}"
                 }
               ]
             }
@@ -1677,7 +1605,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\"name\":\"Fantasy Football League\",\"maxMembers\":12,\"seasonStartAt\":\"{{futureLeagueStartAt}}\",\"seasonEndAt\":\"{{futureLeagueEndAt}}\",\"initialStipendAmount\":5000,\"weeklyStipendAmount\":100,\"weeklyPayoutDowUtc\":0}"
+              "raw": "{\"name\":\"Fantasy Football League\",\"maxMembers\":12,\"seasonStartAt\":\"{{futureLeagueStartAt}}\",\"seasonEndAt\":\"{{futureLeagueEndAt}}\",\"initialStipendAmount\":{{initialStipendAmount}},\"weeklyStipendAmount\":{{weeklyStipendAmount}},\"weeklyPayoutDowUtc\":{{payoutDay}}}"
             },
             "url": {
               "raw": "{{baseUrl}}:{{leaguePort}}/api/v1/leagues",
@@ -1706,7 +1634,7 @@
                   "});",
                   "var jsonData = pm.response.json();",
                   "pm.test(\"League id matches\", function () {",
-                  "    pm.expect(jsonData.id).to.eql(pm.collectionVariables.get('leagueId'));",
+                  "    pm.expect(String(jsonData.id)).to.eql(String(pm.collectionVariables.get('leagueId')));",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -2092,12 +2020,7 @@
           "id": "1ff0f6e2-5a8e-4f8a-82f7-1d8f4b9a6d84",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{player1_accessToken}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}:{{leaguePort}}/api/v1/leagues/internal/{{leagueId}}/member-ids",
               "host": [
@@ -2111,6 +2034,51 @@
                 "internal",
                 "{{leagueId}}",
                 "member-ids"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Stipend Eligible Leagues",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"Response is array\", function () {",
+                  "    pm.expect(Array.isArray(jsonData)).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}:{{leaguePort}}/api/v1/leagues/internal/stipend-eligible?payoutDay={{payoutDay}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "port": "{{leaguePort}}",
+              "path": [
+                "api",
+                "v1",
+                "leagues",
+                "internal",
+                "stipend-eligible"
+              ],
+              "query": [
+                {
+                  "key": "payoutDay",
+                  "value": "{{payoutDay}}"
+                }
               ]
             }
           },
@@ -2459,17 +2427,13 @@
             "method": "POST",
             "header": [
               {
-                "key": "Authorization",
-                "value": "Bearer {{player1_accessToken}}"
-              },
-              {
                 "key": "Content-Type",
                 "value": "application/json"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\"leagueId\":{{leagueId}},\"amount\":5000}"
+              "raw": "{\"leagueId\":{{leagueId}},\"amount\":{{initialStipendAmount}}}"
             },
             "url": {
               "raw": "{{baseUrl}}:{{transactionPort}}/api/v1/wallets/stipends/initial",
@@ -2508,20 +2472,16 @@
             "method": "POST",
             "header": [
               {
-                "key": "Authorization",
-                "value": "Bearer {{player1_accessToken}}"
-              },
-              {
                 "key": "Content-Type",
                 "value": "application/json"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\"leagueId\":{{leagueId}},\"amount\":100}"
+              "raw": "{\"leagueId\":{{leagueId}},\"amount\":{{weeklyStipendAmount}}}"
             },
             "url": {
-              "raw": "{{baseUrl}}:{{transactionPort}}/api/v1/wallets/stipends/weekly?weekNumber=1",
+              "raw": "{{baseUrl}}:{{transactionPort}}/api/v1/wallets/stipends/weekly?weekNumber={{weekNumber}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -2536,7 +2496,7 @@
               "query": [
                 {
                   "key": "weekNumber",
-                  "value": "1"
+                  "value": "{{weekNumber}}"
                 }
               ]
             }
@@ -2846,6 +2806,41 @@
       "id": "f5d35cdb-05a6-4391-bf7b-902aa86f9580",
       "key": "stockId",
       "value": ""
+    },
+    {
+      "id": "seasonYear",
+      "key": "seasonYear",
+      "value": "2024"
+    },
+    {
+      "id": "seasonType",
+      "key": "seasonType",
+      "value": "2"
+    },
+    {
+      "id": "weekNumber",
+      "key": "weekNumber",
+      "value": "1"
+    },
+    {
+      "id": "recordType",
+      "key": "recordType",
+      "value": "total"
+    },
+    {
+      "id": "payoutDay",
+      "key": "payoutDay",
+      "value": "0"
+    },
+    {
+      "id": "initialStipendAmount",
+      "key": "initialStipendAmount",
+      "value": "5000"
+    },
+    {
+      "id": "weeklyStipendAmount",
+      "key": "weeklyStipendAmount",
+      "value": "100"
     }
   ]
 }

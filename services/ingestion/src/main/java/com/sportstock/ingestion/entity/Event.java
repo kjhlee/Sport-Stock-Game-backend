@@ -77,6 +77,9 @@ public class Event {
   @Column(name = "note_headline", length = 200)
   private String noteHeadline;
 
+  @Column(name = "summary_ingested_at")
+  private Instant summaryIngestedAt;
+
   @Column(name = "ingested_at", nullable = false)
   private Instant ingestedAt;
 
