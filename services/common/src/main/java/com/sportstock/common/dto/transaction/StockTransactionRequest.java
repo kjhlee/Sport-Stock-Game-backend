@@ -1,12 +1,13 @@
 package com.sportstock.common.dto.transaction;
 
-import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
+import java.util.UUID;
 
 public record StockTransactionRequest(
     @NotNull Long leagueId,
-    @NotNull @DecimalMin(value = "0.0", inclusive = false) BigDecimal amount,
-    @NotBlank String referenceId,
-    String description) {}
+    @NotNull UUID stockId,
+    BigDecimal quantity,
+    BigDecimal dollarAmount,
+    @NotBlank String idempotencyKey) {}
