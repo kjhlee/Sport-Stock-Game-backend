@@ -1,4 +1,7 @@
-com/sportstock/portfolio/entity/Holdings.class
 com/sportstock/portfolio/entity/Portfolio.class
+com/sportstock/portfolio/service/PortfolioService.class
+com/sportstock/portfolio/service/HoldingsService.class
+com/sportstock/portfolio/entity/Holdings.class
 com/sportstock/portfolio/repo/PortfolioRepo.class
+com/sportstock/portfolio/repo/HoldingsRepo.class
 com/sportstock/portfolio/PortfolioApplication.class
