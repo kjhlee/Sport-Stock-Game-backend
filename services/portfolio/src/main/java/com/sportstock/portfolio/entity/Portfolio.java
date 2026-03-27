@@ -3,10 +3,12 @@ package com.sportstock.portfolio.entity;
 import java.util.ArrayList;
 import java.util.List;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
 import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
@@ -24,5 +26,6 @@ public class Portfolio {
 
     private Long leagueId;
     
-    private List<Holdings> holdingsList = new ArrayList<Holdings>();
+    @OneToMany(mappedBy = "portfolio", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Holdings> holdingsList = new ArrayList<>();
 }
