@@ -19,6 +19,7 @@ import lombok.Setter;
 @Getter
 @Setter
 public class Holdings {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long Id;
@@ -29,7 +30,7 @@ public class Holdings {
 
     private UUID stockId;
 
-    private BigDecimal quantity;
+    private int quantity;
 
     // The price for each quantity per stock 
     private BigDecimal avgCostBasis;
