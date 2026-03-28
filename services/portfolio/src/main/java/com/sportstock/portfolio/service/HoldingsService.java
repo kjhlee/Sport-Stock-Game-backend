@@ -40,20 +40,21 @@ public class HoldingsService {
         holdingsRepo.save(currHolding);
     }
 
-    public void reduceHolding(Holdings holding, int decreaseAmount){
-        int currQuantity = holding.getQuantity();
-        if(currQuantity - decreaseAmount <= 0){
-            removeHolding(holding);
+    public void reduceHolding(Portfolio portfolio, UUID stockId, int decreaseAmmount){
+        Holdings currHolding = holdingsRepo.findByPortfolio_IdAndStockId(portfolio.getId(), stockId)
+                                    .orElseThrow(() -> new RuntimeException("Holding not found "));
+        int currQuantity = currHolding.getQuantity();
+        if (currQuantity - decreaseAmmount <= 0){
+            removeHolding(currHolding);
             return;
         }
-        int reducedQuantity = currQuantity - decreaseAmount;
-        holding.setQuantity(reducedQuantity);
-        holdingsRepo.save(holding);
+        currHolding.setQuantity(currQuantity - decreaseAmmount);
     }
 
     public void removeHolding(Holdings holding){
         holdingsRepo.delete(holding);
     }
+
     public List<Holdings> getHoldingsForPortfolio(Long portfolioId){
         List<Holdings> portfolioHoldings;
         portfolioHoldings = holdingsRepo.findByPortfolio_Id(portfolioId);
