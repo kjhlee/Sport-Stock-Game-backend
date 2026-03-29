@@ -49,6 +49,7 @@ public class HoldingsService {
             return;
         }
         currHolding.setQuantity(currQuantity - decreaseAmmount);
+        holdingsRepo.save(currHolding);
     }
 
     public void removeHolding(Holdings holding){
