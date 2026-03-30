@@ -30,17 +30,13 @@ public class LoginService {
           accountRepo
               .findByEmail(login)
               .orElseThrow(
-                  () ->
-                      new InvalidCredentialsException(
-                          "Incorrect username/email or password."));
+                  () -> new InvalidCredentialsException("Incorrect username/email or password."));
     } else {
       account =
           accountRepo
               .findByUsername(login)
               .orElseThrow(
-                  () ->
-                      new InvalidCredentialsException(
-                          "Incorrect username/email or password."));
+                  () -> new InvalidCredentialsException("Incorrect username/email or password."));
     }
     logger.info("Login attempt for account: {}", account);
     if (!passwordEncoder.matches(password, account.getPassword())) {

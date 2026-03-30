@@ -21,10 +21,7 @@ public class GlobalExceptionHandler {
   public ResponseEntity<AuthErrorResponse> handleRegistrationConflict(
       RegistrationConflictException ex) {
     return build(
-        HttpStatus.CONFLICT,
-        "REGISTRATION_CONFLICT",
-        ex.getMessage(),
-        ex.getFieldErrors());
+        HttpStatus.CONFLICT, "REGISTRATION_CONFLICT", ex.getMessage(), ex.getFieldErrors());
   }
 
   @ExceptionHandler(InvalidCredentialsException.class)
