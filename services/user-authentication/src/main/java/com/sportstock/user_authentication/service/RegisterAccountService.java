@@ -49,8 +49,7 @@ public class RegisterAccountService {
       fieldErrors.put("email", "Email is already registered.");
     }
     if (!fieldErrors.isEmpty()) {
-      throw new RegistrationConflictException(
-          "Please fix the highlighted fields.", fieldErrors);
+      throw new RegistrationConflictException("Please fix the highlighted fields.", fieldErrors);
     }
 
     accountRepo.save(newAccount);
