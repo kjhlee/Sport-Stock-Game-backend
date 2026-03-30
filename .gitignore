@@ -31,7 +31,3 @@ application-dev.yml
 # Test output
 # ======================
 **/tmp/
-
-
-
-/.claude/

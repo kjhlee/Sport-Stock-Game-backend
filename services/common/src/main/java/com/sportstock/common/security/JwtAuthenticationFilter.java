@@ -23,8 +23,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
   @Override
   protected void doFilterInternal(
-      HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
-      throws ServletException, IOException {
+          HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+          throws ServletException, IOException {
 
     String authHeader = request.getHeader("Authorization");
 
@@ -41,10 +41,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
       Long userId = claims.get("userId", Long.class);
       String username = claims.get("username", String.class);
 
-      JwtUserPrincipal principal = new JwtUserPrincipal(subject, userId, username);
+      AuthenticatedUser principal = new AuthenticatedUser(userId, subject, username);
 
       UsernamePasswordAuthenticationToken authentication =
-          new UsernamePasswordAuthenticationToken(principal, null, Collections.emptyList());
+              new UsernamePasswordAuthenticationToken(principal, null, Collections.emptyList());
       authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
       SecurityContextHolder.getContext().setAuthentication(authentication);
     } catch (TokenExpiredException e) {

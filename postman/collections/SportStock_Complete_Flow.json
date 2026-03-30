@@ -1,10 +1,9 @@
 {
   "info": {
+    "_postman_id": "e13d537e-dc7c-4fbc-990d-040a400d8112",
     "name": "Sport-Stock Complete Flow (Updated)",
     "description": "Complete Sport-Stock API test collection with all services and endpoints",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "_postman_exported_at": "2025-03-17T06:11:46.805Z",
-    "_postman_exporter_id": "123456"
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
     {
@@ -20,13 +19,14 @@
                   "pm.test(\"Status code is 200\", function () {",
                   "    pm.response.to.have.status(200);",
                   "});",
-                  "var jsonData = pm.response.json();",
-                  "pm.collectionVariables.set('player1_accessToken', jsonData.accessToken);",
-                  "pm.collectionVariables.set('player1_refreshToken', jsonData.refreshToken);"
-                ]
+                  "pm.expect(pm.response.text()).to.be.a('string');",
+                  "pm.expect(pm.response.text()).to.include(\"Account registered successfully\");"
+                ],
+                "type": "text/javascript"
               }
             }
           ],
+          "id": "99884aba-9081-4a9f-984d-e73bc4a9d950",
           "request": {
             "method": "POST",
             "header": [
@@ -50,7 +50,8 @@
                 "register"
               ]
             }
-          }
+          },
+          "response": []
         },
         {
           "name": "Register Player 2",
@@ -62,13 +63,14 @@
                   "pm.test(\"Status code is 200\", function () {",
                   "    pm.response.to.have.status(200);",
                   "});",
-                  "var jsonData = pm.response.json();",
-                  "pm.collectionVariables.set('player2_accessToken', jsonData.accessToken);",
-                  "pm.collectionVariables.set('player2_refreshToken', jsonData.refreshToken);"
-                ]
+                  "pm.expect(pm.response.text()).to.be.a('string');",
+                  "pm.expect(pm.response.text()).to.include(\"Account registered successfully\");"
+                ],
+                "type": "text/javascript"
               }
             }
           ],
+          "id": "6ac13fd4-eb09-4fc4-866c-4d595ec2d14c",
           "request": {
             "method": "POST",
             "header": [
@@ -92,7 +94,8 @@
                 "register"
               ]
             }
-          }
+          },
+          "response": []
         },
         {
           "name": "Register Player 3",
@@ -104,13 +107,14 @@
                   "pm.test(\"Status code is 200\", function () {",
                   "    pm.response.to.have.status(200);",
                   "});",
-                  "var jsonData = pm.response.json();",
-                  "pm.collectionVariables.set('player3_accessToken', jsonData.accessToken);",
-                  "pm.collectionVariables.set('player3_refreshToken', jsonData.refreshToken);"
-                ]
+                  "pm.expect(pm.response.text()).to.be.a('string');",
+                  "pm.expect(pm.response.text()).to.include(\"Account registered successfully\");"
+                ],
+                "type": "text/javascript"
               }
             }
           ],
+          "id": "eafa1a02-57b3-447e-b940-5c9048103fc3",
           "request": {
             "method": "POST",
             "header": [
@@ -134,7 +138,8 @@
                 "register"
               ]
             }
-          }
+          },
+          "response": []
         },
         {
           "name": "Login Player 1",
@@ -149,10 +154,12 @@
                   "var jsonData = pm.response.json();",
                   "pm.collectionVariables.set('player1_accessToken', jsonData.accessToken);",
                   "pm.collectionVariables.set('player1_refreshToken', jsonData.refreshToken);"
-                ]
+                ],
+                "type": "text/javascript"
               }
             }
           ],
+          "id": "5ed14ce8-ef40-4033-8f5a-3d6adbe8821e",
           "request": {
             "method": "POST",
             "header": [
@@ -176,10 +183,118 @@
                 "login"
               ]
             }
-          }
+          },
+          "response": []
+        },
+        {
+          "name": "Login Player 2",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set('player2_accessToken', jsonData.accessToken);",
+                  "pm.collectionVariables.set('player2_refreshToken', jsonData.refreshToken);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "f196400f-acc8-40fd-a9f4-cb81fc42c999",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"login\":\"player2@test.com\",\"password\":\"TestPassword123!\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}:{{authPort}}/api/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "port": "{{authPort}}",
+              "path": [
+                "api",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login Player 3",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set('player3_accessToken', jsonData.accessToken);",
+                  "pm.collectionVariables.set('player3_refreshToken', jsonData.refreshToken);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "f081f761-360b-44a1-bc3f-1a0632422308",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"login\":\"player3@test.com\",\"password\":\"TestPassword123!\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}:{{authPort}}/api/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "port": "{{authPort}}",
+              "path": [
+                "api",
+                "login"
+              ]
+            }
+          },
+          "response": []
         },
         {
           "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set('player1_accessToken', jsonData.accessToken);",
+                  "pm.collectionVariables.set('player1_refreshToken', jsonData.refreshToken);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "4ffc8785-1bfb-4559-b783-4fc35c7159c2",
           "request": {
             "method": "POST",
             "header": [
@@ -203,25 +318,40 @@
                 "refresh"
               ]
             }
-          }
+          },
+          "response": []
         }
-      ]
+      ],
+      "id": "bd7f9e0d-15e8-4e94-923e-4e211bdc36f1"
     },
     {
       "name": "2. Ingestion Service (Port 8090)",
       "item": [
         {
-          "name": "Sync Foundation Data (Teams, Athletes, Rosters)",
+          "name": "Sync Preseason Load",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 202\", function () {",
+                  "    pm.response.to.have.status(202);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"Preseason sync accepted\", function () {",
+                  "    pm.expect(jsonData.status).to.eql(\"ACCEPTED\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "50b99320-87e5-4684-8a4d-3ee98e88b483",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{player1_accessToken}}"
-              }
-            ],
+            "header": [],
             "url": {
-              "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/sync/foundation?seasonYear=2024&seasonType=2&week=1",
+              "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/sync/preseason?seasonYear={{seasonYear}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -231,35 +361,134 @@
                 "v1",
                 "ingestion",
                 "sync",
-                "foundation"
+                "preseason"
               ],
               "query": [
                 {
                   "key": "seasonYear",
-                  "value": "2024"
-                },
-                {
-                  "key": "seasonType",
-                  "value": "2"
-                },
-                {
-                  "key": "week",
-                  "value": "1"
+                  "value": "{{seasonYear}}"
                 }
               ]
             }
-          }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Current Week",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"Current week payload has week\", function () {",
+                  "    pm.expect(jsonData).to.have.property(\"week\");",
+                  "});",
+                  "if (jsonData.seasonYear) { pm.collectionVariables.set(\"seasonYear\", String(jsonData.seasonYear)); }",
+                  "if (jsonData.seasonType) { pm.collectionVariables.set(\"seasonType\", String(jsonData.seasonType)); }",
+                  "if (jsonData.week) { pm.collectionVariables.set(\"weekNumber\", String(jsonData.week)); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "e9e8a89a-8b7a-4f6a-a2d5-4d2f84e4f9b5",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/seasons/current-week",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "port": "{{ingestionPort}}",
+              "path": [
+                "api",
+                "v1",
+                "ingestion",
+                "seasons",
+                "current-week"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Sync Full Season Window",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 202\", function () {",
+                  "    pm.response.to.have.status(202);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"Full sync accepted\", function () {",
+                  "    pm.expect(jsonData.status).to.eql(\"ACCEPTED\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "f5f6d5d9-3e5a-41eb-8d8e-ef3f1d6d8f9c",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/sync/full?seasonYear={{seasonYear}}&seasonType={{seasonType}}&week={{weekNumber}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "port": "{{ingestionPort}}",
+              "path": [
+                "api",
+                "v1",
+                "ingestion",
+                "sync",
+                "full"
+              ],
+              "query": [
+                {
+                  "key": "seasonYear",
+                  "value": "{{seasonYear}}"
+                },
+                {
+                  "key": "seasonType",
+                  "value": "{{seasonType}}"
+                },
+                {
+                  "key": "week",
+                  "value": "{{weekNumber}}"
+                }
+              ]
+            }
+          },
+          "response": []
         },
         {
           "name": "Sync Athletes",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 202\", function () {",
+                  "    pm.response.to.have.status(202);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "a1d81a53-a7b8-4c5b-81c5-d9e66ad7218a",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{player1_accessToken}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/sync/athletes?pageSize=100&pageCount=1",
               "host": [
@@ -284,18 +513,35 @@
                 }
               ]
             }
-          }
+          },
+          "response": []
         },
         {
           "name": "Get Athletes List",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"Has athletes\", function () {",
+                  "    pm.expect(jsonData.length).to.be.greaterThan(0);",
+                  "});",
+                  "if (jsonData.length > 0) {",
+                  "    pm.collectionVariables.set('athleteEspnId', jsonData[0].espnId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "134c3df0-bacd-4f7f-8548-dd4f0f74175e",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{player1_accessToken}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/athletes?positionAbbreviation=QB&includeStubs=false",
               "host": [
@@ -319,18 +565,32 @@
                 }
               ]
             }
-          }
+          },
+          "response": []
         },
         {
           "name": "Get Athlete Details",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"Athlete matches selected athlete\", function () {",
+                  "    pm.expect(jsonData.espnId).to.eql(pm.collectionVariables.get('athleteEspnId'));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "a6daf3e6-3aa7-4e5a-a593-99c6cdffdeb1",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{player1_accessToken}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/athletes/{{athleteEspnId}}",
               "host": [
@@ -345,18 +605,28 @@
                 "{{athleteEspnId}}"
               ]
             }
-          }
+          },
+          "response": []
         },
         {
           "name": "Sync Teams",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 202\", function () {",
+                  "    pm.response.to.have.status(202);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "cc171c96-1958-44f4-ade2-63bb8a86de4f",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{player1_accessToken}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/sync/teams",
               "host": [
@@ -371,20 +641,17 @@
                 "teams"
               ]
             }
-          }
+          },
+          "response": []
         },
         {
           "name": "Sync Scoreboard (Weekly Events)",
+          "id": "29330efc-0ed5-46e8-9bd8-97000f161084",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{player1_accessToken}}"
-              }
-            ],
+            "header": [],
             "url": {
-              "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/sync/scoreboard?seasonYear=2024&seasonType=2&week=1",
+              "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/sync/scoreboard?seasonYear={{seasonYear}}&seasonType={{seasonType}}&week={{weekNumber}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -399,30 +666,47 @@
               "query": [
                 {
                   "key": "seasonYear",
-                  "value": "2024"
+                  "value": "{{seasonYear}}"
                 },
                 {
                   "key": "seasonType",
-                  "value": "2"
+                  "value": "{{seasonType}}"
                 },
                 {
                   "key": "week",
-                  "value": "1"
+                  "value": "{{weekNumber}}"
                 }
               ]
             }
-          }
+          },
+          "response": []
         },
         {
           "name": "Get Teams",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"Has teams\", function () {",
+                  "    pm.expect(jsonData.length).to.be.greaterThan(0);",
+                  "});",
+                  "if (jsonData.length > 0) {",
+                  "    pm.collectionVariables.set('teamEspnId', jsonData[0].espnId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "67db7fb2-9db6-4015-980a-7a11dd439788",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{player1_accessToken}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/teams",
               "host": [
@@ -436,20 +720,299 @@
                 "teams"
               ]
             }
-          }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Team Details",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"Team matches selected team\", function () {",
+                  "    pm.expect(jsonData.espnId).to.eql(pm.collectionVariables.get('teamEspnId'));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "f5dfd4a7-ec70-4f2d-9d5b-1f5f3f6c8c17",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/teams/{{teamEspnId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "port": "{{ingestionPort}}",
+              "path": [
+                "api",
+                "v1",
+                "ingestion",
+                "teams",
+                "{{teamEspnId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Sync Team Details",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 202\", function () {",
+                  "    pm.response.to.have.status(202);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "f0a9c6f5-7f8b-4bb9-a0b6-6cc2a8a8b4a1",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/sync/teams/{{teamEspnId}}?seasonYear={{seasonYear}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "port": "{{ingestionPort}}",
+              "path": [
+                "api",
+                "v1",
+                "ingestion",
+                "sync",
+                "teams",
+                "{{teamEspnId}}"
+              ],
+              "query": [
+                {
+                  "key": "seasonYear",
+                  "value": "{{seasonYear}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Sync All Team Details by Season",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 202\", function () {",
+                  "    pm.response.to.have.status(202);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "ebd7f0c8-4b1e-4c9a-aad4-7f3b4b8ec9a4",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/sync/teams/details?seasonYear={{seasonYear}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "port": "{{ingestionPort}}",
+              "path": [
+                "api",
+                "v1",
+                "ingestion",
+                "sync",
+                "teams",
+                "details"
+              ],
+              "query": [
+                {
+                  "key": "seasonYear",
+                  "value": "{{seasonYear}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Sync Team Roster Pull",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 202\", function () {",
+                  "    pm.response.to.have.status(202);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "f4f9aa4d-6eaf-47f0-9f0e-6ce7cbe8f7d8",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/sync/rosters?seasonYear={{seasonYear}}&rosterLimit=200",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "port": "{{ingestionPort}}",
+              "path": [
+                "api",
+                "v1",
+                "ingestion",
+                "sync",
+                "rosters"
+              ],
+              "query": [
+                {
+                  "key": "seasonYear",
+                  "value": "{{seasonYear}}"
+                },
+                {
+                  "key": "rosterLimit",
+                  "value": "200"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Team Records",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "f67de2bf-3fc6-46a3-8f6f-b58f6d5dcb16",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/teams/{{teamEspnId}}/records?seasonYear={{seasonYear}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "port": "{{ingestionPort}}",
+              "path": [
+                "api",
+                "v1",
+                "ingestion",
+                "teams",
+                "{{teamEspnId}}",
+                "records"
+              ],
+              "query": [
+                {
+                  "key": "seasonYear",
+                  "value": "{{seasonYear}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Team Record by Type",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"Record type matches request\", function () {",
+                  "    pm.expect(String(jsonData.recordType).toLowerCase()).to.eql(String(pm.collectionVariables.get(\"recordType\")).toLowerCase());",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/teams/{{teamEspnId}}/records/{{recordType}}?seasonYear={{seasonYear}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "port": "{{ingestionPort}}",
+              "path": [
+                "api",
+                "v1",
+                "ingestion",
+                "teams",
+                "{{teamEspnId}}",
+                "records",
+                "{{recordType}}"
+              ],
+              "query": [
+                {
+                  "key": "seasonYear",
+                  "value": "{{seasonYear}}"
+                }
+              ]
+            }
+          },
+          "response": []
         },
         {
           "name": "Get Events for Week",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"Has events\", function () {",
+                  "    pm.expect(jsonData.length).to.be.greaterThan(0);",
+                  "});",
+                  "if (jsonData.length > 0) {",
+                  "    pm.collectionVariables.set('eventEspnId', jsonData[0].espnId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "17058112-28ce-4723-a11b-29e0f5d11f49",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{player1_accessToken}}"
-              }
-            ],
+            "header": [],
             "url": {
-              "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/events?seasonYear=2024&seasonType=2&weekNumber=1",
+              "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/events?seasonYear={{seasonYear}}&seasonType={{seasonType}}&weekNumber={{weekNumber}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -463,27 +1026,240 @@
               "query": [
                 {
                   "key": "seasonYear",
-                  "value": "2024"
+                  "value": "{{seasonYear}}"
                 },
                 {
                   "key": "seasonType",
-                  "value": "2"
+                  "value": "{{seasonType}}"
                 },
                 {
                   "key": "weekNumber",
-                  "value": "1"
+                  "value": "{{weekNumber}}"
                 }
               ]
             }
-          }
+          },
+          "response": []
+        },
+        {
+          "name": "Sync Event Summary",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 202\", function () {",
+                  "    pm.response.to.have.status(202);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "e4fbad35-6f89-4bbf-ae3e-ec0ea95f8a77",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/sync/events/{{eventEspnId}}/summary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "port": "{{ingestionPort}}",
+              "path": [
+                "api",
+                "v1",
+                "ingestion",
+                "sync",
+                "events",
+                "{{eventEspnId}}",
+                "summary"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Event Details",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"Event matches selected event\", function () {",
+                  "    pm.expect(jsonData.espnId).to.eql(pm.collectionVariables.get('eventEspnId'));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "c3e4c0ca-7ef8-45df-b5cc-6f9fbb3f8c0d",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/events/{{eventEspnId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "port": "{{ingestionPort}}",
+              "path": [
+                "api",
+                "v1",
+                "ingestion",
+                "events",
+                "{{eventEspnId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Event Player Stats",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "f9d5bc2f-8f16-4d44-b2de-2f8f2f7f16e7",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/events/{{eventEspnId}}/player-stats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "port": "{{ingestionPort}}",
+              "path": [
+                "api",
+                "v1",
+                "ingestion",
+                "events",
+                "{{eventEspnId}}",
+                "player-stats"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Event Player Stats By Athlete",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "d9f3c2d3-4f5b-4b35-aad8-4b8d1d7a8e8f",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/events/{{eventEspnId}}/player-stats/{{athleteEspnId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "port": "{{ingestionPort}}",
+              "path": [
+                "api",
+                "v1",
+                "ingestion",
+                "events",
+                "{{eventEspnId}}",
+                "player-stats",
+                "{{athleteEspnId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Event Team Stats",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "f53d7f0b-8b6a-4b67-9f45-5b7f4c6f1c2d",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}:{{ingestionPort}}/api/v1/ingestion/events/{{eventEspnId}}/team-stats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "port": "{{ingestionPort}}",
+              "path": [
+                "api",
+                "v1",
+                "ingestion",
+                "events",
+                "{{eventEspnId}}",
+                "team-stats"
+              ]
+            }
+          },
+          "response": []
         }
-      ]
+      ],
+      "id": "332bc70d-a7c2-4718-a2a2-2ea6ea4c8844"
     },
     {
       "name": "3. Stock Market Service (Port 8130)",
       "item": [
         {
           "name": "List Stocks (Paginated)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"Has stock data\", function () {",
+                  "    pm.expect(jsonData.content.length).to.be.greaterThan(0);",
+                  "});",
+                  "if (jsonData.content.length > 0) {",
+                  "    pm.collectionVariables.set('stockId', jsonData.content[0].id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "f7eda519-04f3-4c7f-8161-3a6514a1a756",
           "request": {
             "method": "GET",
             "header": [
@@ -524,10 +1300,29 @@
                 }
               ]
             }
-          }
+          },
+          "response": []
         },
         {
           "name": "Get Stock by ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "if (pm.collectionVariables.get('stockId')) {",
+                  "    pm.expect(String(jsonData.id)).to.eql(String(pm.collectionVariables.get('stockId')));",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "063bfe27-6fc5-4528-af99-b81e511f34a8",
           "request": {
             "method": "GET",
             "header": [
@@ -549,10 +1344,29 @@
                 "{{stockId}}"
               ]
             }
-          }
+          },
+          "response": []
         },
         {
           "name": "Get Stock by ESPN Athlete ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "if (pm.collectionVariables.get('athleteEspnId')) {",
+                  "    pm.expect(jsonData.athleteEspnId).to.eql(pm.collectionVariables.get('athleteEspnId'));",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "a6ffcb09-d00d-4359-aee3-0b899ac75eb0",
           "request": {
             "method": "GET",
             "header": [
@@ -575,10 +1389,25 @@
                 "{{athleteEspnId}}"
               ]
             }
-          }
+          },
+          "response": []
         },
         {
           "name": "Get Stock Price History",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "88dee13b-d380-4caf-8edd-79ad3d988cdd",
           "request": {
             "method": "GET",
             "header": [
@@ -588,7 +1417,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}:{{stockMarketPort}}/api/v1/stocks/{{stockId}}/price-history?seasonYear=2024&seasonType=2",
+              "raw": "{{baseUrl}}:{{stockMarketPort}}/api/v1/stocks/{{stockId}}/price-history?seasonYear={{seasonYear}}&seasonType={{seasonType}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -603,18 +1432,37 @@
               "query": [
                 {
                   "key": "seasonYear",
-                  "value": "2024"
+                  "value": "{{seasonYear}}"
                 },
                 {
                   "key": "seasonType",
-                  "value": "2"
+                  "value": "{{seasonType}}"
                 }
               ]
             }
-          }
+          },
+          "response": []
         },
         {
           "name": "Update Prices for Week",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"Price update returned\", function () {",
+                  "    pm.expect(jsonData).to.have.property('updated');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "12a14c0d-484d-424a-b018-26758fc6a8fe",
           "request": {
             "method": "POST",
             "header": [
@@ -624,7 +1472,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}:{{stockMarketPort}}/api/v1/stocks/update-prices?seasonYear=2024&seasonType=2&weekNumber=1",
+              "raw": "{{baseUrl}}:{{stockMarketPort}}/api/v1/stocks/update-prices?seasonYear={{seasonYear}}&seasonType={{seasonType}}&weekNumber={{weekNumber}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -638,22 +1486,37 @@
               "query": [
                 {
                   "key": "seasonYear",
-                  "value": "2024"
+                  "value": "{{seasonYear}}"
                 },
                 {
                   "key": "seasonType",
-                  "value": "2"
+                  "value": "{{seasonType}}"
                 },
                 {
                   "key": "weekNumber",
-                  "value": "1"
+                  "value": "{{weekNumber}}"
                 }
               ]
             }
-          }
+          },
+          "response": []
         },
         {
           "name": "Sync Athletes from ESPN",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "a18a6b36-9c31-46b0-84b0-d00eeb765d22",
           "request": {
             "method": "POST",
             "header": [
@@ -663,7 +1526,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}:{{stockMarketPort}}/api/v1/stocks/sync-athletes?position=QB",
+              "raw": "{{baseUrl}}:{{stockMarketPort}}/api/v1/stocks/sync-athletes",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -682,9 +1545,11 @@
                 }
               ]
             }
-          }
+          },
+          "response": []
         }
-      ]
+      ],
+      "id": "e274ba32-5791-43d1-a09c-a78dd00bdc42"
     },
     {
       "name": "4. League Service (Port 8100)",
@@ -696,15 +1561,36 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test(\"Status code is 200\", function () {",
-                  "    pm.response.to.have.status(200);",
+                  "pm.test(\"Status code is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "const startAt = new Date(pm.collectionVariables.get('futureLeagueStartAt'));",
+                  "const endAt = new Date(pm.collectionVariables.get('futureLeagueEndAt'));",
+                  "pm.test(\"League dates are future\", function () {",
+                  "    pm.expect(startAt.getTime()).to.be.greaterThan(Date.now());",
+                  "    pm.expect(endAt.getTime()).to.be.greaterThan(startAt.getTime());",
                   "});",
                   "var jsonData = pm.response.json();",
                   "pm.collectionVariables.set('leagueId', jsonData.id);"
-                ]
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const now = new Date();",
+                  "const start = new Date(now.getTime() + 24 * 60 * 60 * 1000);",
+                  "const end = new Date(now.getTime() + 181 * 24 * 60 * 60 * 1000);",
+                  "pm.collectionVariables.set('futureLeagueStartAt', start.toISOString());",
+                  "pm.collectionVariables.set('futureLeagueEndAt', end.toISOString());"
+                ],
+                "type": "text/javascript"
               }
             }
           ],
+          "id": "5ab3f00c-1aec-4ddf-b4e4-424735b412bc",
           "request": {
             "method": "POST",
             "header": [
@@ -719,7 +1605,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\"name\":\"Fantasy Football League\",\"maxMembers\":12,\"seasonStartAt\":\"2024-09-01T00:00:00Z\",\"seasonEndAt\":\"2025-02-01T00:00:00Z\",\"initialStipendAmount\":5000,\"weeklyStipendAmount\":100,\"weeklyPayoutDowUtc\":0}"
+              "raw": "{\"name\":\"Fantasy Football League\",\"maxMembers\":12,\"seasonStartAt\":\"{{futureLeagueStartAt}}\",\"seasonEndAt\":\"{{futureLeagueEndAt}}\",\"initialStipendAmount\":{{initialStipendAmount}},\"weeklyStipendAmount\":{{weeklyStipendAmount}},\"weeklyPayoutDowUtc\":{{payoutDay}}}"
             },
             "url": {
               "raw": "{{baseUrl}}:{{leaguePort}}/api/v1/leagues",
@@ -733,10 +1619,29 @@
                 "leagues"
               ]
             }
-          }
+          },
+          "response": []
         },
         {
           "name": "Get League Details",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"League id matches\", function () {",
+                  "    pm.expect(String(jsonData.id)).to.eql(String(pm.collectionVariables.get('leagueId')));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "20998d89-0646-4560-9dd1-2e05a025bd3e",
           "request": {
             "method": "GET",
             "header": [
@@ -758,10 +1663,25 @@
                 "{{leagueId}}"
               ]
             }
-          }
+          },
+          "response": []
         },
         {
           "name": "List User's Leagues",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "04f74703-c75c-445a-a12f-39637dde543d",
           "request": {
             "method": "GET",
             "header": [
@@ -792,24 +1712,41 @@
                 }
               ]
             }
-          }
+          },
+          "response": []
         },
         {
           "name": "Create Invite for Player 2",
           "event": [
             {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const inviteExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);",
+                  "pm.collectionVariables.set('futureInviteExpiryAt', inviteExpiry.toISOString());"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test(\"Status code is 200\", function () {",
-                  "    pm.response.to.have.status(200);",
+                  "pm.test(\"Status code is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "const inviteExpiry = new Date(pm.collectionVariables.get('futureInviteExpiryAt'));",
+                  "pm.test(\"Invite expiry is in the future\", function () {",
+                  "    pm.expect(inviteExpiry.getTime()).to.be.greaterThan(Date.now());",
                   "});",
                   "var jsonData = pm.response.json();",
-                  "pm.collectionVariables.set('inviteCode', jsonData.inviteCode);"
-                ]
+                  "pm.collectionVariables.set('inviteCode', jsonData.code);"
+                ],
+                "type": "text/javascript"
               }
             }
           ],
+          "id": "3f2ec08b-771a-4dc4-ba93-bd1b1c7fe81f",
           "request": {
             "method": "POST",
             "header": [
@@ -824,7 +1761,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\"invitedEmail\":\"player2@test.com\"}"
+              "raw": "{\"expiresAt\":\"{{futureInviteExpiryAt}}\",\"maxUses\":5}"
             },
             "url": {
               "raw": "{{baseUrl}}:{{leaguePort}}/api/v1/leagues/{{leagueId}}/invites",
@@ -840,21 +1777,41 @@
                 "invites"
               ]
             }
-          }
+          },
+          "response": []
         },
         {
           "name": "Create Invite for Player 3",
           "event": [
             {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const inviteExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);",
+                  "pm.collectionVariables.set('futureInviteExpiryAt', inviteExpiry.toISOString());"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
               "listen": "test",
               "script": {
                 "exec": [
+                  "pm.test(\"Status code is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "const inviteExpiry = new Date(pm.collectionVariables.get('futureInviteExpiryAt'));",
+                  "pm.test(\"Invite expiry is in the future\", function () {",
+                  "    pm.expect(inviteExpiry.getTime()).to.be.greaterThan(Date.now());",
+                  "});",
                   "var jsonData = pm.response.json();",
-                  "pm.collectionVariables.set('inviteCode2', jsonData.inviteCode);"
-                ]
+                  "pm.collectionVariables.set('inviteCode2', jsonData.code);"
+                ],
+                "type": "text/javascript"
               }
             }
           ],
+          "id": "a1e585fb-cc88-4d26-9c9f-fd77a3330b18",
           "request": {
             "method": "POST",
             "header": [
@@ -869,7 +1826,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\"invitedEmail\":\"player3@test.com\"}"
+              "raw": "{\"expiresAt\":\"{{futureInviteExpiryAt}}\",\"maxUses\":5}"
             },
             "url": {
               "raw": "{{baseUrl}}:{{leaguePort}}/api/v1/leagues/{{leagueId}}/invites",
@@ -885,10 +1842,25 @@
                 "invites"
               ]
             }
-          }
+          },
+          "response": []
         },
         {
           "name": "Player 2 - Join League",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "361c2388-2585-43ca-8c3e-18881d86c4ee",
           "request": {
             "method": "POST",
             "header": [
@@ -919,10 +1891,25 @@
                 "join"
               ]
             }
-          }
+          },
+          "response": []
         },
         {
           "name": "Player 3 - Join League",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "0a443f60-3389-490c-9372-0ddaf947b5cd",
           "request": {
             "method": "POST",
             "header": [
@@ -953,10 +1940,29 @@
                 "join"
               ]
             }
-          }
+          },
+          "response": []
         },
         {
           "name": "List League Members",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"League has members\", function () {",
+                  "    pm.expect(jsonData.totalElements).to.be.greaterThan(0);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "5a569748-fb53-4bb8-bbea-0b99b383f3ee",
           "request": {
             "method": "GET",
             "header": [
@@ -989,10 +1995,111 @@
                 }
               ]
             }
-          }
+          },
+          "response": []
+        },
+        {
+          "name": "Get League Member IDs",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.length > 0) {",
+                  "    pm.collectionVariables.set('leagueMemberIds', jsonData.join(','));",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "1ff0f6e2-5a8e-4f8a-82f7-1d8f4b9a6d84",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}:{{leaguePort}}/api/v1/leagues/internal/{{leagueId}}/member-ids",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "port": "{{leaguePort}}",
+              "path": [
+                "api",
+                "v1",
+                "leagues",
+                "internal",
+                "{{leagueId}}",
+                "member-ids"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Stipend Eligible Leagues",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"Response is array\", function () {",
+                  "    pm.expect(Array.isArray(jsonData)).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}:{{leaguePort}}/api/v1/leagues/internal/stipend-eligible?payoutDay={{payoutDay}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "port": "{{leaguePort}}",
+              "path": [
+                "api",
+                "v1",
+                "leagues",
+                "internal",
+                "stipend-eligible"
+              ],
+              "query": [
+                {
+                  "key": "payoutDay",
+                  "value": "{{payoutDay}}"
+                }
+              ]
+            }
+          },
+          "response": []
         },
         {
           "name": "Start League Season",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "78b6e81c-b15e-411d-a904-368e4d0143ac",
           "request": {
             "method": "POST",
             "header": [
@@ -1015,9 +2122,52 @@
                 "start"
               ]
             }
-          }
+          },
+          "response": []
+        },
+        {
+          "name": "Archive League",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "d7a6a1f2-5d98-4a4f-9f8f-8f0d4d2a6b21",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{player1_accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}:{{leaguePort}}/api/v1/leagues/{{leagueId}}/archive",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "port": "{{leaguePort}}",
+              "path": [
+                "api",
+                "v1",
+                "leagues",
+                "{{leagueId}}",
+                "archive"
+              ]
+            }
+          },
+          "response": []
         }
-      ]
+      ],
+      "id": "ab298354-e732-454a-9309-4903f2827727"
     },
     {
       "name": "5. Transaction Service (Port 8110)",
@@ -1029,15 +2179,17 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test(\"Status code is 200\", function () {",
-                  "    pm.response.to.have.status(200);",
+                  "pm.test(\"Status code is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
                   "});",
                   "var jsonData = pm.response.json();",
                   "pm.collectionVariables.set('player1_walletId', jsonData.id);"
-                ]
+                ],
+                "type": "text/javascript"
               }
             }
           ],
+          "id": "81c5de35-70c2-475e-bd8a-98d2a73563ed",
           "request": {
             "method": "POST",
             "header": [
@@ -1066,7 +2218,8 @@
                 "wallets"
               ]
             }
-          }
+          },
+          "response": []
         },
         {
           "name": "Player 2 - Create Wallet",
@@ -1075,12 +2228,17 @@
               "listen": "test",
               "script": {
                 "exec": [
+                  "pm.test(\"Status code is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
                   "var jsonData = pm.response.json();",
                   "pm.collectionVariables.set('player2_walletId', jsonData.id);"
-                ]
+                ],
+                "type": "text/javascript"
               }
             }
           ],
+          "id": "d173f11f-6b98-47a2-92e0-ff3c13e20b98",
           "request": {
             "method": "POST",
             "header": [
@@ -1109,7 +2267,8 @@
                 "wallets"
               ]
             }
-          }
+          },
+          "response": []
         },
         {
           "name": "Player 3 - Create Wallet",
@@ -1118,12 +2277,17 @@
               "listen": "test",
               "script": {
                 "exec": [
+                  "pm.test(\"Status code is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
                   "var jsonData = pm.response.json();",
                   "pm.collectionVariables.set('player3_walletId', jsonData.id);"
-                ]
+                ],
+                "type": "text/javascript"
               }
             }
           ],
+          "id": "17b33e02-5acb-4db4-9cae-f458e5447ea2",
           "request": {
             "method": "POST",
             "header": [
@@ -1152,10 +2316,27 @@
                 "wallets"
               ]
             }
-          }
+          },
+          "response": []
         },
         {
           "name": "Get Wallet",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set('player1_walletBalance', jsonData.balance);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "fbf28ec9-cc36-470c-ae51-c4d6498a82ac",
           "request": {
             "method": "GET",
             "header": [
@@ -1182,10 +2363,25 @@
                 }
               ]
             }
-          }
+          },
+          "response": []
         },
         {
           "name": "List All Wallets in League",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "0e5dcdb8-7d9c-4899-a9c2-9d2106977ec0",
           "request": {
             "method": "GET",
             "header": [
@@ -1208,17 +2404,28 @@
                 "{{leagueId}}"
               ]
             }
-          }
+          },
+          "response": []
         },
         {
           "name": "Issue Initial Stipends",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "610d707a-449f-49b8-9032-45a6f655abbb",
           "request": {
             "method": "POST",
             "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{player1_accessToken}}"
-              },
               {
                 "key": "Content-Type",
                 "value": "application/json"
@@ -1226,7 +2433,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\"leagueId\":{{leagueId}},\"amount\":5000}"
+              "raw": "{\"leagueId\":{{leagueId}},\"amount\":{{initialStipendAmount}}}"
             },
             "url": {
               "raw": "{{baseUrl}}:{{transactionPort}}/api/v1/wallets/stipends/initial",
@@ -1242,17 +2449,28 @@
                 "initial"
               ]
             }
-          }
+          },
+          "response": []
         },
         {
           "name": "Issue Weekly Stipends",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "9cbb4707-76ae-4cb7-8494-403989773a55",
           "request": {
             "method": "POST",
             "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{player1_accessToken}}"
-              },
               {
                 "key": "Content-Type",
                 "value": "application/json"
@@ -1260,10 +2478,10 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\"leagueId\":{{leagueId}},\"amount\":100}"
+              "raw": "{\"leagueId\":{{leagueId}},\"amount\":{{weeklyStipendAmount}}}"
             },
             "url": {
-              "raw": "{{baseUrl}}:{{transactionPort}}/api/v1/wallets/stipends/weekly?weekNumber=1",
+              "raw": "{{baseUrl}}:{{transactionPort}}/api/v1/wallets/stipends/weekly?weekNumber={{weekNumber}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -1278,14 +2496,31 @@
               "query": [
                 {
                   "key": "weekNumber",
-                  "value": "1"
+                  "value": "{{weekNumber}}"
                 }
               ]
             }
-          }
+          },
+          "response": []
         },
         {
           "name": "Buy Stock",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set('lastBuyTransactionId', jsonData.transactionId);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "a732971f-82bd-4edd-8dd0-00ee9478d7f8",
           "request": {
             "method": "POST",
             "header": [
@@ -1300,7 +2535,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\"leagueId\":{{leagueId}},\"amount\":500,\"referenceId\":\"{{$randomUUID}}\",\"description\":\"Buy stock for athlete\"}"
+              "raw": "{\"leagueId\":{{leagueId}},\"stockId\":\"{{stockId}}\",\"quantity\":1,\"dollarAmount\":null,\"idempotencyKey\":\"{{$randomUUID}}\"}"
             },
             "url": {
               "raw": "{{baseUrl}}:{{transactionPort}}/api/v1/wallets/buy",
@@ -1315,10 +2550,27 @@
                 "buy"
               ]
             }
-          }
+          },
+          "response": []
         },
         {
           "name": "Sell Stock",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set('lastSellTransactionId', jsonData.transactionId);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "82a0fa1e-b427-4254-81a1-7e9d36d4eff7",
           "request": {
             "method": "POST",
             "header": [
@@ -1333,7 +2585,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\"leagueId\":{{leagueId}},\"amount\":300,\"referenceId\":\"{{$randomUUID}}\",\"description\":\"Sell stock for athlete\"}"
+              "raw": "{\"leagueId\":{{leagueId}},\"stockId\":\"{{stockId}}\",\"quantity\":1,\"dollarAmount\":null,\"idempotencyKey\":\"{{$randomUUID}}\"}"
             },
             "url": {
               "raw": "{{baseUrl}}:{{transactionPort}}/api/v1/wallets/sell",
@@ -1348,10 +2600,25 @@
                 "sell"
               ]
             }
-          }
+          },
+          "response": []
         },
         {
           "name": "Get Transaction History",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "72a5b99d-0a2f-4a70-a68f-07ce766b9e6f",
           "request": {
             "method": "GET",
             "header": [
@@ -1387,91 +2654,193 @@
                 }
               ]
             }
-          }
+          },
+          "response": []
         }
-      ]
+      ],
+      "id": "a4a9b7ed-e2b8-44a3-b37a-5424d558a2b9"
     }
   ],
   "variable": [
     {
+      "id": "a6a587d9-423b-46eb-8e9e-249cbba4a969",
       "key": "baseUrl",
       "value": "http://localhost"
     },
     {
+      "id": "3fd97f51-6bea-4d58-a4c0-b84b232a472c",
       "key": "authPort",
       "value": "8120"
     },
     {
+      "id": "35aa9420-8a1d-45c0-805c-97a2c4fcbeb5",
       "key": "ingestionPort",
       "value": "8090"
     },
     {
+      "id": "faacd3c4-f14a-472b-a710-6e4d3f2b0d8d",
       "key": "leaguePort",
       "value": "8100"
     },
     {
+      "id": "5f3871a5-02d3-40fd-b447-cefd0bf4b8ca",
       "key": "transactionPort",
       "value": "8110"
     },
     {
+      "id": "a96517d1-4846-413e-b7b5-60caa6a6c293",
       "key": "stockMarketPort",
       "value": "8130"
     },
     {
+      "id": "462a795f-c480-4035-a966-a86c0bae34fd",
       "key": "player1_accessToken",
       "value": ""
     },
     {
+      "id": "72fa9790-a9bf-4827-8c24-46256ef837bc",
       "key": "player1_refreshToken",
       "value": ""
     },
     {
+      "id": "bff317f2-2534-421b-baef-d03c370566ee",
       "key": "player2_accessToken",
       "value": ""
     },
     {
+      "id": "2670aac7-37c1-495d-9541-4e0be2d98b00",
       "key": "player2_refreshToken",
       "value": ""
     },
     {
+      "id": "68493d50-8b5e-47b3-a333-5344429d4190",
       "key": "player3_accessToken",
       "value": ""
     },
     {
+      "id": "0beaeaef-fe8f-464d-a7b2-81421920db97",
       "key": "player3_refreshToken",
       "value": ""
     },
     {
+      "id": "310a7647-f859-4ad2-988b-2c04d79533bd",
       "key": "leagueId",
       "value": ""
     },
     {
+      "id": "072a5124-b669-46f7-b713-54b522672d91",
       "key": "inviteCode",
       "value": ""
     },
     {
+      "id": "6408a611-e373-4666-a57c-48433499e5a3",
       "key": "inviteCode2",
       "value": ""
     },
     {
+      "id": "8f1f6a2d-2dd8-4b0c-9ef4-7c4dd5b8e5a1",
+      "key": "futureLeagueStartAt",
+      "value": ""
+    },
+    {
+      "id": "2e7b0c9a-7f12-4f0b-9d2e-5c7f9f4a6e3b",
+      "key": "futureLeagueEndAt",
+      "value": ""
+    },
+    {
+      "id": "d6f9a1e8-5f4d-4b1a-9d2a-3c8d9e1f2a11",
+      "key": "futureInviteExpiryAt",
+      "value": ""
+    },
+    {
+      "id": "3f4b796d-955c-4a39-90f6-47be8d205c80",
       "key": "player1_walletId",
       "value": ""
     },
     {
+      "id": "e720d1b7-1cea-4f37-a48e-be1bb483aaf9",
       "key": "player2_walletId",
       "value": ""
     },
     {
+      "id": "9ba0b4e4-b9df-4366-8448-b2078201825a",
       "key": "player3_walletId",
       "value": ""
     },
     {
+      "id": "5955b08f-1811-4206-ad3c-cb897fdbee38",
       "key": "athleteEspnId",
       "value": ""
     },
     {
+      "id": "d8b2e1b3-9f3c-4b7f-bf9e-2f5f3a2a9d01",
+      "key": "teamEspnId",
+      "value": ""
+    },
+    {
+      "id": "9c6d9b5a-3f7a-4a8d-a9c1-1f3f5e7d2a11",
+      "key": "eventEspnId",
+      "value": ""
+    },
+    {
+      "id": "c3e8db56-7b2f-4a4a-bb9d-5f9d2a1e4f88",
+      "key": "leagueMemberIds",
+      "value": ""
+    },
+    {
+      "id": "3de2f6d7-0c8b-4f5e-a5e1-7f1f6a9b2c22",
+      "key": "player1_walletBalance",
+      "value": ""
+    },
+    {
+      "id": "6f8d0d7e-8c6c-4f0a-a6f1-3e8d9f5c2b55",
+      "key": "lastBuyTransactionId",
+      "value": ""
+    },
+    {
+      "id": "1bb4f2d8-9d5c-4f6e-a3ab-5c8e3d1f3a77",
+      "key": "lastSellTransactionId",
+      "value": ""
+    },
+    {
+      "id": "f5d35cdb-05a6-4391-bf7b-902aa86f9580",
       "key": "stockId",
       "value": ""
+    },
+    {
+      "id": "seasonYear",
+      "key": "seasonYear",
+      "value": "2024"
+    },
+    {
+      "id": "seasonType",
+      "key": "seasonType",
+      "value": "2"
+    },
+    {
+      "id": "weekNumber",
+      "key": "weekNumber",
+      "value": "1"
+    },
+    {
+      "id": "recordType",
+      "key": "recordType",
+      "value": "total"
+    },
+    {
+      "id": "payoutDay",
+      "key": "payoutDay",
+      "value": "0"
+    },
+    {
+      "id": "initialStipendAmount",
+      "key": "initialStipendAmount",
+      "value": "5000"
+    },
+    {
+      "id": "weeklyStipendAmount",
+      "key": "weeklyStipendAmount",
+      "value": "100"
     }
   ]
 }

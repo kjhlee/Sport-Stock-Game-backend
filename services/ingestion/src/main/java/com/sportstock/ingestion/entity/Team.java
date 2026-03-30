@@ -71,6 +71,9 @@ public class Team {
   @Column(name = "standing_summary", length = 50)
   private String standingSummary;
 
+  @Column(name = "roster_synced_at")
+  private Instant rosterSyncedAt;
+
   @Column(name = "ingested_at", nullable = false)
   private Instant ingestedAt;
 

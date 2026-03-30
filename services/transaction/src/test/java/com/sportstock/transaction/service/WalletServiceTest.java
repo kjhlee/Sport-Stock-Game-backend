@@ -8,22 +8,28 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.sportstock.common.dto.stock_market.StockResponse;
 import com.sportstock.common.dto.transaction.StipendResultResponse;
+import com.sportstock.common.dto.transaction.StockTransactionRequest;
 import com.sportstock.common.dto.transaction.TransactionResponse;
 import com.sportstock.common.dto.transaction.WalletResponse;
 import com.sportstock.transaction.client.LeagueServiceClient;
+import com.sportstock.transaction.client.StockMarketServiceClient;
 import com.sportstock.transaction.entity.Transaction;
 import com.sportstock.transaction.entity.Wallet;
 import com.sportstock.transaction.enums.TransactionType;
+import com.sportstock.transaction.exception.InvalidTradeRequestException;
 import com.sportstock.transaction.exception.WalletAlreadyExistsException;
 import com.sportstock.transaction.exception.WalletNotFoundException;
 import com.sportstock.transaction.repo.TransactionRepository;
 import com.sportstock.transaction.repo.WalletRepository;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -51,6 +57,7 @@ class WalletServiceTest {
   @Mock private PlatformTransactionManager txManager;
 
   @Mock private LeagueServiceClient leagueServiceClient;
+  @Mock private StockMarketServiceClient stockMarketServiceClient;
 
   private WalletService walletService;
 
@@ -63,7 +70,12 @@ class WalletServiceTest {
   @BeforeEach
   void setUp() {
     walletService =
-        new WalletService(walletRepository, transactionRepository, txManager, leagueServiceClient);
+        new WalletService(
+            walletRepository,
+            transactionRepository,
+            txManager,
+            leagueServiceClient,
+            stockMarketServiceClient);
   }
 
   @Nested
@@ -356,7 +368,8 @@ class WalletServiceTest {
       // Given
       BigDecimal amount = new BigDecimal("10000.00");
 
-      when(leagueServiceClient.getMemberUserIds(TEST_LEAGUE_ID)).thenReturn(List.of(TEST_USER_ID));
+      when(leagueServiceClient.getMemberUserIdsInternal(TEST_LEAGUE_ID))
+          .thenReturn(List.of(TEST_USER_ID));
       Wallet wallet = createMockWallet(1L, TEST_USER_ID, TEST_LEAGUE_ID, INITIAL_BALANCE);
       when(walletRepository.findByUserIdAndLeagueIdForUpdate(TEST_USER_ID, TEST_LEAGUE_ID))
           .thenReturn(Optional.of(wallet));
@@ -376,7 +389,7 @@ class WalletServiceTest {
     void shouldHandleEmptyUserList() {
       // Given
       BigDecimal amount = new BigDecimal("10000.00");
-      when(leagueServiceClient.getMemberUserIds(TEST_LEAGUE_ID)).thenReturn(List.of());
+      when(leagueServiceClient.getMemberUserIdsInternal(TEST_LEAGUE_ID)).thenReturn(List.of());
 
       // When
       StipendResultResponse response = walletService.issueInitialStipends(TEST_LEAGUE_ID, amount);
@@ -400,7 +413,8 @@ class WalletServiceTest {
       BigDecimal amount = new BigDecimal("500.00");
       Integer weekNumber = 1;
 
-      when(leagueServiceClient.getMemberUserIds(TEST_LEAGUE_ID)).thenReturn(List.of(TEST_USER_ID));
+      when(leagueServiceClient.getMemberUserIdsInternal(TEST_LEAGUE_ID))
+          .thenReturn(List.of(TEST_USER_ID));
       Wallet wallet =
           createMockWallet(1L, TEST_USER_ID, TEST_LEAGUE_ID, new BigDecimal("10000.00"));
       when(walletRepository.findByUserIdAndLeagueIdForUpdate(TEST_USER_ID, TEST_LEAGUE_ID))
@@ -424,7 +438,7 @@ class WalletServiceTest {
       // Given
       BigDecimal amount = new BigDecimal("500.00");
       Integer weekNumber = 1;
-      when(leagueServiceClient.getMemberUserIds(TEST_LEAGUE_ID)).thenReturn(List.of());
+      when(leagueServiceClient.getMemberUserIdsInternal(TEST_LEAGUE_ID)).thenReturn(List.of());
 
       // When
       StipendResultResponse response =
@@ -442,7 +456,8 @@ class WalletServiceTest {
       // Given
       BigDecimal amount = new BigDecimal("500.00");
 
-      when(leagueServiceClient.getMemberUserIds(TEST_LEAGUE_ID)).thenReturn(List.of(TEST_USER_ID));
+      when(leagueServiceClient.getMemberUserIdsInternal(TEST_LEAGUE_ID))
+          .thenReturn(List.of(TEST_USER_ID));
       Wallet wallet =
           createMockWallet(1L, TEST_USER_ID, TEST_LEAGUE_ID, new BigDecimal("10000.00"));
       when(walletRepository.findByUserIdAndLeagueIdForUpdate(TEST_USER_ID, TEST_LEAGUE_ID))
@@ -469,30 +484,46 @@ class WalletServiceTest {
   class ProcessStockBuyTests {
 
     @Test
-    @DisplayName("Should throw UnsupportedOperationException (not yet implemented)")
-    void shouldThrowUnsupportedOperationForStockBuy() {
-      // When & Then
-      assertThatThrownBy(
-              () ->
-                  walletService.processStockBuy(
-                      TEST_USER_ID,
-                      TEST_LEAGUE_ID,
-                      new BigDecimal("100.00"),
-                      "ATHLETE_123",
-                      "Buy 10 shares"))
-          .isInstanceOf(UnsupportedOperationException.class)
-          .hasMessageContaining("TODO");
+    @DisplayName("Should process stock buy request")
+    void shouldProcessStockBuy() {
+      when(stockMarketServiceClient.getStock(any())).thenReturn(createActiveStockResponse());
+      Wallet wallet = createMockWallet(1L, TEST_USER_ID, TEST_LEAGUE_ID, new BigDecimal("1000.00"));
+      when(walletRepository.findByUserIdAndLeagueIdForUpdate(TEST_USER_ID, TEST_LEAGUE_ID))
+          .thenReturn(Optional.of(wallet));
+      when(transactionRepository.existsByIdempotencyKey("idem-buy-1")).thenReturn(false);
+      when(transactionRepository.save(any(Transaction.class)))
+          .thenAnswer(
+              invocation -> {
+                Transaction tx = invocation.getArgument(0);
+                tx.setId(1001L);
+                tx.setCreatedAt(OffsetDateTime.now());
+                return tx;
+              });
+
+      var response =
+          walletService.processStockBuy(
+              TEST_USER_ID,
+              TEST_LEAGUE_ID,
+              new StockTransactionRequest(
+                  TEST_LEAGUE_ID, UUID.randomUUID(), new BigDecimal("10"), null, "idem-buy-1"));
+
+      assertThat(response).isNotNull();
+      assertThat(response.type()).isEqualTo("STOCK_BUY");
+      assertThat(response.quantity()).isEqualByComparingTo(new BigDecimal("10"));
+      assertThat(response.totalAmount()).isEqualByComparingTo(new BigDecimal("250.0000"));
     }
 
     @Test
-    @DisplayName("Should validate all parameters are passed")
+    @DisplayName("Should require exactly one of quantity or dollarAmount")
     void shouldValidateAllParametersArePassed() {
       // When & Then
       assertThatThrownBy(
               () ->
                   walletService.processStockBuy(
-                      1001L, 1L, new BigDecimal("250.50"), "ATHLETE_456", "Purchase shares"))
-          .isInstanceOf(UnsupportedOperationException.class);
+                      1001L,
+                      1L,
+                      new StockTransactionRequest(1L, UUID.randomUUID(), null, null, "idem-buy-2")))
+          .isInstanceOf(InvalidTradeRequestException.class);
     }
   }
 
@@ -501,30 +532,47 @@ class WalletServiceTest {
   class ProcessStockSellTests {
 
     @Test
-    @DisplayName("Should throw UnsupportedOperationException (not yet implemented)")
-    void shouldThrowUnsupportedOperationForStockSell() {
-      // When & Then
-      assertThatThrownBy(
-              () ->
-                  walletService.processStockSell(
-                      TEST_USER_ID,
-                      TEST_LEAGUE_ID,
-                      new BigDecimal("100.00"),
-                      "ATHLETE_123",
-                      "Sell 10 shares"))
-          .isInstanceOf(UnsupportedOperationException.class)
-          .hasMessageContaining("TODO");
+    @DisplayName("Should process stock sell request")
+    void shouldProcessStockSell() {
+      when(stockMarketServiceClient.getStock(any())).thenReturn(createActiveStockResponse());
+      Wallet wallet = createMockWallet(2L, 1002L, 2L, new BigDecimal("1000.00"));
+      when(walletRepository.findByUserIdAndLeagueIdForUpdate(1002L, 2L))
+          .thenReturn(Optional.of(wallet));
+      when(transactionRepository.existsByIdempotencyKey("idem-sell-1")).thenReturn(false);
+      when(transactionRepository.save(any(Transaction.class)))
+          .thenAnswer(
+              invocation -> {
+                Transaction tx = invocation.getArgument(0);
+                tx.setId(2001L);
+                tx.setCreatedAt(OffsetDateTime.now());
+                return tx;
+              });
+
+      var response =
+          walletService.processStockSell(
+              1002L,
+              2L,
+              new StockTransactionRequest(
+                  2L, UUID.randomUUID(), new BigDecimal("10"), null, "idem-sell-1"));
+
+      assertThat(response).isNotNull();
+      assertThat(response.type()).isEqualTo("STOCK_SELL");
+      assertThat(response.quantity()).isEqualByComparingTo(new BigDecimal("10"));
+      assertThat(response.totalAmount()).isEqualByComparingTo(new BigDecimal("250.0000"));
     }
 
     @Test
-    @DisplayName("Should validate all parameters are passed")
+    @DisplayName("Should require exactly one of quantity or dollarAmount")
     void shouldValidateAllParametersArePassed() {
       // When & Then
       assertThatThrownBy(
               () ->
                   walletService.processStockSell(
-                      1002L, 2L, new BigDecimal("175.75"), "ATHLETE_789", "Sell shares"))
-          .isInstanceOf(UnsupportedOperationException.class);
+                      1002L,
+                      2L,
+                      new StockTransactionRequest(
+                          2L, UUID.randomUUID(), null, null, "idem-sell-2")))
+          .isInstanceOf(InvalidTradeRequestException.class);
     }
   }
 
@@ -621,5 +669,17 @@ class WalletServiceTest {
     transaction.setUserId(wallet.getUserId());
     transaction.setCreatedAt(OffsetDateTime.now());
     return transaction;
+  }
+
+  private StockResponse createActiveStockResponse() {
+    return new StockResponse(
+        UUID.randomUUID(),
+        "espn-athlete-1",
+        "Test Player",
+        "QB",
+        "team-1",
+        new BigDecimal("25.00"),
+        "ACTIVE",
+        Instant.now());
   }
 }
