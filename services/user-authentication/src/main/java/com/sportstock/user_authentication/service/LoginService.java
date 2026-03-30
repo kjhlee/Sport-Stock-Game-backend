@@ -13,7 +13,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class LoginService {
 
-  private static Logger logger = LoggerFactory.getLogger(LoginService.class);
+  private final Logger logger = LoggerFactory.getLogger(LoginService.class);
 
   private final BCryptPasswordEncoder passwordEncoder;
 
@@ -40,8 +40,10 @@ public class LoginService {
       throw new RuntimeException("Invalid credentials");
     }
 
-    String accessToken = jwtService.generateAccessToken(account.getEmail(), account.getId(), account.getUsername());
-    String refreshToken = jwtService.generateRefreshToken(account.getEmail(), account.getId(), account.getUsername());
+    String accessToken =
+        jwtService.generateAccessToken(account.getEmail(), account.getId(), account.getUsername());
+    String refreshToken =
+        jwtService.generateRefreshToken(account.getEmail(), account.getId(), account.getUsername());
 
     return new TokenResponse(accessToken, refreshToken);
   }
