@@ -1,6 +1,7 @@
 package com.sportstock.user_authentication.service;
 
 import com.sportstock.common.dto.user_authentication.TokenResponse;
+import com.sportstock.user_authentication.exception.InvalidCredentialsException;
 import com.sportstock.user_authentication.models.UserDetails;
 import com.sportstock.user_authentication.repository.UserAccountRepo;
 import lombok.RequiredArgsConstructor;
@@ -23,21 +24,28 @@ public class LoginService {
 
   public TokenResponse login(String login, String password) {
     UserDetails account;
-    System.out.println("EXPIRED: " + jwtService.generateExpiredToken(login));
 
     if (login.contains("@")) {
       account =
-          accountRepo.findByEmail(login).orElseThrow(() -> new RuntimeException("Email not found"));
+          accountRepo
+              .findByEmail(login)
+              .orElseThrow(
+                  () ->
+                      new InvalidCredentialsException(
+                          "Incorrect username/email or password."));
     } else {
       account =
           accountRepo
               .findByUsername(login)
-              .orElseThrow(() -> new RuntimeException("Username not found "));
+              .orElseThrow(
+                  () ->
+                      new InvalidCredentialsException(
+                          "Incorrect username/email or password."));
     }
     logger.info("Login attempt for account: {}", account);
     if (!passwordEncoder.matches(password, account.getPassword())) {
       logger.error("Login failed for account: {}", account);
-      throw new RuntimeException("Invalid credentials");
+      throw new InvalidCredentialsException("Incorrect username/email or password.");
     }
 
     String accessToken =

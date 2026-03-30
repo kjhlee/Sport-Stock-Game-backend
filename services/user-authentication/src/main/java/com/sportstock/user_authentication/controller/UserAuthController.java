@@ -31,40 +31,28 @@ public class UserAuthController {
   @PostMapping("/register")
   public ResponseEntity<String> registerAccount(@RequestBody RegisterRequest request) {
     logger.info("Processing new /api/register request");
-    try {
-      accountService.registerAccount(
-          request.getEmail(),
-          request.getPassword(),
-          request.getUsername(),
-          request.getFirstName(),
-          request.getLastName());
-      return ResponseEntity.ok("Account registered successfully");
-    } catch (Exception e) {
-      return ResponseEntity.badRequest().body(e.getMessage());
-    }
+    accountService.registerAccount(
+        request.getEmail(),
+        request.getPassword(),
+        request.getUsername(),
+        request.getFirstName(),
+        request.getLastName());
+    return ResponseEntity.ok("Account registered successfully");
   }
 
   @PostMapping("/login")
   public ResponseEntity<?> login(@RequestBody LoginRequest request) {
     logger.info("Processing new /api/login request");
-    try {
-      TokenResponse newToken = loginService.login(request.getLogin(), request.getPassword());
-      return ResponseEntity.ok(newToken);
-    } catch (Exception e) {
-      return ResponseEntity.badRequest().body(e.getMessage());
-    }
+    TokenResponse newToken = loginService.login(request.getLogin(), request.getPassword());
+    return ResponseEntity.ok(newToken);
   }
 
   @PostMapping("/refresh")
   public ResponseEntity<?> refresh(@RequestBody RefreshRequest request) {
-    try {
-      logger.info("Processing new refresh token /api/refresh");
-      String refreshToken = request.getRefreshToken();
-      String newAccessToken = refreshService.refreshAccessToken(refreshToken);
-      return ResponseEntity.ok(new TokenResponse(newAccessToken, refreshToken));
-    } catch (Exception e) {
-      return ResponseEntity.badRequest().body(e.getMessage());
-    }
+    logger.info("Processing new refresh token /api/refresh");
+    String refreshToken = request.getRefreshToken();
+    String newAccessToken = refreshService.refreshAccessToken(refreshToken);
+    return ResponseEntity.ok(new TokenResponse(newAccessToken, refreshToken));
   }
 
   @GetMapping("/test")
