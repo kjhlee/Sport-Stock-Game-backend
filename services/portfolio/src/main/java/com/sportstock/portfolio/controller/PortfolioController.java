@@ -29,6 +29,13 @@ public class PortfolioController {
     private final PortfolioService portfolioService;
     private final CurrentUserProvider currentUserProvider;
 
+    @PostMapping("/{leagueId}")
+    @ResponseStatus(HttpStatus.OK)
+    public Portfolio createPortfolio(@PathVariable Long leagueId){
+        Long userId = currentUserProvider.getCurrentUserId();
+        return portfolioService.createPortfolio(userId, leagueId);
+    }
+
     //Get a user's portfolio per that league
     @GetMapping("/{leagueId}")
     @ResponseStatus(HttpStatus.OK)

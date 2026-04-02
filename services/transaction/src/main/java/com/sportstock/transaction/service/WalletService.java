@@ -186,6 +186,7 @@ public class WalletService {
         });
 
     Transaction transaction = result.get();
+    //TODO: ADD THE PORTFOLIO ADD HOLDING HERE
     return new StockTransactionResponse(
         transaction.getId(),
         request.stockId(),
@@ -246,6 +247,7 @@ public class WalletService {
           }
         });
     Transaction transaction = result.get();
+    //TODO: ADD THE PORTFOLIO SELL HOLDING HERE 
     return new StockTransactionResponse(
         transaction.getId(),
         request.stockId(),

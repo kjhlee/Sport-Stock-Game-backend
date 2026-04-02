@@ -25,12 +25,7 @@ public class PortfolioService {
     public Portfolio getPortfolio(Long userId, Long leagueId){
         log.info("Fetching portfolio for userId={} leagueId={}", userId, leagueId);
         Optional<Portfolio> currPortfolio = portfolioRepo.findByUserIdAndLeagueId(userId, leagueId);
-        if(currPortfolio.isEmpty()){
-            log.info("No portfolio found for userId={} leagueId={}, creating new one", userId, leagueId);
-            return createPortfolio(userId, leagueId);
-        } else {
-            return currPortfolio.get();
-        }
+        return currPortfolio.get();
     }
 
     public Portfolio createPortfolio(Long userId, Long leagueId){

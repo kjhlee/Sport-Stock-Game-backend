@@ -41,4 +41,19 @@ public class RestClientConfig {
         .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
         .build();
   }
+
+  @Bean
+  public RestClient portfolioRestClient(PortfolioServiceProperties props){
+    HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
+
+    JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(client);
+    requestFactory.setReadTimeout(Duration.ofSeconds(30));
+
+    return RestClient.builder()
+        .requestFactory(requestFactory)
+        .baseUrl(props.getFullUrl())
+        .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
+        .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+        .build();
+  }
 }
