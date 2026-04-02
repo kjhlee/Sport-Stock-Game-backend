@@ -10,9 +10,9 @@ import static org.mockito.Mockito.when;
 import com.sportstock.common.dto.stock_market.IngestionAthleteDto;
 import com.sportstock.stockmarket.client.IngestionApiClient;
 import com.sportstock.stockmarket.config.PricingConfig;
-import com.sportstock.stockmarket.model.entity.PlayerStock;
-import com.sportstock.stockmarket.model.enums.StockStatus;
-import com.sportstock.stockmarket.repository.PlayerStockRepository;
+import com.sportstock.stockmarket.model.entity.Stock;
+import com.sportstock.common.enums.stock_market.StockStatus;
+import com.sportstock.stockmarket.repository.StockRepository;
 import com.sportstock.stockmarket.service.AthleteStockSyncService.SyncAthletesResult;
 import java.math.BigDecimal;
 import java.util.List;
@@ -34,7 +34,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 class AthleteStockSyncServiceTest {
 
   @Mock private IngestionApiClient ingestionApiClient;
-  @Mock private PlayerStockRepository playerStockRepository;
+  @Mock private StockRepository stockRepository;
   @Mock private PricingConfig pricingConfig;
 
   @InjectMocks private AthleteStockSyncService syncService;
@@ -76,7 +76,7 @@ class AthleteStockSyncServiceTest {
     assertThat(result.updated()).isZero();
     assertThat(result.skipped()).isZero();
     assertThat(result.totalFetched()).isZero();
-    verify(playerStockRepository, never()).save(any());
+    verify(stockRepository, never()).save(any());
   }
 
   // --- create ---
@@ -85,17 +85,17 @@ class AthleteStockSyncServiceTest {
   void syncAthletes_newAthlete_createsStockWithBasePrice() {
     when(ingestionApiClient.getAthletes(null))
         .thenReturn(List.of(athlete("qb-1", "Lamar Jackson", "QB", "ACTIVE", "33")));
-    when(playerStockRepository.findByAthleteEspnId("qb-1")).thenReturn(Optional.empty());
-    when(playerStockRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(stockRepository.findByAthleteEspnId("qb-1")).thenReturn(Optional.empty());
+    when(stockRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
     SyncAthletesResult result = syncService.syncAthletes(null);
 
     assertThat(result.created()).isEqualTo(1);
     assertThat(result.updated()).isZero();
 
-    ArgumentCaptor<PlayerStock> captor = forClass(PlayerStock.class);
-    verify(playerStockRepository).save(captor.capture());
-    PlayerStock saved = captor.getValue();
+    ArgumentCaptor<Stock> captor = forClass(Stock.class);
+    verify(stockRepository).save(captor.capture());
+    Stock saved = captor.getValue();
     assertThat(saved.getAthleteEspnId()).isEqualTo("qb-1");
     assertThat(saved.getFullName()).isEqualTo("Lamar Jackson");
     assertThat(saved.getPosition()).isEqualTo("QB");
@@ -107,7 +107,7 @@ class AthleteStockSyncServiceTest {
 
   @Test
   void syncAthletes_existingAthlete_updatesFieldsWithoutChangingPrice() {
-    PlayerStock existing = new PlayerStock();
+    Stock existing = new Stock();
     existing.setAthleteEspnId("qb-1");
     existing.setFullName("Old Name");
     existing.setPosition("QB");
@@ -116,7 +116,7 @@ class AthleteStockSyncServiceTest {
 
     when(ingestionApiClient.getAthletes(null))
         .thenReturn(List.of(athlete("qb-1", "Lamar Jackson", "QB", "ACTIVE", "33")));
-    when(playerStockRepository.findByAthleteEspnId("qb-1")).thenReturn(Optional.of(existing));
+    when(stockRepository.findByAthleteEspnId("qb-1")).thenReturn(Optional.of(existing));
 
     SyncAthletesResult result = syncService.syncAthletes(null);
 
@@ -125,7 +125,7 @@ class AthleteStockSyncServiceTest {
     assertThat(existing.getFullName()).isEqualTo("Lamar Jackson");
     assertThat(existing.getCurrentPrice()).isEqualByComparingTo("22.50");
     // JPA dirty checking handles the persist; no explicit save() call expected
-    verify(playerStockRepository, never()).save(any());
+    verify(stockRepository, never()).save(any());
   }
 
   // --- skip unsupported position ---
@@ -139,7 +139,7 @@ class AthleteStockSyncServiceTest {
 
     assertThat(result.skipped()).isEqualTo(1);
     assertThat(result.created()).isZero();
-    verify(playerStockRepository, never()).save(any());
+    verify(stockRepository, never()).save(any());
   }
 
   // --- position normalization (PK → K) ---
@@ -148,14 +148,14 @@ class AthleteStockSyncServiceTest {
   void syncAthletes_ingestionPkPosition_normalizedToK() {
     when(ingestionApiClient.getAthletes(null))
         .thenReturn(List.of(athlete("k-1", "Justin Tucker", "PK", "ACTIVE", "33")));
-    when(playerStockRepository.findByAthleteEspnId("k-1")).thenReturn(Optional.empty());
-    when(playerStockRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(stockRepository.findByAthleteEspnId("k-1")).thenReturn(Optional.empty());
+    when(stockRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
     SyncAthletesResult result = syncService.syncAthletes(null);
 
     assertThat(result.created()).isEqualTo(1);
-    ArgumentCaptor<PlayerStock> captor = forClass(PlayerStock.class);
-    verify(playerStockRepository).save(captor.capture());
+    ArgumentCaptor<Stock> captor = forClass(Stock.class);
+    verify(stockRepository).save(captor.capture());
     assertThat(captor.getValue().getPosition()).isEqualTo("K");
     assertThat(captor.getValue().getCurrentPrice()).isEqualByComparingTo("5.00");
   }
@@ -166,8 +166,8 @@ class AthleteStockSyncServiceTest {
   void syncAthletes_filterByK_passesIngestionPkToClient() {
     when(ingestionApiClient.getAthletes("PK"))
         .thenReturn(List.of(athlete("k-1", "Justin Tucker", "PK", "ACTIVE", "33")));
-    when(playerStockRepository.findByAthleteEspnId("k-1")).thenReturn(Optional.empty());
-    when(playerStockRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(stockRepository.findByAthleteEspnId("k-1")).thenReturn(Optional.empty());
+    when(stockRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
     syncService.syncAthletes("K");
 
@@ -189,13 +189,13 @@ class AthleteStockSyncServiceTest {
   void syncAthletes_inactiveAthlete_setsInactiveStatus() {
     when(ingestionApiClient.getAthletes(null))
         .thenReturn(List.of(athlete("qb-1", "Injured QB", "QB", "INACTIVE", "33")));
-    when(playerStockRepository.findByAthleteEspnId("qb-1")).thenReturn(Optional.empty());
-    when(playerStockRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(stockRepository.findByAthleteEspnId("qb-1")).thenReturn(Optional.empty());
+    when(stockRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
     syncService.syncAthletes(null);
 
-    ArgumentCaptor<PlayerStock> captor = forClass(PlayerStock.class);
-    verify(playerStockRepository).save(captor.capture());
+    ArgumentCaptor<Stock> captor = forClass(Stock.class);
+    verify(stockRepository).save(captor.capture());
     assertThat(captor.getValue().getStatus()).isEqualTo(StockStatus.INACTIVE);
   }
 
@@ -203,13 +203,13 @@ class AthleteStockSyncServiceTest {
   void syncAthletes_unknownStatus_defaultsToActive() {
     when(ingestionApiClient.getAthletes(null))
         .thenReturn(List.of(athlete("qb-1", "Mystery QB", "QB", "SUSPENDED", "33")));
-    when(playerStockRepository.findByAthleteEspnId("qb-1")).thenReturn(Optional.empty());
-    when(playerStockRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(stockRepository.findByAthleteEspnId("qb-1")).thenReturn(Optional.empty());
+    when(stockRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
     syncService.syncAthletes(null);
 
-    ArgumentCaptor<PlayerStock> captor = forClass(PlayerStock.class);
-    verify(playerStockRepository).save(captor.capture());
+    ArgumentCaptor<Stock> captor = forClass(Stock.class);
+    verify(stockRepository).save(captor.capture());
     assertThat(captor.getValue().getStatus()).isEqualTo(StockStatus.ACTIVE);
   }
 
@@ -217,7 +217,7 @@ class AthleteStockSyncServiceTest {
 
   @Test
   void syncAthletes_mixedAthletes_returnsCorrectCounts() {
-    PlayerStock existingRb = new PlayerStock();
+    Stock existingRb = new Stock();
     existingRb.setAthleteEspnId("rb-1");
     existingRb.setFullName("Old RB");
     existingRb.setPosition("RB");
@@ -230,9 +230,9 @@ class AthleteStockSyncServiceTest {
                 athlete("qb-1", "New QB", "QB", "ACTIVE", "1"),
                 athlete("rb-1", "Existing RB", "RB", "ACTIVE", "2"),
                 athlete("ol-1", "Lineman", "OL", "ACTIVE", "3")));
-    when(playerStockRepository.findByAthleteEspnId("qb-1")).thenReturn(Optional.empty());
-    when(playerStockRepository.findByAthleteEspnId("rb-1")).thenReturn(Optional.of(existingRb));
-    when(playerStockRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(stockRepository.findByAthleteEspnId("qb-1")).thenReturn(Optional.empty());
+    when(stockRepository.findByAthleteEspnId("rb-1")).thenReturn(Optional.of(existingRb));
+    when(stockRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
     SyncAthletesResult result = syncService.syncAthletes(null);
 

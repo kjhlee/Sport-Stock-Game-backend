@@ -4,7 +4,6 @@ import com.sportstock.common.dto.transaction.CreateWalletRequest;
 import com.sportstock.common.dto.transaction.IssueStipendRequest;
 import com.sportstock.common.dto.transaction.StipendResultResponse;
 import com.sportstock.common.dto.transaction.StockTransactionRequest;
-import com.sportstock.common.dto.transaction.StockTransactionResponse;
 import com.sportstock.common.dto.transaction.TransactionResponse;
 import com.sportstock.common.dto.transaction.WalletResponse;
 import com.sportstock.common.security.CurrentUserProvider;
@@ -70,14 +69,14 @@ public class WalletController {
 
   @PostMapping("/buy")
   @ResponseStatus(HttpStatus.OK)
-  public StockTransactionResponse buyStock(@Valid @RequestBody StockTransactionRequest request) {
+  public TransactionResponse buyStock(@Valid @RequestBody StockTransactionRequest request) {
     Long userId = currentUserProvider.getCurrentUserId();
     return walletService.processStockBuy(userId, request.leagueId(), request);
   }
 
   @PostMapping("/sell")
   @ResponseStatus(HttpStatus.OK)
-  public StockTransactionResponse sellStock(@Valid @RequestBody StockTransactionRequest request) {
+  public TransactionResponse sellStock(@Valid @RequestBody StockTransactionRequest request) {
     Long userId = currentUserProvider.getCurrentUserId();
     return walletService.processStockSell(userId, request.leagueId(), request);
   }

@@ -5,5 +5,6 @@ public enum TransactionType {
   WEEKLY_STIPEND,
   STOCK_BUY,
   STOCK_SELL,
-  ADJUSTMENT
+  ADJUSTMENT,
+  LIQUIDATE_ASSETS
 }

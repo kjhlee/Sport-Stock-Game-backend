@@ -3,7 +3,6 @@ package com.sportstock.transaction.service;
 import com.sportstock.common.dto.stock_market.StockResponse;
 import com.sportstock.common.dto.transaction.StipendResultResponse;
 import com.sportstock.common.dto.transaction.StockTransactionRequest;
-import com.sportstock.common.dto.transaction.StockTransactionResponse;
 import com.sportstock.common.dto.transaction.TransactionResponse;
 import com.sportstock.common.dto.transaction.WalletResponse;
 import com.sportstock.transaction.client.LeagueServiceClient;
@@ -22,8 +21,11 @@ import com.sportstock.transaction.repo.WalletRepository;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -32,6 +34,9 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import static java.lang.Math.max;
+
+@Slf4j
 @Service
 public class WalletService {
 
@@ -138,11 +143,18 @@ public class WalletService {
     return new StipendResultResponse(leagueId, 0, stipendsIssued.get(), amount);
   }
 
-  public StockTransactionResponse processStockBuy(
+  public TransactionResponse processStockBuy(
       Long userId, Long leagueId, StockTransactionRequest request) {
     validateTradeRequest(request);
     StockResponse stock = stockMarketServiceClient.getStock(request.stockId());
     validateStockActive(stock);
+
+    if (stock.gameLocked()) {
+      throw new InvalidTradeRequestException("Stock is game-locked and cannot be purchased");
+    }
+    if (stock.injuryLocked()) {
+      throw new InvalidTradeRequestException("Stock is injury-locked and cannot be purchased");
+    }
 
     BigDecimal pricePerShare = stock.currentPrice();
     BigDecimal quantity = resolveQuantity(request, pricePerShare);
@@ -186,27 +198,40 @@ public class WalletService {
         });
 
     Transaction transaction = result.get();
-    //TODO: ADD THE PORTFOLIO ADD HOLDING HERE
-    return new StockTransactionResponse(
+    return new TransactionResponse(
         transaction.getId(),
-        request.stockId(),
-        stock.fullName(),
-        pricePerShare,
-        quantity,
+        transaction.getWallet().getId(),
+        TransactionType.STOCK_BUY.name(),
         totalAmount,
         transaction.getBalanceBefore(),
         transaction.getBalanceAfter(),
-        TransactionType.STOCK_BUY.name(),
+        leagueId,
+        userId,
+        request.stockId(),
+        "Buy " + quantity + " shares of " + stock.fullName(),
+        transaction.getIdempotencyKey(),
+        pricePerShare,
+        null,
         transaction.getCreatedAt());
   }
 
-  public StockTransactionResponse processStockSell(
+  public TransactionResponse processStockSell(
       Long userId, Long leagueId, StockTransactionRequest request) {
     validateTradeRequest(request);
     StockResponse stock = stockMarketServiceClient.getStock(request.stockId());
     validateStockActive(stock);
 
-    BigDecimal pricePerShare = stock.currentPrice();
+    if (stock.gameLocked()) {
+      throw new InvalidTradeRequestException("Stock is game-locked and cannot be sold");
+    }
+
+    Long transactionId = request.buyTransactionId();
+    Optional<Transaction> buyTransaction = transactionRepository.findById(transactionId);
+
+
+    BigDecimal pricePerShare = stock.injuryLocked() && buyTransaction.isPresent() ? max(stock.currentPrice(), buyTransaction.get().getAmount()) : stock.currentPrice();;
+
+
     BigDecimal quantity = resolveQuantity(request, pricePerShare);
     BigDecimal totalCredit = quantity.multiply(pricePerShare).setScale(4, RoundingMode.DOWN);
 
@@ -247,19 +272,29 @@ public class WalletService {
           }
         });
     Transaction transaction = result.get();
-    //TODO: ADD THE PORTFOLIO SELL HOLDING HERE 
-    return new StockTransactionResponse(
-        transaction.getId(),
-        request.stockId(),
-        stock.fullName(),
-        pricePerShare,
-        quantity,
-        totalCredit,
-        transaction.getBalanceBefore(),
-        transaction.getBalanceAfter(),
-        TransactionType.STOCK_SELL.name(),
-        transaction.getCreatedAt());
+    return new TransactionResponse(
+            transaction.getId(),
+            transaction.getWallet().getId(),
+            TransactionType.STOCK_SELL.name(),
+            totalCredit,
+            transaction.getBalanceBefore(),
+            transaction.getBalanceAfter(),
+            leagueId,
+            userId,
+            request.stockId(),
+            "Sell " + quantity + " shares of " + stock.fullName(),
+            transaction.getIdempotencyKey(),
+            pricePerShare,
+            null,
+            transaction.getCreatedAt());
   }
+
+    private BigDecimal max(BigDecimal purchasePrice, BigDecimal pricePerShare) {
+        if (purchasePrice.compareTo(pricePerShare) > 0) {
+          return purchasePrice;
+        }
+        else return pricePerShare;
+    }
 
   @Transactional(readOnly = true)
   public WalletResponse getWallet(Long userId, Long leagueId) {

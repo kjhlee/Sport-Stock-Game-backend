@@ -13,4 +13,5 @@ public class IngestionEventDto {
   private Integer seasonType;
   private Integer weekNumber;
   private Boolean statusCompleted;
+  private String statusState;
 }

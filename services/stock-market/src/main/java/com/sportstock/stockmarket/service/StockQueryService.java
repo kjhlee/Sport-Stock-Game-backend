@@ -4,12 +4,13 @@ import com.sportstock.common.dto.stock_market.PagedStockResponse;
 import com.sportstock.common.dto.stock_market.PriceHistoryResponse;
 import com.sportstock.common.dto.stock_market.StockResponse;
 import com.sportstock.stockmarket.exception.StockNotFoundException;
-import com.sportstock.stockmarket.model.entity.PlayerStock;
-import com.sportstock.stockmarket.model.enums.StockStatus;
-import com.sportstock.stockmarket.repository.PlayerStockRepository;
+import com.sportstock.stockmarket.model.entity.Stock;
+import com.sportstock.common.enums.stock_market.StockStatus;
+import com.sportstock.stockmarket.repository.StockRepository;
 import com.sportstock.stockmarket.repository.PriceHistoryRepository;
 import java.util.List;
 import java.util.UUID;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -19,19 +20,19 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class StockQueryService {
 
-  private final PlayerStockRepository playerStockRepository;
+  private final StockRepository stockRepository;
   private final PriceHistoryRepository priceHistoryRepository;
 
   public StockQueryService(
-      PlayerStockRepository playerStockRepository, PriceHistoryRepository priceHistoryRepository) {
-    this.playerStockRepository = playerStockRepository;
+          StockRepository stockRepository, PriceHistoryRepository priceHistoryRepository) {
+    this.stockRepository = stockRepository;
     this.priceHistoryRepository = priceHistoryRepository;
   }
 
   @Transactional(readOnly = true)
   public StockResponse getStock(UUID stockId) {
-    PlayerStock stock =
-        playerStockRepository
+    Stock stock =
+        stockRepository
             .findById(stockId)
             .orElseThrow(() -> new StockNotFoundException(stockId));
 
@@ -40,8 +41,8 @@ public class StockQueryService {
 
   @Transactional(readOnly = true)
   public StockResponse getStockByEspnId(String athleteEspnId) {
-    PlayerStock stock =
-        playerStockRepository
+    Stock stock =
+        stockRepository
             .findByAthleteEspnId(athleteEspnId)
             .orElseThrow(() -> new StockNotFoundException((athleteEspnId)));
 
@@ -53,17 +54,17 @@ public class StockQueryService {
     Pageable pageable = PageRequest.of(page, size);
 
     String normalizedPosition = normalizePosition(position);
-    Page<PlayerStock> stockPage;
+    Page<Stock> stockPage;
 
     if (normalizedPosition != null && status != null) {
       stockPage =
-          playerStockRepository.findByPositionAndStatus(normalizedPosition, status, pageable);
+          stockRepository.findByPositionAndStatus(normalizedPosition, status, pageable);
     } else if (normalizedPosition != null) {
-      stockPage = playerStockRepository.findByPosition(normalizedPosition, pageable);
+      stockPage = stockRepository.findByPosition(normalizedPosition, pageable);
     } else if (status != null) {
-      stockPage = playerStockRepository.findByStatus(status, pageable);
+      stockPage = stockRepository.findByStatus(status, pageable);
     } else {
-      stockPage = playerStockRepository.findAll(pageable);
+      stockPage = stockRepository.findAll(pageable);
     }
 
     return new PagedStockResponse(
@@ -76,11 +77,11 @@ public class StockQueryService {
 
   @Transactional(readOnly = true)
   public List<PriceHistoryResponse> getPriceHistory(UUID stockId, int seasonYear, int seasonType) {
-    if (!playerStockRepository.existsById(stockId)) {
+    if (!stockRepository.existsById(stockId)) {
       throw new StockNotFoundException(stockId);
     }
     return priceHistoryRepository
-        .findByPlayerStockIdAndSeasonYearAndSeasonTypeOrderByWeekAsc(
+        .findByStockIdAndSeasonYearAndSeasonTypeOrderByWeekAsc(
             stockId, seasonYear, seasonType)
         .stream()
         .map(
@@ -108,15 +109,18 @@ public class StockQueryService {
     return normalized;
   }
 
-  private StockResponse toResponse(PlayerStock stock) {
+  private StockResponse toResponse(Stock stock) {
     return new StockResponse(
-        stock.getId(),
-        stock.getAthleteEspnId(),
-        stock.getFullName(),
-        stock.getPosition(),
-        stock.getTeamEspnId(),
-        stock.getCurrentPrice(),
-        stock.getStatus().name(),
-        stock.getPriceUpdatedAt());
+            stock.getId(),
+            stock.getAthleteEspnId(),
+            stock.getFullName(),
+            stock.getPosition(),
+            "PLAYER",
+            stock.getTeamEspnId(),
+            stock.getCurrentPrice(),
+            stock.getStatus().name(),
+            false,
+            false,
+            stock.getPriceUpdatedAt());
   }
 }

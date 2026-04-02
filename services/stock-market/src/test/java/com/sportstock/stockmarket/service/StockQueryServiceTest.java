@@ -6,10 +6,10 @@ import static org.mockito.Mockito.when;
 
 import com.sportstock.common.dto.stock_market.PriceHistoryResponse;
 import com.sportstock.stockmarket.exception.StockNotFoundException;
-import com.sportstock.stockmarket.model.entity.PlayerStock;
+import com.sportstock.stockmarket.model.entity.Stock;
 import com.sportstock.stockmarket.model.entity.PriceHistory;
-import com.sportstock.stockmarket.model.enums.StockStatus;
-import com.sportstock.stockmarket.repository.PlayerStockRepository;
+import com.sportstock.common.enums.stock_market.StockStatus;
+import com.sportstock.stockmarket.repository.StockRepository;
 import com.sportstock.stockmarket.repository.PriceHistoryRepository;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -26,15 +26,15 @@ import org.springframework.test.util.ReflectionTestUtils;
 @ExtendWith(MockitoExtension.class)
 class StockQueryServiceTest {
 
-  @Mock private PlayerStockRepository playerStockRepository;
+  @Mock private StockRepository stockRepository;
   @Mock private PriceHistoryRepository priceHistoryRepository;
 
   @InjectMocks private StockQueryService stockQueryService;
 
   // --- helpers ---
 
-  private PlayerStock stock(UUID id, String athleteId, String position) {
-    PlayerStock s = new PlayerStock();
+  private Stock stock(UUID id, String athleteId, String position) {
+    Stock s = new Stock();
     ReflectionTestUtils.setField(s, "id", id);
     s.setAthleteEspnId(athleteId);
     s.setFullName("Test Player");
@@ -44,9 +44,9 @@ class StockQueryServiceTest {
     return s;
   }
 
-  private PriceHistory priceHistory(PlayerStock stock, int week, BigDecimal price) {
+  private PriceHistory priceHistory(Stock stock, int week, BigDecimal price) {
     PriceHistory h = new PriceHistory();
-    h.setPlayerStock(stock);
+    h.setStock(stock);
     h.setSeasonYear(2024);
     h.setSeasonType(2);
     h.setWeek(week);
@@ -60,10 +60,10 @@ class StockQueryServiceTest {
   @Test
   void getPriceHistory_returnsNonEmptyList_whenHistoryExists() {
     UUID stockId = UUID.randomUUID();
-    PlayerStock s = stock(stockId, "qb-1", "QB");
+    Stock s = stock(stockId, "qb-1", "QB");
 
-    when(playerStockRepository.existsById(stockId)).thenReturn(true);
-    when(priceHistoryRepository.findByPlayerStockIdAndSeasonYearAndSeasonTypeOrderByWeekAsc(
+    when(stockRepository.existsById(stockId)).thenReturn(true);
+    when(priceHistoryRepository.findByStockIdAndSeasonYearAndSeasonTypeOrderByWeekAsc(
             stockId, 2024, 2))
         .thenReturn(
             List.of(
@@ -86,8 +86,8 @@ class StockQueryServiceTest {
   void getPriceHistory_returnsEmptyList_whenNoHistoryRecorded() {
     UUID stockId = UUID.randomUUID();
 
-    when(playerStockRepository.existsById(stockId)).thenReturn(true);
-    when(priceHistoryRepository.findByPlayerStockIdAndSeasonYearAndSeasonTypeOrderByWeekAsc(
+    when(stockRepository.existsById(stockId)).thenReturn(true);
+    when(priceHistoryRepository.findByStockIdAndSeasonYearAndSeasonTypeOrderByWeekAsc(
             stockId, 2024, 2))
         .thenReturn(List.of());
 
@@ -100,7 +100,7 @@ class StockQueryServiceTest {
   void getPriceHistory_throwsStockNotFoundException_whenStockDoesNotExist() {
     UUID stockId = UUID.randomUUID();
 
-    when(playerStockRepository.existsById(stockId)).thenReturn(false);
+    when(stockRepository.existsById(stockId)).thenReturn(false);
 
     assertThatThrownBy(() -> stockQueryService.getPriceHistory(stockId, 2024, 2))
         .isInstanceOf(StockNotFoundException.class)
@@ -110,13 +110,13 @@ class StockQueryServiceTest {
   @Test
   void getPriceHistory_responseFieldsMatchHistoryEntity() {
     UUID stockId = UUID.randomUUID();
-    PlayerStock s = stock(stockId, "wr-1", "WR");
+    Stock s = stock(stockId, "wr-1", "WR");
     Instant recorded = Instant.parse("2024-09-10T02:15:00Z");
     PriceHistory h = priceHistory(s, 1, new BigDecimal("12.34"));
     ReflectionTestUtils.setField(h, "recordedAt", recorded);
 
-    when(playerStockRepository.existsById(stockId)).thenReturn(true);
-    when(priceHistoryRepository.findByPlayerStockIdAndSeasonYearAndSeasonTypeOrderByWeekAsc(
+    when(stockRepository.existsById(stockId)).thenReturn(true);
+    when(priceHistoryRepository.findByStockIdAndSeasonYearAndSeasonTypeOrderByWeekAsc(
             stockId, 2024, 2))
         .thenReturn(List.of(h));
 
@@ -136,9 +136,9 @@ class StockQueryServiceTest {
   @Test
   void getStock_returnsStockResponse_whenFound() {
     UUID stockId = UUID.randomUUID();
-    PlayerStock s = stock(stockId, "qb-1", "QB");
+    Stock s = stock(stockId, "qb-1", "QB");
 
-    when(playerStockRepository.findById(stockId)).thenReturn(Optional.of(s));
+    when(stockRepository.findById(stockId)).thenReturn(Optional.of(s));
 
     var response = stockQueryService.getStock(stockId);
 
@@ -153,7 +153,7 @@ class StockQueryServiceTest {
   void getStock_throwsStockNotFoundException_whenNotFound() {
     UUID stockId = UUID.randomUUID();
 
-    when(playerStockRepository.findById(stockId)).thenReturn(Optional.empty());
+    when(stockRepository.findById(stockId)).thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> stockQueryService.getStock(stockId))
         .isInstanceOf(StockNotFoundException.class)

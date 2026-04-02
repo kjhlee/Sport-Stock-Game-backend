@@ -4,9 +4,9 @@ import com.sportstock.common.dto.stock_market.IngestionEventDto;
 import com.sportstock.common.dto.stock_market.IngestionPlayerGameStatsDto;
 import com.sportstock.stockmarket.client.IngestionApiClient;
 import com.sportstock.stockmarket.config.PricingConfig;
-import com.sportstock.stockmarket.model.entity.PlayerStock;
+import com.sportstock.stockmarket.model.entity.Stock;
 import com.sportstock.stockmarket.model.entity.PriceHistory;
-import com.sportstock.stockmarket.repository.PlayerStockRepository;
+import com.sportstock.stockmarket.repository.StockRepository;
 import com.sportstock.stockmarket.repository.PriceHistoryRepository;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -23,17 +23,17 @@ import org.springframework.transaction.annotation.Transactional;
 public class PricingService {
 
   private final IngestionApiClient ingestionApiClient;
-  private final PlayerStockRepository playerStockRepository;
+  private final StockRepository stockRepository;
   private final PriceHistoryRepository priceHistoryRepository;
   private final PricingConfig pricingConfig;
 
   public PricingService(
       IngestionApiClient ingestionApiClient,
-      PlayerStockRepository playerStockRepository,
+      StockRepository stockRepository,
       PriceHistoryRepository priceHistoryRepository,
       PricingConfig pricingConfig) {
     this.ingestionApiClient = ingestionApiClient;
-    this.playerStockRepository = playerStockRepository;
+    this.stockRepository = stockRepository;
     this.priceHistoryRepository = priceHistoryRepository;
     this.pricingConfig = pricingConfig;
   }
@@ -64,7 +64,7 @@ public class PricingService {
       String athleteEspnId = entry.getKey();
       List<IngestionPlayerGameStatsDto> stats = entry.getValue();
 
-      PlayerStock stock = playerStockRepository.findByAthleteEspnId(athleteEspnId).orElse(null);
+      Stock stock = stockRepository.findByAthleteEspnId(athleteEspnId).orElse(null);
       if (stock == null) {
         log.debug("No stock found for athlete {}, skipping", athleteEspnId);
         skipped++;
@@ -84,7 +84,7 @@ public class PricingService {
               .orElseGet(
                   () -> {
                     PriceHistory h = new PriceHistory();
-                    h.setPlayerStock(stock);
+                    h.setStock(stock);
                     h.setSeasonYear(seasonYear);
                     h.setSeasonType(seasonType);
                     h.setWeek(weekNumber);
