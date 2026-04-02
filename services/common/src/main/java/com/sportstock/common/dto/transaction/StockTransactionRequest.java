@@ -10,4 +10,5 @@ public record StockTransactionRequest(
     @NotNull UUID stockId,
     BigDecimal quantity,
     BigDecimal dollarAmount,
+    Long buyTransactionId,
     @NotBlank String idempotencyKey) {}

@@ -1,6 +1,7 @@
 package com.sportstock.stockmarket.model.entity;
 
-import com.sportstock.stockmarket.model.enums.StockStatus;
+import com.sportstock.common.enums.stock_market.StockStatus;
+import com.sportstock.common.enums.stock_market.StockType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -19,18 +20,18 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "player_stock", schema = "market")
+@Table(name = "stock", schema = "market")
 @Getter
 @Setter
 @NoArgsConstructor
-public class PlayerStock {
+public class Stock {
 
   @Id
   @GeneratedValue(strategy = GenerationType.UUID)
   private UUID id;
 
-  @Column(name = "athlete_espn_id", nullable = false, unique = true, length = 15)
-  private String athleteEspnId;
+  @Column(name = "espn_id", nullable = false, length = 15)
+  private String espnId;
 
   @Column(name = "full_name", nullable = false)
   private String fullName;
@@ -38,16 +39,25 @@ public class PlayerStock {
   @Column(name = "position", nullable = false, length = 10)
   private String position;
 
+  @Enumerated(EnumType.STRING)
+  @Column(name = "type", nullable = false, length = 20)
+  private StockType type = StockType.PLAYER;
+
   @Column(name = "team_espn_id", length = 15)
   private String teamEspnId;
 
   @Column(name = "current_price", nullable = false, precision = 10, scale = 2)
   private BigDecimal currentPrice = BigDecimal.ZERO;
 
-  // ACTIVE, INACTIVE, DELISTED
   @Enumerated(EnumType.STRING)
   @Column(name = "status", nullable = false, length = 20)
   private StockStatus status = StockStatus.ACTIVE;
+
+  @Column(name = "game_locked", nullable = false)
+  private boolean gameLocked = false;
+
+  @Column(name = "injury_locked", nullable = false)
+  private boolean injuryLocked = false;
 
   @Column(name = "price_updated_at")
   private Instant priceUpdatedAt;

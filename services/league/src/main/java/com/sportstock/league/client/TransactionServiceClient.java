@@ -6,6 +6,11 @@ import com.sportstock.common.dto.transaction.StipendResultResponse;
 import com.sportstock.common.dto.transaction.WalletResponse;
 import com.sportstock.common.security.RequestContextAuthorizationHeaderResolver;
 import java.math.BigDecimal;
+import java.util.List;
+
+import com.sportstock.league.entity.LeagueMember;
+import com.sportstock.league.repo.LeagueMemberRepository;
+import com.sportstock.league.repo.LeagueRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -18,6 +23,8 @@ import org.springframework.web.client.RestClientResponseException;
 public class TransactionServiceClient {
 
   private final RestClient transactionRestClient;
+  private final LeagueRepository leagueRepository;
+  private final LeagueMemberRepository leagueMemberRepository;
 
   public WalletResponse createWallet(Long leagueId) {
     try {
@@ -38,10 +45,12 @@ public class TransactionServiceClient {
 
   public StipendResultResponse issueInitialStipends(Long leagueId, BigDecimal amount) {
     try {
+      List<Long> userIds = leagueMemberRepository.findAllByLeagueId(leagueId).stream().map(LeagueMember::getUserId).toList();
+
       return transactionRestClient
           .post()
           .uri("/api/v1/wallets/stipends/initial")
-          .body(new IssueStipendRequest(leagueId, amount))
+          .body(new IssueStipendRequest(leagueId, amount, userIds))
           .retrieve()
           .body(StipendResultResponse.class);
     } catch (RestClientResponseException e) {

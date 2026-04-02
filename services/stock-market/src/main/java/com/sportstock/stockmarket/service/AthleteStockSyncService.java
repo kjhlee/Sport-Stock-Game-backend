@@ -3,12 +3,13 @@ package com.sportstock.stockmarket.service;
 import com.sportstock.common.dto.stock_market.IngestionAthleteDto;
 import com.sportstock.stockmarket.client.IngestionApiClient;
 import com.sportstock.stockmarket.config.PricingConfig;
-import com.sportstock.stockmarket.model.entity.PlayerStock;
-import com.sportstock.stockmarket.model.enums.StockStatus;
-import com.sportstock.stockmarket.repository.PlayerStockRepository;
+import com.sportstock.stockmarket.model.entity.Stock;
+import com.sportstock.common.enums.stock_market.StockStatus;
+import com.sportstock.stockmarket.repository.StockRepository;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Set;
+
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,15 +21,15 @@ public class AthleteStockSyncService {
   private static final Set<String> SUPPORTED_POSITIONS = Set.of("QB", "RB", "WR", "TE", "K");
 
   private final IngestionApiClient ingestionApiClient;
-  private final PlayerStockRepository playerStockRepository;
+  private final StockRepository stockRepository;
   private final PricingConfig pricingConfig;
 
   public AthleteStockSyncService(
       IngestionApiClient ingestionApiClient,
-      PlayerStockRepository playerStockRepository,
+      StockRepository stockRepository,
       PricingConfig pricingConfig) {
     this.ingestionApiClient = ingestionApiClient;
-    this.playerStockRepository = playerStockRepository;
+    this.stockRepository = stockRepository;
     this.pricingConfig = pricingConfig;
   }
 
@@ -81,7 +82,7 @@ public class AthleteStockSyncService {
   private boolean upsertStockFromAthlete(IngestionAthleteDto athlete, String normalizedPosition) {
     String athleteEspnId = athlete.getEspnId();
 
-    PlayerStock existing = playerStockRepository.findByAthleteEspnId(athleteEspnId).orElse(null);
+    Stock existing = stockRepository.findByAthleteEspnId(athleteEspnId).orElse(null);
 
     if (existing != null) {
       existing.setFullName(athlete.getFullName());
@@ -91,7 +92,7 @@ public class AthleteStockSyncService {
       return false;
     }
 
-    PlayerStock stock = new PlayerStock();
+    Stock stock = new Stock();
     stock.setAthleteEspnId(athleteEspnId);
     stock.setFullName(athlete.getFullName());
     stock.setPosition(normalizedPosition);
@@ -99,7 +100,7 @@ public class AthleteStockSyncService {
     stock.setCurrentPrice(resolveInitialPrice(normalizedPosition));
     stock.setStatus(resolveStatus(athlete));
 
-    playerStockRepository.save(stock);
+    stockRepository.save(stock);
     return true;
   }
 

@@ -5,7 +5,7 @@ import com.sportstock.common.dto.stock_market.PriceHistoryResponse;
 import com.sportstock.common.dto.stock_market.PriceUpdateResponse;
 import com.sportstock.common.dto.stock_market.StockResponse;
 import com.sportstock.common.dto.stock_market.SyncAthletesResponse;
-import com.sportstock.stockmarket.model.enums.StockStatus;
+import com.sportstock.common.enums.stock_market.StockStatus;
 import com.sportstock.stockmarket.service.AthleteStockSyncService;
 import com.sportstock.stockmarket.service.PricingService;
 import com.sportstock.stockmarket.service.StockQueryService;

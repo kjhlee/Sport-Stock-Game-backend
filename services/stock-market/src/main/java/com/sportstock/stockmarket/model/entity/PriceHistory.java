@@ -1,15 +1,8 @@
 package com.sportstock.stockmarket.model.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.Table;
+import com.sportstock.common.enums.stock_market.PriceType;
+import jakarta.persistence.*;
+
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
@@ -29,13 +22,12 @@ public class PriceHistory {
   private UUID id;
 
   @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "player_stock_id", nullable = false)
-  private PlayerStock playerStock;
+  @JoinColumn(name = "stock_id", nullable = false)
+  private Stock stock;
 
   @Column(name = "season_year", nullable = false)
   private int seasonYear;
 
-  // 1 = preseason, 2 = regular, 3 = postseason
   @Column(name = "season_type", nullable = false)
   private int seasonType;
 
@@ -44,6 +36,10 @@ public class PriceHistory {
 
   @Column(name = "price", nullable = false, precision = 10, scale = 2)
   private BigDecimal price;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "price_type", nullable = false, length = 20)
+  private PriceType priceType = PriceType.FINAL;
 
   @Column(name = "recorded_at", nullable = false, updatable = false)
   private Instant recordedAt;

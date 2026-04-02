@@ -12,10 +12,10 @@ import com.sportstock.common.dto.stock_market.IngestionEventDto;
 import com.sportstock.common.dto.stock_market.IngestionPlayerGameStatsDto;
 import com.sportstock.stockmarket.client.IngestionApiClient;
 import com.sportstock.stockmarket.config.PricingConfig;
-import com.sportstock.stockmarket.model.entity.PlayerStock;
+import com.sportstock.stockmarket.model.entity.Stock;
 import com.sportstock.stockmarket.model.entity.PriceHistory;
-import com.sportstock.stockmarket.model.enums.StockStatus;
-import com.sportstock.stockmarket.repository.PlayerStockRepository;
+import com.sportstock.common.enums.stock_market.StockStatus;
+import com.sportstock.stockmarket.repository.StockRepository;
 import com.sportstock.stockmarket.repository.PriceHistoryRepository;
 import com.sportstock.stockmarket.service.PricingService.PriceUpdateResult;
 import java.math.BigDecimal;
@@ -39,7 +39,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 class PricingServiceTest {
 
   @Mock private IngestionApiClient ingestionApiClient;
-  @Mock private PlayerStockRepository playerStockRepository;
+  @Mock private StockRepository stockRepository;
   @Mock private PriceHistoryRepository priceHistoryRepository;
   @Mock private PricingConfig pricingConfig;
 
@@ -69,8 +69,8 @@ class PricingServiceTest {
     return dto;
   }
 
-  private PlayerStock stock(String athleteId, String position, BigDecimal price) {
-    PlayerStock s = new PlayerStock();
+  private Stock stock(String athleteId, String position, BigDecimal price) {
+    Stock s = new Stock();
     ReflectionTestUtils.setField(s, "id", UUID.randomUUID());
     s.setAthleteEspnId(athleteId);
     s.setFullName("Test Player");
@@ -123,7 +123,7 @@ class PricingServiceTest {
     when(ingestionApiClient.getEvents(2024, 2, 1)).thenReturn(List.of(completedEvent("evt-1")));
     when(ingestionApiClient.getPlayerStats("evt-1"))
         .thenReturn(List.of(stat("athlete-99", "passing", Map.of("passingYards", "300"))));
-    when(playerStockRepository.findByAthleteEspnId("athlete-99")).thenReturn(Optional.empty());
+    when(stockRepository.findByAthleteEspnId("athlete-99")).thenReturn(Optional.empty());
 
     PriceUpdateResult result = pricingService.updatePricesForWeek(2024, 2, 1);
 
@@ -139,7 +139,7 @@ class PricingServiceTest {
 
   @Test
   void updatePricesForWeek_qbStats_savesCorrectPrice() {
-    PlayerStock qb = stock("qb-1", "QB", new BigDecimal("15.00"));
+    Stock qb = stock("qb-1", "QB", new BigDecimal("15.00"));
     stubEventAndStats(
         "evt-1",
         List.of(
@@ -148,7 +148,7 @@ class PricingServiceTest {
                 "passing",
                 Map.of("passingYards", "300", "passingTouchdowns", "3", "interceptions", "1")),
             stat("qb-1", "rushing", Map.of("rushingYards", "30", "rushingTouchdowns", "1"))));
-    when(playerStockRepository.findByAthleteEspnId("qb-1")).thenReturn(Optional.of(qb));
+    when(stockRepository.findByAthleteEspnId("qb-1")).thenReturn(Optional.of(qb));
 
     PriceUpdateResult result = pricingService.updatePricesForWeek(2024, 2, 1);
 
@@ -166,7 +166,7 @@ class PricingServiceTest {
 
   @Test
   void updatePricesForWeek_rbStats_savesCorrectPrice() {
-    PlayerStock rb = stock("rb-1", "RB", new BigDecimal("12.00"));
+    Stock rb = stock("rb-1", "RB", new BigDecimal("12.00"));
     stubEventAndStats(
         "evt-1",
         List.of(
@@ -175,7 +175,7 @@ class PricingServiceTest {
                 "rb-1",
                 "receiving",
                 Map.of("receptions", "5", "receivingYards", "50", "receivingTouchdowns", "1"))));
-    when(playerStockRepository.findByAthleteEspnId("rb-1")).thenReturn(Optional.of(rb));
+    when(stockRepository.findByAthleteEspnId("rb-1")).thenReturn(Optional.of(rb));
 
     PriceUpdateResult result = pricingService.updatePricesForWeek(2024, 2, 1);
 
@@ -191,7 +191,7 @@ class PricingServiceTest {
 
   @Test
   void updatePricesForWeek_wrStats_savesCorrectPrice() {
-    PlayerStock wr = stock("wr-1", "WR", new BigDecimal("10.00"));
+    Stock wr = stock("wr-1", "WR", new BigDecimal("10.00"));
     stubEventAndStats(
         "evt-1",
         List.of(
@@ -199,7 +199,7 @@ class PricingServiceTest {
                 "wr-1",
                 "receiving",
                 Map.of("receptions", "8", "receivingYards", "120", "receivingTouchdowns", "2"))));
-    when(playerStockRepository.findByAthleteEspnId("wr-1")).thenReturn(Optional.of(wr));
+    when(stockRepository.findByAthleteEspnId("wr-1")).thenReturn(Optional.of(wr));
 
     PriceUpdateResult result = pricingService.updatePricesForWeek(2024, 2, 1);
 
@@ -215,7 +215,7 @@ class PricingServiceTest {
 
   @Test
   void updatePricesForWeek_teStats_savesCorrectPrice() {
-    PlayerStock te = stock("te-1", "TE", new BigDecimal("8.00"));
+    Stock te = stock("te-1", "TE", new BigDecimal("8.00"));
     stubEventAndStats(
         "evt-1",
         List.of(
@@ -223,7 +223,7 @@ class PricingServiceTest {
                 "te-1",
                 "receiving",
                 Map.of("receptions", "4", "receivingYards", "60", "receivingTouchdowns", "1"))));
-    when(playerStockRepository.findByAthleteEspnId("te-1")).thenReturn(Optional.of(te));
+    when(stockRepository.findByAthleteEspnId("te-1")).thenReturn(Optional.of(te));
 
     pricingService.updatePricesForWeek(2024, 2, 1);
 
@@ -238,7 +238,7 @@ class PricingServiceTest {
 
   @Test
   void updatePricesForWeek_kickerStats_savesCorrectPrice() {
-    PlayerStock k = stock("k-1", "K", new BigDecimal("5.00"));
+    Stock k = stock("k-1", "K", new BigDecimal("5.00"));
     stubEventAndStats(
         "evt-1",
         List.of(
@@ -248,7 +248,7 @@ class PricingServiceTest {
                 Map.of(
                     "fieldGoalsMade/fieldGoalsAttempted", "3/4",
                     "extraPointsMade/extraPointsAttempted", "3/3"))));
-    when(playerStockRepository.findByAthleteEspnId("k-1")).thenReturn(Optional.of(k));
+    when(stockRepository.findByAthleteEspnId("k-1")).thenReturn(Optional.of(k));
 
     pricingService.updatePricesForWeek(2024, 2, 1);
 
@@ -262,7 +262,7 @@ class PricingServiceTest {
 
   @Test
   void updatePricesForWeek_priceFloorApplied_whenNewPriceBelowFloor() {
-    PlayerStock wr = stock("wr-bad", "WR", new BigDecimal("1.50"));
+    Stock wr = stock("wr-bad", "WR", new BigDecimal("1.50"));
     stubEventAndStats(
         "evt-1",
         List.of(
@@ -270,7 +270,7 @@ class PricingServiceTest {
                 "wr-bad",
                 "receiving",
                 Map.of("receptions", "0", "receivingYards", "0", "receivingTouchdowns", "0"))));
-    when(playerStockRepository.findByAthleteEspnId("wr-bad")).thenReturn(Optional.of(wr));
+    when(stockRepository.findByAthleteEspnId("wr-bad")).thenReturn(Optional.of(wr));
 
     pricingService.updatePricesForWeek(2024, 2, 1);
 
@@ -285,9 +285,9 @@ class PricingServiceTest {
 
   @Test
   void updatePricesForWeek_updatesExistingPriceHistoryRecord() {
-    PlayerStock qb = stock("qb-2", "QB", new BigDecimal("20.00"));
+    Stock qb = stock("qb-2", "QB", new BigDecimal("20.00"));
     PriceHistory existing = new PriceHistory();
-    existing.setPlayerStock(qb);
+    existing.setStock(qb);
     existing.setSeasonYear(2024);
     existing.setSeasonType(2);
     existing.setWeek(1);
@@ -302,7 +302,7 @@ class PricingServiceTest {
                     "passing",
                     Map.of(
                         "passingYards", "250", "passingTouchdowns", "2", "interceptions", "0"))));
-    when(playerStockRepository.findByAthleteEspnId("qb-2")).thenReturn(Optional.of(qb));
+    when(stockRepository.findByAthleteEspnId("qb-2")).thenReturn(Optional.of(qb));
     when(priceHistoryRepository.findByPlayerStockIdAndSeasonYearAndSeasonTypeAndWeek(
             any(), eq(2024), eq(2), eq(1)))
         .thenReturn(Optional.of(existing));
@@ -320,8 +320,8 @@ class PricingServiceTest {
 
   @Test
   void updatePricesForWeek_multipleAthletes_countsAllUpdates() {
-    PlayerStock qb = stock("qb-1", "QB", new BigDecimal("15.00"));
-    PlayerStock wr = stock("wr-1", "WR", new BigDecimal("10.00"));
+    Stock qb = stock("qb-1", "QB", new BigDecimal("15.00"));
+    Stock wr = stock("wr-1", "WR", new BigDecimal("10.00"));
 
     when(ingestionApiClient.getEvents(2024, 2, 1)).thenReturn(List.of(completedEvent("evt-1")));
     when(ingestionApiClient.getPlayerStats("evt-1"))
@@ -336,8 +336,8 @@ class PricingServiceTest {
                     "receiving",
                     Map.of(
                         "receptions", "5", "receivingYards", "80", "receivingTouchdowns", "1"))));
-    when(playerStockRepository.findByAthleteEspnId("qb-1")).thenReturn(Optional.of(qb));
-    when(playerStockRepository.findByAthleteEspnId("wr-1")).thenReturn(Optional.of(wr));
+    when(stockRepository.findByAthleteEspnId("qb-1")).thenReturn(Optional.of(qb));
+    when(stockRepository.findByAthleteEspnId("wr-1")).thenReturn(Optional.of(wr));
     when(priceHistoryRepository.findByPlayerStockIdAndSeasonYearAndSeasonTypeAndWeek(
             any(), eq(2024), eq(2), eq(1)))
         .thenReturn(Optional.empty());
