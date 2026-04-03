@@ -50,70 +50,96 @@ public class FantasySnapshotIngestionService {
       return new IngestResult(0, 0, 0);
     }
 
-    Event targetEvent = preGameEvents.get(0);
+    int totalUpdated = 0;
+    int totalSkipped = 0;
 
-    // Pre-load existing snapshots to avoid N+1 queries
-    Map<String, FantasySnapshot> existingSnapshots = new HashMap<>();
-    for (FantasySnapshot fs : fantasySnapshotRepository.findByEventId(targetEvent.getId())) {
-      existingSnapshots.put(fs.getSubjectType() + ":" + fs.getEspnId(), fs);
-    }
+    for (Event event : preGameEvents) {
+      List<Integer> teamIds =
+          eventCompetitorRepository.findByEventId(event.getId()).stream()
+              .map(ec -> Integer.parseInt(ec.getTeam().getEspnId()))
+              .toList();
 
-    JsonNode root = espnFantasyClient.fetchPlayers(seasonYear, weekNumber, seasonType);
-    if (!root.isArray()) {
-      log.warn("ESPN fantasy API returned non-array response");
-      return new IngestResult(0, 0, 0);
-    }
-
-    int updated = 0;
-    int skipped = 0;
-    List<FantasySnapshot> toSave = new ArrayList<>();
-
-    for (JsonNode playerNode : root) {
-      try {
-        boolean isDst = FantasySnapshotMapper.isTeamDefense(playerNode);
-        String subjectType = isDst ? "TEAM_DEFENSE" : "PLAYER";
-        String espnId =
-            isDst
-                ? FantasySnapshotMapper.extractProTeamId(playerNode)
-                : FantasySnapshotMapper.extractPlayerId(playerNode);
-        String fullName = FantasySnapshotMapper.extractFullName(playerNode);
-
-        BigDecimal projectedFp =
-            FantasySnapshotMapper.extractProjectedFantasyPoints(playerNode, weekNumber);
-        String projectedStatsJson =
-            FantasySnapshotMapper.extractProjectedStatsJson(playerNode, weekNumber);
-
-        if (projectedFp == null) {
-          skipped++;
-          continue;
-        }
-
-        String key = subjectType + ":" + espnId;
-        FantasySnapshot snapshot =
-            existingSnapshots.computeIfAbsent(
-                key,
-                k -> {
-                  FantasySnapshot fs = new FantasySnapshot();
-                  fs.setEvent(targetEvent);
-                  fs.setSubjectType(subjectType);
-                  fs.setEspnId(espnId);
-                  return fs;
-                });
-
-        snapshot.setFullName(fullName);
-        snapshot.setProjectedFantasyPoints(projectedFp);
-        snapshot.setProjectedStats(projectedStatsJson);
-        toSave.add(snapshot);
-        updated++;
-      } catch (Exception e) {
-        log.error("Failed to process player node: {}", e.getMessage());
-        skipped++;
+      if (teamIds.isEmpty()) {
+        log.warn("No competitors found for event {}", event.getEspnId());
+        continue;
       }
+
+      Map<String, FantasySnapshot> existingSnapshots = new HashMap<>();
+      for (FantasySnapshot fs : fantasySnapshotRepository.findByEventId(event.getId())) {
+        existingSnapshots.put(fs.getSubjectType() + ":" + fs.getEspnId(), fs);
+      }
+
+      JsonNode root =
+          espnFantasyClient.fetchPlayersByTeams(seasonYear, weekNumber, seasonType, teamIds);
+      if (!root.isArray()) {
+        log.warn("ESPN fantasy API returned non-array response for event {}", event.getEspnId());
+        continue;
+      }
+
+      int updated = 0;
+      int skipped = 0;
+      List<FantasySnapshot> toSave = new ArrayList<>();
+
+      for (JsonNode playerNode : root) {
+        try {
+          boolean isDst = FantasySnapshotMapper.isTeamDefense(playerNode);
+          String subjectType = isDst ? "TEAM_DEFENSE" : "PLAYER";
+          String espnId =
+              isDst
+                  ? FantasySnapshotMapper.extractProTeamId(playerNode)
+                  : FantasySnapshotMapper.extractPlayerId(playerNode);
+          String fullName = FantasySnapshotMapper.extractFullName(playerNode);
+
+          BigDecimal projectedFp =
+              FantasySnapshotMapper.extractProjectedFantasyPoints(playerNode, weekNumber);
+          String projectedStatsJson =
+              FantasySnapshotMapper.extractProjectedStatsJson(playerNode, weekNumber);
+
+          if (projectedFp == null) {
+            skipped++;
+            continue;
+          }
+
+          String key = subjectType + ":" + espnId;
+          FantasySnapshot snapshot =
+              existingSnapshots.computeIfAbsent(
+                  key,
+                  k -> {
+                    FantasySnapshot fs = new FantasySnapshot();
+                    fs.setEvent(event);
+                    fs.setSubjectType(subjectType);
+                    fs.setEspnId(espnId);
+                    return fs;
+                  });
+
+          snapshot.setFullName(fullName);
+          snapshot.setProjectedFantasyPoints(projectedFp);
+          snapshot.setProjectedStats(projectedStatsJson);
+          toSave.add(snapshot);
+          updated++;
+        } catch (Exception e) {
+          log.error("Failed to process player node for event {}: {}", event.getEspnId(),
+              e.getMessage());
+          skipped++;
+        }
+      }
+
+      fantasySnapshotRepository.saveAll(toSave);
+      log.info(
+          "Projection ingestion for event {}: {} updated, {} skipped",
+          event.getEspnId(),
+          updated,
+          skipped);
+      totalUpdated += updated;
+      totalSkipped += skipped;
     }
 
-    fantasySnapshotRepository.saveAll(toSave);
-    log.info("Projection ingestion complete: {} updated, {} skipped", updated, skipped);
-    return new IngestResult(updated, skipped, 0);
+    log.info(
+        "Projection ingestion complete for week {}: {} total updated, {} total skipped",
+        weekNumber,
+        totalUpdated,
+        totalSkipped);
+    return new IngestResult(totalUpdated, totalSkipped, 0);
   }
 
   @Transactional

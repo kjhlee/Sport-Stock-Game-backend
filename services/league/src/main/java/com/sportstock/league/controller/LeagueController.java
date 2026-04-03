@@ -6,11 +6,11 @@ import com.sportstock.common.dto.league.JoinLeagueRequest;
 import com.sportstock.common.dto.league.LeagueInviteResponse;
 import com.sportstock.common.dto.league.LeagueMemberResponse;
 import com.sportstock.common.dto.league.LeagueResponse;
+import com.sportstock.common.dto.league.UpdateInitialStipendStatusRequest;
 import com.sportstock.common.security.CurrentUserProvider;
 import com.sportstock.league.service.LeagueService;
 import jakarta.validation.Valid;
 import java.util.List;
-import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -105,12 +105,9 @@ public class LeagueController {
   @PutMapping("/{leagueId}/initial-stipend-status")
   @ResponseStatus(HttpStatus.NO_CONTENT)
   public void updateInitialStipendStatus(
-      @PathVariable Long leagueId, @RequestBody Map<String, String> body) {
-    String status = body.get("status");
-    if (status == null || status.isBlank()) {
-      throw new IllegalArgumentException("status is required");
-    }
-    leagueService.updateInitialStipendStatus(leagueId, status);
+      @PathVariable Long leagueId,
+      @Valid @RequestBody UpdateInitialStipendStatusRequest request) {
+    leagueService.updateInitialStipendStatus(leagueId, request.status());
   }
 
   @GetMapping("/active")
