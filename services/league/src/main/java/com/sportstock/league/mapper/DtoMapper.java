@@ -22,7 +22,6 @@ public final class DtoMapper {
         entity.getSeasonEndAt(),
         entity.getInitialStipendAmount(),
         entity.getWeeklyStipendAmount(),
-        entity.getWeeklyPayoutDowUtc(),
         entity.getStartedAt(),
         entity.getCreatedAt(),
         memberCount);

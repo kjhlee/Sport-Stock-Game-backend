@@ -1,6 +1,5 @@
 package com.sportstock.transaction.client;
 
-import com.sportstock.common.dto.league.StipendEligibleLeagueResponse;
 import com.sportstock.transaction.exception.TransactionException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -30,21 +29,4 @@ public class LeagueServiceClient {
     }
   }
 
-  public List<StipendEligibleLeagueResponse> getStipendEligibleLeagues(short payoutDay) {
-    try {
-      return leagueRestClient
-          .get()
-          .uri(
-              uriBuilder ->
-                  uriBuilder
-                      .path("/api/v1/leagues/internal/stipend-eligible")
-                      .queryParam("payoutDay", payoutDay)
-                      .build())
-          .retrieve()
-          .body(new ParameterizedTypeReference<>() {});
-    } catch (RestClientResponseException e) {
-      log.error("Failed to fetch stipend-eligible leagues: {}", e.getMessage());
-      throw new TransactionException("League service unavailable", e);
-    }
-  }
 }

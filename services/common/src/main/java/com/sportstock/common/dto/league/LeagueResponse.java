@@ -13,7 +13,6 @@ public record LeagueResponse(
     OffsetDateTime seasonEndAt,
     BigDecimal initialStipendAmount,
     BigDecimal weeklyStipendAmount,
-    Short weeklyPayoutDowUtc,
     OffsetDateTime startedAt,
     OffsetDateTime createdAt,
     int memberCount) {}

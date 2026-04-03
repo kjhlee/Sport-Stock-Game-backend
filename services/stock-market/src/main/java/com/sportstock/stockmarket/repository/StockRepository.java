@@ -47,4 +47,6 @@ public interface StockRepository extends JpaRepository<Stock, UUID> {
   @Query(
           "UPDATE Stock s SET s.injuryLocked = false WHERE s.espnId IN :espnIds AND s.type = 'PLAYER'")
   int clearInjuryLockedByEspnIds(@Param("espnIds") List<String> espnIds);
+
+  Optional<Stock> findByEspnId(String espnId);
 }

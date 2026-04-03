@@ -1,4 +1,4 @@
-package com.sportstock.league.enums;
+package com.sportstock.common.enums.league;
 
 public enum LeagueStatus {
   INACTIVE,

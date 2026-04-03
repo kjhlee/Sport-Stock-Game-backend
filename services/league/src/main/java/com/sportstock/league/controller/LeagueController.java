@@ -6,24 +6,18 @@ import com.sportstock.common.dto.league.JoinLeagueRequest;
 import com.sportstock.common.dto.league.LeagueInviteResponse;
 import com.sportstock.common.dto.league.LeagueMemberResponse;
 import com.sportstock.common.dto.league.LeagueResponse;
-import com.sportstock.common.dto.league.StipendEligibleLeagueResponse;
 import com.sportstock.common.security.CurrentUserProvider;
 import com.sportstock.league.service.LeagueService;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.Map;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseStatus;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @Validated
@@ -104,11 +98,21 @@ public class LeagueController {
     return leagueService.getMemberUserIds(leagueId);
   }
 
-  @GetMapping("/internal/stipend-eligible")
-  @ResponseStatus(HttpStatus.OK)
-  public List<StipendEligibleLeagueResponse> getStipendEligibleLeagues(
-      @RequestParam Short payoutDay) {
-    return leagueService.getStipendEligibleLeagues(payoutDay);
+  @GetMapping("/pending-initial-stipend")
+  public List<LeagueResponse> getPendingInitialStipend() {
+    return leagueService.getLeaguesWithPendingStipend();
+  }
+
+  @PutMapping("/{leagueId}/initial-stipend-status")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void updateInitialStipendStatus(
+          @PathVariable Long leagueId, @RequestBody Map<String, String> body) {
+    leagueService.updateInitialStipendStatus(leagueId, body.get("status"));
+  }
+
+  @GetMapping("/active")
+  public List<LeagueResponse> getActiveLeagues() {
+    return leagueService.getActiveLeagues();
   }
 
   @GetMapping("/{leagueId}/members")

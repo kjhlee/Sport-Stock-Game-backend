@@ -34,8 +34,6 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import static java.lang.Math.max;
-
 @Slf4j
 @Service
 public class WalletService {
@@ -189,12 +187,16 @@ public class WalletService {
                     "stock:" + request.stockId(),
                     description,
                     request.idempotencyKey()));
+            Transaction tx = result.get();
+            tx.setPricePerShare(pricePerShare);
+            transactionRepository.save(tx);
           } catch (DataIntegrityViolationException e) {
             Transaction existingTransaction =
                 transactionRepository.findByIdempotencyKey(request.idempotencyKey()).orElseThrow();
             result.set(existingTransaction);
             status.setRollbackOnly();
           }
+
         });
 
     Transaction transaction = result.get();
@@ -207,7 +209,7 @@ public class WalletService {
         transaction.getBalanceAfter(),
         leagueId,
         userId,
-        request.stockId(),
+        request.stockId().toString(),
         "Buy " + quantity + " shares of " + stock.fullName(),
         transaction.getIdempotencyKey(),
         pricePerShare,
@@ -263,13 +265,19 @@ public class WalletService {
                     TransactionType.STOCK_SELL,
                     "stock:" + request.stockId(),
                     description,
-                    request.idempotencyKey()));
+                    request.idempotencyKey())
+            );
+            Transaction tx = result.get();
+            tx.setPricePerShare(pricePerShare);
+            tx.setBuyTransactionId(request.buyTransactionId());
+            transactionRepository.save(tx);
           } catch (DataIntegrityViolationException e) {
             Transaction existingTransaction =
                 transactionRepository.findByIdempotencyKey(request.idempotencyKey()).orElseThrow();
             result.set(existingTransaction);
             status.setRollbackOnly();
           }
+
         });
     Transaction transaction = result.get();
     return new TransactionResponse(
@@ -281,7 +289,7 @@ public class WalletService {
             transaction.getBalanceAfter(),
             leagueId,
             userId,
-            request.stockId(),
+            request.stockId().toString(),
             "Sell " + quantity + " shares of " + stock.fullName(),
             transaction.getIdempotencyKey(),
             pricePerShare,
@@ -436,4 +444,10 @@ public class WalletService {
     walletRepository.save(wallet);
     return transaction;
   }
+
+  public StipendResultResponse liquidateAssets(Long leagueId, int weekNumber) {
+    // TODO: Implement liquidation logic
+    return new StipendResultResponse(leagueId, 0, 0, BigDecimal.ZERO);
+  }
+
 }

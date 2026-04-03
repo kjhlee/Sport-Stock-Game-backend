@@ -12,7 +12,7 @@ import org.springframework.context.annotation.Configuration;
 @Getter
 @Setter
 public class PricingConfig {
-  private BigDecimal smoothingAlpha;
   private BigDecimal priceFloor;
   private Map<String, BigDecimal> basePrices;
+  private Map<String, BigDecimal> multipliers;
 }

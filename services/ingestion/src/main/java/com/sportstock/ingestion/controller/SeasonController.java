@@ -4,6 +4,7 @@ import com.sportstock.common.dto.ingestion.CurrentWeekResponse;
 import com.sportstock.ingestion.service.SeasonQueryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -20,5 +21,26 @@ public class SeasonController {
   @ResponseStatus(HttpStatus.OK)
   public CurrentWeekResponse getCurrentWeek() {
     return seasonQueryService.getCurrentWeek();
+  }
+
+  @GetMapping("/season-active")
+  public ResponseEntity<?> isSeasonActive() {
+    boolean active = seasonQueryService.isSeasonActive();
+    var response = new java.util.LinkedHashMap<String, Object>();
+    response.put("active", active);
+    if (active) {
+      var week = seasonQueryService.getCurrentWeek();
+      response.put("seasonYear", week.seasonYear());
+      response.put("seasonType", week.seasonType());
+    }
+    return ResponseEntity.ok(response);
+  }
+
+  @GetMapping("/current-week/optional")
+  public ResponseEntity<CurrentWeekResponse> getCurrentWeekOptional() {
+    return seasonQueryService
+            .getCurrentWeekOptional()
+            .map(ResponseEntity::ok)
+            .orElse(ResponseEntity.noContent().build());
   }
 }

@@ -1,10 +1,10 @@
 package com.sportstock.league.entity;
 
-import com.sportstock.league.enums.LeagueStatus;
+import com.sportstock.common.enums.league.InitialStipendStatus;
+import com.sportstock.common.enums.league.LeagueStatus;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -70,17 +70,15 @@ public class League {
   @Column(name = "weekly_stipend_amount", nullable = false, precision = 19, scale = 4)
   private BigDecimal weeklyStipendAmount;
 
-  @Min(0)
-  @Max(6)
-  @NotNull
-  @Column(name = "weekly_payout_dow_utc", nullable = false)
-  private Short weeklyPayoutDowUtc;
-
   @Column(name = "started_at")
   private OffsetDateTime startedAt;
 
   @Column(name = "initial_stipend_issued_at")
   private OffsetDateTime initialStipendIssuedAt;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "initial_stipend_status", nullable = false, length = 20)
+  private InitialStipendStatus initialStipendStatus = InitialStipendStatus.NOT_APPLICABLE;
 
   @NotNull
   @ColumnDefault("now()")
