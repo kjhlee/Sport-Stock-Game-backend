@@ -177,19 +177,24 @@ public class LeagueService {
       throw new LeagueStateException("League must have at least 2 members to start");
     }
 
-    if (ingestionServiceClient.isSeasonActive()) {
-      league.setStartedAt(OffsetDateTime.now());
-      league.setStatus(LeagueStatus.ACTIVE);
+    var currentWeek = ingestionServiceClient.getCurrentWeekOrPreseasonOptional();
+    if (currentWeek == null || "2".equals(currentWeek.seasonType())) {
+      throw new LeagueStateException("League cannot be started during the NFL offseason or postseason");
+    }
+
+    league.setStartedAt(OffsetDateTime.now());
+    league.setStatus(LeagueStatus.ACTIVE);
+
+    if ("1".equals(currentWeek.seasonType())) {
+      league.setInitialStipendStatus(InitialStipendStatus.PENDING);
+      log.info("League {} started during preseason; initial stipend remains pending", leagueId);
+    } else {
       league.setInitialStipendStatus(InitialStipendStatus.ISSUED);
       transactionServiceClient.issueInitialStipends(leagueId, league.getInitialStipendAmount());
       league.setInitialStipendIssuedAt(OffsetDateTime.now());
-      leagueRepository.save(league);
-    } else {
-      league.setInitialStipendStatus(InitialStipendStatus.PENDING);
-      log.info(
-          "NFL season has not started yet, league cannot start, and initial stipend is pending. League id {}",
-          leagueId);
     }
+
+    leagueRepository.save(league);
     return DtoMapper.toLeagueResponse(league, memberCount);
   }
 
@@ -285,7 +290,7 @@ public class LeagueService {
   @Transactional(readOnly = true)
   public List<LeagueResponse> getLeaguesWithPendingStipend() {
     return leagueRepository
-        .findByStatusAndInitialStipendStatus(LeagueStatus.INACTIVE, InitialStipendStatus.PENDING)
+        .findByStatusAndInitialStipendStatus(LeagueStatus.ACTIVE, InitialStipendStatus.PENDING)
         .stream()
         .map(l -> DtoMapper.toLeagueResponse(l, leagueMemberRepository.countByLeagueId(l.getId())))
         .toList();
@@ -294,7 +299,11 @@ public class LeagueService {
   @Transactional
   public void updateInitialStipendStatus(Long leagueId, String status) {
     League league = findLeagueOrThrow(leagueId);
-    league.setInitialStipendStatus(InitialStipendStatus.valueOf(status));
+    try {
+      league.setInitialStipendStatus(InitialStipendStatus.valueOf(status));
+    } catch (IllegalArgumentException ex) {
+      throw new IllegalArgumentException("Invalid initial stipend status: " + status);
+    }
     leagueRepository.save(league);
   }
 

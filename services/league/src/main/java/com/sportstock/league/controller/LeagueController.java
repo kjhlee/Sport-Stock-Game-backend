@@ -106,7 +106,11 @@ public class LeagueController {
   @ResponseStatus(HttpStatus.NO_CONTENT)
   public void updateInitialStipendStatus(
       @PathVariable Long leagueId, @RequestBody Map<String, String> body) {
-    leagueService.updateInitialStipendStatus(leagueId, body.get("status"));
+    String status = body.get("status");
+    if (status == null || status.isBlank()) {
+      throw new IllegalArgumentException("status is required");
+    }
+    leagueService.updateInitialStipendStatus(leagueId, status);
   }
 
   @GetMapping("/active")

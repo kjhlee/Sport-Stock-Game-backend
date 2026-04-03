@@ -43,4 +43,12 @@ public class SeasonController {
         .map(ResponseEntity::ok)
         .orElse(ResponseEntity.noContent().build());
   }
+
+  @GetMapping("/current-week-or-preseason/optional")
+  public ResponseEntity<CurrentWeekResponse> getCurrentWeekIncludingPreseasonOptional() {
+    return seasonQueryService
+        .getCurrentWeekIncludingPreseasonOptional()
+        .map(ResponseEntity::ok)
+        .orElse(ResponseEntity.noContent().build());
+  }
 }
