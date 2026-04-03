@@ -50,7 +50,7 @@ public class LeagueClient {
         List<Long> body =
                 restClient
                         .get()
-                        .uri("/internal/{leagueId}/member-ids", leagueId)
+                        .uri("/{leagueId}/member-ids", leagueId)
                         .retrieve()
                         .body(new ParameterizedTypeReference<List<Long>>() {});
         return body != null ? body : List.of();

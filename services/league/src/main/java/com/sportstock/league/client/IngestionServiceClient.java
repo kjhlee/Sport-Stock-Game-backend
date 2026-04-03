@@ -18,7 +18,7 @@ public class IngestionServiceClient {
       SeasonActiveResponse response =
           ingestionRestClient
               .get()
-              .uri("/api/v1/ingestion/seasons/season-active")
+              .uri("/api/internal/ingestion/seasons/season-active")
               .retrieve()
               .body(SeasonActiveResponse.class);
 
@@ -34,7 +34,7 @@ public class IngestionServiceClient {
     try {
       return ingestionRestClient
           .get()
-          .uri("/api/v1/ingestion/seasons/current-week-or-preseason/optional")
+          .uri("/api/internal/ingestion/seasons/current-week-or-preseason/optional")
           .retrieve()
           .body(CurrentWeekResponse.class);
     } catch (Exception e) {
