@@ -73,12 +73,16 @@ public class WalletService {
     return DtoMapper.toWalletResponse(wallet);
   }
 
-  public StipendResultResponse issueInitialStipends(Long leagueId, BigDecimal amount) {
-    List<Long> userIds = leagueServiceClient.getMemberUserIdsInternal(leagueId);
+  public StipendResultResponse issueInitialStipends(
+      Long leagueId, BigDecimal amount, List<Long> userIds) {
+    List<Long> stipendUserIds =
+        (userIds != null && !userIds.isEmpty())
+            ? userIds
+            : leagueServiceClient.getMemberUserIdsInternal(leagueId);
     AtomicInteger walletsCreated = new AtomicInteger(0);
     AtomicInteger stipendsIssued = new AtomicInteger(0);
 
-    for (Long userId : userIds) {
+    for (Long userId : stipendUserIds) {
       transactionTemplate.executeWithoutResult(
           status -> {
             ensureWalletExists(userId, leagueId, walletsCreated);
@@ -96,7 +100,14 @@ public class WalletService {
 
             try {
               creditWallet(
-                  wallet, amount, TransactionType.INITIAL_STIPEND, null, null, idempotencyKey);
+                  wallet,
+                  amount,
+                  TransactionType.INITIAL_STIPEND,
+                  null,
+                  null,
+                  idempotencyKey,
+                  null,
+                  null);
             } catch (DataIntegrityViolationException e) {
               status.setRollbackOnly();
               return;
@@ -130,7 +141,14 @@ public class WalletService {
 
             try {
               creditWallet(
-                  wallet, amount, TransactionType.WEEKLY_STIPEND, null, null, idempotencyKey);
+                  wallet,
+                  amount,
+                  TransactionType.WEEKLY_STIPEND,
+                  null,
+                  null,
+                  idempotencyKey,
+                  null,
+                  null);
             } catch (DataIntegrityViolationException e) {
               status.setRollbackOnly();
               return;
@@ -186,10 +204,10 @@ public class WalletService {
                     TransactionType.STOCK_BUY,
                     "stock:" + request.stockId(),
                     description,
-                    request.idempotencyKey()));
-            Transaction tx = result.get();
-            tx.setPricePerShare(pricePerShare);
-            transactionRepository.save(tx);
+                    request.idempotencyKey(),
+                    pricePerShare,
+                    request.buyTransactionId()));
+            // TODO: call portfolio service to update
           } catch (DataIntegrityViolationException e) {
             Transaction existingTransaction =
                 transactionRepository.findByIdempotencyKey(request.idempotencyKey()).orElseThrow();
@@ -213,7 +231,7 @@ public class WalletService {
         "Buy " + quantity + " shares of " + stock.fullName(),
         transaction.getIdempotencyKey(),
         pricePerShare,
-        null,
+        transaction.getBuyTransactionId(),
         transaction.getCreatedAt());
   }
 
@@ -228,13 +246,52 @@ public class WalletService {
     }
 
     Long transactionId = request.buyTransactionId();
-    Optional<Transaction> buyTransaction = transactionRepository.findById(transactionId);
+    if (transactionId == null) {
+      throw new InvalidTradeRequestException("buyTransactionId is required for sell transactions");
+    }
 
+    Transaction buyTransaction =
+        transactionRepository
+            .findById(transactionId)
+            .orElseThrow(
+                () -> new InvalidTradeRequestException("Buy transaction not found: " + transactionId));
 
-    BigDecimal pricePerShare = stock.injuryLocked() && buyTransaction.isPresent() ? max(stock.currentPrice(), buyTransaction.get().getAmount()) : stock.currentPrice();;
+    if (buyTransaction.getType() != TransactionType.STOCK_BUY) {
+      throw new InvalidTradeRequestException(
+          "buyTransactionId must reference a stock buy transaction");
+    }
+
+    String expectedReferenceId = "stock:" + request.stockId();
+    if (!expectedReferenceId.equals(buyTransaction.getReferenceId())) {
+      throw new InvalidTradeRequestException(
+          "buyTransactionId does not belong to the requested stock");
+    }
+
+    if (!buyTransaction.getLeagueId().equals(leagueId)
+        || !buyTransaction.getUserId().equals(userId)) {
+      throw new InvalidTradeRequestException(
+          "buyTransactionId does not belong to this user and league");
+    }
+
+    BigDecimal pricePerShare =
+        buyTransaction
+            .getPricePerShare()
+            .multiply(new BigDecimal("0.90"))
+            .setScale(4, RoundingMode.DOWN);
 
 
     BigDecimal quantity = resolveQuantity(request, pricePerShare);
+    BigDecimal purchasedQuantity =
+        buyTransaction.getAmount().divide(buyTransaction.getPricePerShare(), 4, RoundingMode.DOWN);
+    BigDecimal soldQuantity =
+        transactionRepository.sumSoldQuantityByBuyTransactionId(buyTransaction.getId());
+    BigDecimal remainingQuantity = purchasedQuantity.subtract(soldQuantity).setScale(4, RoundingMode.DOWN);
+
+    if (quantity.compareTo(remainingQuantity) > 0) {
+      throw new InvalidTradeRequestException(
+          "Requested sell quantity exceeds remaining shares for this buy transaction");
+    }
+
     BigDecimal totalCredit = quantity.multiply(pricePerShare).setScale(4, RoundingMode.DOWN);
 
     AtomicReference<Transaction> result = new AtomicReference<>();
@@ -265,12 +322,10 @@ public class WalletService {
                     TransactionType.STOCK_SELL,
                     "stock:" + request.stockId(),
                     description,
-                    request.idempotencyKey())
-            );
-            Transaction tx = result.get();
-            tx.setPricePerShare(pricePerShare);
-            tx.setBuyTransactionId(request.buyTransactionId());
-            transactionRepository.save(tx);
+                    request.idempotencyKey(),
+                    pricePerShare,
+                    request.buyTransactionId()));
+            // TODO: call portfolio service to update
           } catch (DataIntegrityViolationException e) {
             Transaction existingTransaction =
                 transactionRepository.findByIdempotencyKey(request.idempotencyKey()).orElseThrow();
@@ -293,16 +348,9 @@ public class WalletService {
             "Sell " + quantity + " shares of " + stock.fullName(),
             transaction.getIdempotencyKey(),
             pricePerShare,
-            null,
+            transaction.getBuyTransactionId(),
             transaction.getCreatedAt());
   }
-
-    private BigDecimal max(BigDecimal purchasePrice, BigDecimal pricePerShare) {
-        if (purchasePrice.compareTo(pricePerShare) > 0) {
-          return purchasePrice;
-        }
-        else return pricePerShare;
-    }
 
   @Transactional(readOnly = true)
   public WalletResponse getWallet(Long userId, Long leagueId) {
@@ -391,7 +439,9 @@ public class WalletService {
       TransactionType type,
       String referenceId,
       String description,
-      String idempotencyKey) {
+      String idempotencyKey,
+      BigDecimal pricePerShare,
+      Long buyTransactionId) {
     BigDecimal balanceBefore = wallet.getBalance();
     BigDecimal balanceAfter = balanceBefore.add(amount);
 
@@ -406,6 +456,8 @@ public class WalletService {
     transaction.setReferenceId(referenceId);
     transaction.setDescription(description);
     transaction.setIdempotencyKey(idempotencyKey);
+    transaction.setPricePerShare(pricePerShare);
+    transaction.setBuyTransactionId(buyTransactionId);
 
     transactionRepository.save(transaction);
     wallet.setBalance(balanceAfter);
@@ -419,7 +471,9 @@ public class WalletService {
       TransactionType type,
       String referenceId,
       String description,
-      String idempotencyKey) {
+      String idempotencyKey,
+      BigDecimal pricePerShare,
+      Long buyTransactionId) {
     if (wallet.getBalance().compareTo(amount) < 0) {
       throw new InsufficientFundsException(wallet.getBalance(), amount);
     }
@@ -438,6 +492,8 @@ public class WalletService {
     transaction.setReferenceId(referenceId);
     transaction.setDescription(description);
     transaction.setIdempotencyKey(idempotencyKey);
+    transaction.setPricePerShare(pricePerShare);
+    transaction.setBuyTransactionId(buyTransactionId);
 
     transactionRepository.save(transaction);
     wallet.setBalance(balanceAfter);
