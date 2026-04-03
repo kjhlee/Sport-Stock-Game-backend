@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/ethankook/projects/Sport-Stock/Sport-Stock-Game-backend/**)",
+      "Bash(./gradlew build:*)",
+      "Bash(mvn compile:*)",
+      "Bash(mvn test-compile:*)"
+    ]
+  }
+}
