@@ -35,10 +35,10 @@ public class RestClientConfig {
     requestFactory.setReadTimeout(Duration.ofSeconds(30));
 
     return RestClient.builder()
-            .requestFactory(requestFactory)
-            .baseUrl(props.getFullUrl())
-            .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
-            .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-            .build();
+        .requestFactory(requestFactory)
+        .baseUrl(props.getFullUrl())
+        .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
+        .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+        .build();
   }
 }

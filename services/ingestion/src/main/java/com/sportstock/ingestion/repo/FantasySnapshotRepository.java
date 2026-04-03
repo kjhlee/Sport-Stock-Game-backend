@@ -1,7 +1,5 @@
 package com.sportstock.ingestion.repo;
 
-
-import com.sportstock.common.enums.stock_market.StockType;
 import com.sportstock.ingestion.entity.FantasySnapshot;
 import java.util.List;
 import java.util.Optional;
@@ -14,33 +12,37 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface FantasySnapshotRepository extends JpaRepository<FantasySnapshot, Long> {
 
-    Optional<FantasySnapshot> findByEventIdAndSubjectTypeAndEspnId(
-            Long eventId, String subjectType, String espnId);
+  Optional<FantasySnapshot> findByEventIdAndSubjectTypeAndEspnId(
+      Long eventId, String subjectType, String espnId);
 
-    List<FantasySnapshot> findByEventId(Long eventId);
+  List<FantasySnapshot> findByEventId(Long eventId);
 
-    @Query("""
+  @Query(
+      """
       SELECT fs FROM FantasySnapshot fs
       JOIN fs.event e
       WHERE e.espnId = :eventEspnId
       """)
-    List<FantasySnapshot> findByEventEspnId(@Param("eventEspnId") String eventEspnId);
+  List<FantasySnapshot> findByEventEspnId(@Param("eventEspnId") String eventEspnId);
 
-    @Query("""
+  @Query(
+      """
       SELECT fs FROM FantasySnapshot fs
       JOIN fs.event e
       WHERE e.espnId = :eventEspnId AND fs.completed = false
       """)
-    List<FantasySnapshot> findIncompleteByEventEspnId(@Param("eventEspnId") String eventEspnId);
+  List<FantasySnapshot> findIncompleteByEventEspnId(@Param("eventEspnId") String eventEspnId);
 
-    @Modifying
-    @Query("""
+  @Modifying
+  @Query(
+      """
       UPDATE FantasySnapshot fs SET fs.completed = true, fs.updatedAt = CURRENT_TIMESTAMP
       WHERE fs.event.id IN (SELECT e.id FROM Event e WHERE e.espnId = :eventEspnId)
       """)
-    int markCompletedByEventEspnId(@Param("eventEspnId") String eventEspnId);
+  int markCompletedByEventEspnId(@Param("eventEspnId") String eventEspnId);
 
-    @Query("""
+  @Query(
+      """
       SELECT fs FROM FantasySnapshot fs
       JOIN fs.event e
       WHERE fs.espnId = :espnId
@@ -48,9 +50,9 @@ public interface FantasySnapshotRepository extends JpaRepository<FantasySnapshot
         AND e.seasonType = :seasonType
         AND e.weekNumber = :weekNumber
       """)
-    Optional<FantasySnapshot> findByEspnIdAndWeek(
-            @Param("espnId") String espnId,
-            @Param("seasonYear") int seasonYear,
-            @Param("seasonType") int seasonType,
-            @Param("weekNumber") int weekNumber);
+  Optional<FantasySnapshot> findByEspnIdAndWeek(
+      @Param("espnId") String espnId,
+      @Param("seasonYear") int seasonYear,
+      @Param("seasonType") int seasonType,
+      @Param("weekNumber") int weekNumber);
 }

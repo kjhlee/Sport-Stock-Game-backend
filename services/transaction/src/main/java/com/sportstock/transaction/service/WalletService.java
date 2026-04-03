@@ -21,10 +21,8 @@ import com.sportstock.transaction.repo.WalletRepository;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
@@ -214,7 +212,6 @@ public class WalletService {
             result.set(existingTransaction);
             status.setRollbackOnly();
           }
-
         });
 
     Transaction transaction = result.get();
@@ -254,7 +251,9 @@ public class WalletService {
         transactionRepository
             .findById(transactionId)
             .orElseThrow(
-                () -> new InvalidTradeRequestException("Buy transaction not found: " + transactionId));
+                () ->
+                    new InvalidTradeRequestException(
+                        "Buy transaction not found: " + transactionId));
 
     if (buyTransaction.getType() != TransactionType.STOCK_BUY) {
       throw new InvalidTradeRequestException(
@@ -279,13 +278,13 @@ public class WalletService {
             .multiply(new BigDecimal("0.90"))
             .setScale(4, RoundingMode.DOWN);
 
-
     BigDecimal quantity = resolveQuantity(request, pricePerShare);
     BigDecimal purchasedQuantity =
         buyTransaction.getAmount().divide(buyTransaction.getPricePerShare(), 4, RoundingMode.DOWN);
     BigDecimal soldQuantity =
         transactionRepository.sumSoldQuantityByBuyTransactionId(buyTransaction.getId());
-    BigDecimal remainingQuantity = purchasedQuantity.subtract(soldQuantity).setScale(4, RoundingMode.DOWN);
+    BigDecimal remainingQuantity =
+        purchasedQuantity.subtract(soldQuantity).setScale(4, RoundingMode.DOWN);
 
     if (quantity.compareTo(remainingQuantity) > 0) {
       throw new InvalidTradeRequestException(
@@ -332,24 +331,23 @@ public class WalletService {
             result.set(existingTransaction);
             status.setRollbackOnly();
           }
-
         });
     Transaction transaction = result.get();
     return new TransactionResponse(
-            transaction.getId(),
-            transaction.getWallet().getId(),
-            TransactionType.STOCK_SELL.name(),
-            totalCredit,
-            transaction.getBalanceBefore(),
-            transaction.getBalanceAfter(),
-            leagueId,
-            userId,
-            request.stockId().toString(),
-            "Sell " + quantity + " shares of " + stock.fullName(),
-            transaction.getIdempotencyKey(),
-            pricePerShare,
-            transaction.getBuyTransactionId(),
-            transaction.getCreatedAt());
+        transaction.getId(),
+        transaction.getWallet().getId(),
+        TransactionType.STOCK_SELL.name(),
+        totalCredit,
+        transaction.getBalanceBefore(),
+        transaction.getBalanceAfter(),
+        leagueId,
+        userId,
+        request.stockId().toString(),
+        "Sell " + quantity + " shares of " + stock.fullName(),
+        transaction.getIdempotencyKey(),
+        pricePerShare,
+        transaction.getBuyTransactionId(),
+        transaction.getCreatedAt());
   }
 
   @Transactional(readOnly = true)
@@ -505,5 +503,4 @@ public class WalletService {
     // TODO: Implement liquidation logic
     return new StipendResultResponse(leagueId, 0, 0, BigDecimal.ZERO);
   }
-
 }

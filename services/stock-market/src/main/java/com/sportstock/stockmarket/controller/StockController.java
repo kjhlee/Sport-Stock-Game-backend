@@ -7,14 +7,13 @@ import com.sportstock.common.dto.stock_market.StockResponse;
 import com.sportstock.common.dto.stock_market.SyncAthletesResponse;
 import com.sportstock.common.enums.stock_market.StockStatus;
 import com.sportstock.common.enums.stock_market.StockType;
-import com.sportstock.stockmarket.service.StockLockService;
-import com.sportstock.stockmarket.service.StockSyncService;
 import com.sportstock.stockmarket.service.PricingService;
+import com.sportstock.stockmarket.service.StockLockService;
 import com.sportstock.stockmarket.service.StockQueryService;
+import com.sportstock.stockmarket.service.StockSyncService;
 import java.util.List;
-import java.util.UUID;
 import java.util.Map;
-
+import java.util.UUID;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -49,8 +48,7 @@ public class StockController {
 
   @GetMapping("/espn/{espnId}")
   public StockResponse getStockByEspnId(
-          @PathVariable String espnId,
-          @RequestParam(defaultValue = "PLAYER") StockType type) {
+      @PathVariable String espnId, @RequestParam(defaultValue = "PLAYER") StockType type) {
     return stockQueryService.getStockByEspnId(espnId, type);
   }
 
@@ -71,29 +69,28 @@ public class StockController {
 
   @PostMapping("/update-projected-prices")
   public PriceUpdateResponse updateProjectedPrices(
-          @RequestParam int seasonYear, @RequestParam int seasonType, @RequestParam int weekNumber) {
+      @RequestParam int seasonYear, @RequestParam int seasonType, @RequestParam int weekNumber) {
     PricingService.PriceUpdateResult result =
-            pricingService.updateProjectedPrices(seasonYear, seasonType, weekNumber);
+        pricingService.updateProjectedPrices(seasonYear, seasonType, weekNumber);
     return new PriceUpdateResponse(result.updated(), result.skipped());
   }
 
   @PostMapping("/update-final-prices")
   public PriceUpdateResponse updateFinalPrices(@RequestParam String eventEspnId) {
-    PricingService.PriceUpdateResult result =
-            pricingService.updateFinalPrices(eventEspnId);
+    PricingService.PriceUpdateResult result = pricingService.updateFinalPrices(eventEspnId);
     return new PriceUpdateResponse(result.updated(), result.skipped());
   }
 
   @PostMapping("/sync-team-defense")
   public SyncAthletesResponse syncTeamDefenseStocks() {
     StockSyncService.SyncAthletesResult result = stockSyncService.syncTeamDefenseStocks();
-    return new SyncAthletesResponse(result.created(), result.updated(), result.skipped(), result.totalFetched());
+    return new SyncAthletesResponse(
+        result.created(), result.updated(), result.skipped(), result.totalFetched());
   }
 
   @PostMapping("/sync-athletes")
   public SyncAthletesResponse syncAthletes(@RequestParam(required = false) String position) {
-    StockSyncService.SyncAthletesResult result =
-        stockSyncService.syncAthletes(position);
+    StockSyncService.SyncAthletesResult result = stockSyncService.syncAthletes(position);
 
     return new SyncAthletesResponse(
         result.created(), result.updated(), result.skipped(), result.totalFetched());

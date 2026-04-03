@@ -10,10 +10,10 @@ import org.springframework.stereotype.Component;
 @Component
 @ConfigurationProperties(prefix = "services.ingestion")
 public class IngestionServiceProperties {
-    private String baseUrl;
-    private int port;
+  private String baseUrl;
+  private int port;
 
-    public String getFullUrl() {
-        return baseUrl + ":" + port;
-    }
+  public String getFullUrl() {
+    return baseUrl + ":" + port;
+  }
 }

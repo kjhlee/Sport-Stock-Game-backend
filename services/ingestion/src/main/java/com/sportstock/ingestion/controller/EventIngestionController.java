@@ -5,8 +5,6 @@ import com.sportstock.common.dto.ingestion.EventResponse;
 import com.sportstock.common.dto.ingestion.PlayerGameStatResponse;
 import com.sportstock.common.dto.stock_market.IngestionEventDto;
 import com.sportstock.ingestion.entity.Event;
-import com.sportstock.ingestion.entity.EventCompetitor;
-import com.sportstock.ingestion.mapper.DtoMapper;
 import com.sportstock.ingestion.repo.EventCompetitorRepository;
 import com.sportstock.ingestion.repo.EventRepository;
 import com.sportstock.ingestion.repo.TeamRosterEntryRepository;
@@ -109,19 +107,21 @@ public class EventIngestionController {
   @GetMapping("/events/{espnId}/teams")
   public List<String> getEventTeamEspnIds(@PathVariable String espnId) {
     return eventCompetitorRepository.findByEventEspnId(espnId).stream()
-            .map(ec -> ec.getTeam().getEspnId())
-            .toList();
+        .map(ec -> ec.getTeam().getEspnId())
+        .toList();
   }
 
   @GetMapping("/events/{espnId}/roster/{teamEspnId}")
   public List<String> getEventRosterEspnIds(
-          @PathVariable String espnId, @PathVariable String teamEspnId) {
-    Event event = eventRepository.findByEspnId(espnId)
+      @PathVariable String espnId, @PathVariable String teamEspnId) {
+    Event event =
+        eventRepository
+            .findByEspnId(espnId)
             .orElseThrow(() -> new IllegalArgumentException("Event not found: " + espnId));
-    return teamRosterEntryRepository.findByTeamEspnIdAndSeasonYear(teamEspnId, event.getSeasonYear()).stream()
-            .map(entry -> entry.getAthlete().getEspnId())
-            .toList();
+    return teamRosterEntryRepository
+        .findByTeamEspnIdAndSeasonYear(teamEspnId, event.getSeasonYear())
+        .stream()
+        .map(entry -> entry.getAthlete().getEspnId())
+        .toList();
   }
-
-
 }
