@@ -15,22 +15,23 @@ import org.springframework.stereotype.Repository;
 public interface PriceHistoryRepository extends JpaRepository<PriceHistory, UUID> {
 
   List<PriceHistory> findByStockIdAndSeasonYearAndSeasonTypeOrderByWeekAsc(
-          UUID stockId, int seasonYear, int seasonType);
+      UUID stockId, int seasonYear, int seasonType);
 
   Optional<PriceHistory> findByStockIdAndSeasonYearAndSeasonTypeAndWeekAndPriceType(
-          UUID stockId, int seasonYear, int seasonType, int week, PriceType priceType);
+      UUID stockId, int seasonYear, int seasonType, int week, PriceType priceType);
 
   @Modifying
-  @Query("""
+  @Query(
+      """
       UPDATE PriceHistory ph SET ph.price = :price, ph.recordedAt = CURRENT_TIMESTAMP
       WHERE ph.stock.id = :stockId AND ph.seasonYear = :seasonYear
         AND ph.seasonType = :seasonType AND ph.week = :week AND ph.priceType = :priceType
       """)
   int updatePrice(
-          @Param("stockId") UUID stockId,
-          @Param("seasonYear") int seasonYear,
-          @Param("seasonType") int seasonType,
-          @Param("week") int week,
-          @Param("priceType") PriceType priceType,
-          @Param("price") java.math.BigDecimal price);
+      @Param("stockId") UUID stockId,
+      @Param("seasonYear") int seasonYear,
+      @Param("seasonType") int seasonType,
+      @Param("week") int week,
+      @Param("priceType") PriceType priceType,
+      @Param("price") java.math.BigDecimal price);
 }

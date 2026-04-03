@@ -2,7 +2,6 @@ package com.sportstock.stockmarket.model.entity;
 
 import com.sportstock.common.enums.stock_market.PriceType;
 import jakarta.persistence.*;
-
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;

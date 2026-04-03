@@ -11,7 +11,6 @@ import com.sportstock.league.service.LeagueService;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
-
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -106,7 +105,7 @@ public class LeagueController {
   @PutMapping("/{leagueId}/initial-stipend-status")
   @ResponseStatus(HttpStatus.NO_CONTENT)
   public void updateInitialStipendStatus(
-          @PathVariable Long leagueId, @RequestBody Map<String, String> body) {
+      @PathVariable Long leagueId, @RequestBody Map<String, String> body) {
     leagueService.updateInitialStipendStatus(leagueId, body.get("status"));
   }
 

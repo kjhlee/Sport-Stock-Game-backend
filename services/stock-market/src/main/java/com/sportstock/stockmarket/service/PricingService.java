@@ -33,10 +33,10 @@ public class PricingService {
   @Transactional
   public PriceUpdateResult updateProjectedPrices(int seasonYear, int seasonType, int weekNumber) {
     log.info(
-            "Updating projected prices for season {} type {} week {}",
-            seasonYear,
-            seasonType,
-            weekNumber);
+        "Updating projected prices for season {} type {} week {}",
+        seasonYear,
+        seasonType,
+        weekNumber);
 
     List<Stock> activeStocks = stockRepository.findByStatusAndGameLockedFalse(StockStatus.ACTIVE);
     int updated = 0;
@@ -44,8 +44,8 @@ public class PricingService {
 
     for (Stock stock : activeStocks) {
       FantasySnapshotResponse snapshot =
-              ingestionApiClient.getFantasySnapshot(
-                      stock.getEspnId(), seasonYear, seasonType, weekNumber);
+          ingestionApiClient.getFantasySnapshot(
+              stock.getEspnId(), seasonYear, seasonType, weekNumber);
 
       if (snapshot == null || snapshot.projectedFantasyPoints() == null) {
         skipped++;
@@ -70,7 +70,7 @@ public class PricingService {
     log.info("Updating final prices for event {}", eventEspnId);
 
     List<FantasySnapshotResponse> snapshots =
-            ingestionApiClient.getFantasySnapshotsByEvent(eventEspnId);
+        ingestionApiClient.getFantasySnapshotsByEvent(eventEspnId);
     IngestionEventDto eventInfo = ingestionApiClient.getEvent(eventEspnId);
 
     int updated = 0;
@@ -83,13 +83,13 @@ public class PricingService {
       }
 
       Stock stock =
-              stockRepository
-                      .findByEspnIdAndType(
-                              snapshot.espnId(),
-                              "TEAM_DEFENSE".equals(snapshot.subjectType())
-                                      ? StockType.TEAM_DEFENSE
-                                      : StockType.PLAYER)
-                      .orElse(null);
+          stockRepository
+              .findByEspnIdAndType(
+                  snapshot.espnId(),
+                  "TEAM_DEFENSE".equals(snapshot.subjectType())
+                      ? StockType.TEAM_DEFENSE
+                      : StockType.PLAYER)
+              .orElse(null);
 
       if (stock == null) {
         skipped++;
@@ -118,8 +118,7 @@ public class PricingService {
   }
 
   private BigDecimal computePrice(BigDecimal fantasyPoints, BigDecimal multiplier) {
-    BigDecimal price =
-            fantasyPoints.multiply(multiplier).setScale(2, RoundingMode.HALF_UP);
+    BigDecimal price = fantasyPoints.multiply(multiplier).setScale(2, RoundingMode.HALF_UP);
     BigDecimal floor = pricingConfig.getPriceFloor();
     if (floor != null && price.compareTo(floor) < 0) {
       return floor;
@@ -135,15 +134,15 @@ public class PricingService {
   }
 
   private void upsertPriceHistory(
-          Stock stock,
-          int seasonYear,
-          int seasonType,
-          int week,
-          BigDecimal price,
-          PriceType priceType) {
+      Stock stock,
+      int seasonYear,
+      int seasonType,
+      int week,
+      BigDecimal price,
+      PriceType priceType) {
     int updatedRows =
-            priceHistoryRepository.updatePrice(
-                    stock.getId(), seasonYear, seasonType, week, priceType, price);
+        priceHistoryRepository.updatePrice(
+            stock.getId(), seasonYear, seasonType, week, priceType, price);
 
     if (updatedRows == 0) {
       PriceHistory history = new PriceHistory();
@@ -157,7 +156,5 @@ public class PricingService {
     }
   }
 
-  public record PriceUpdateResult(int updated, int skipped) {
-  }
-
+  public record PriceUpdateResult(int updated, int skipped) {}
 }

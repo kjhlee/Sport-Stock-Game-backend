@@ -39,8 +39,8 @@ public class SeasonController {
   @GetMapping("/current-week/optional")
   public ResponseEntity<CurrentWeekResponse> getCurrentWeekOptional() {
     return seasonQueryService
-            .getCurrentWeekOptional()
-            .map(ResponseEntity::ok)
-            .orElse(ResponseEntity.noContent().build());
+        .getCurrentWeekOptional()
+        .map(ResponseEntity::ok)
+        .orElse(ResponseEntity.noContent().build());
   }
 }

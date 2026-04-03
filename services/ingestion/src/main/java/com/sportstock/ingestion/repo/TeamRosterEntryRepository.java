@@ -13,6 +13,4 @@ public interface TeamRosterEntryRepository extends JpaRepository<TeamRosterEntry
   List<TeamRosterEntry> findByTeamEspnIdAndSeasonYear(String espnTeamId, Integer seasonYear);
 
   List<TeamRosterEntry> findByAthleteIdAndSeasonYear(Long athleteId, Integer seasonYear);
-
-
 }

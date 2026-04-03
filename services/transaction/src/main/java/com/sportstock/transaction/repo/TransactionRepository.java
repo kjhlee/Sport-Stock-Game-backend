@@ -2,7 +2,6 @@ package com.sportstock.transaction.repo;
 
 import com.sportstock.transaction.entity.Transaction;
 import com.sportstock.transaction.enums.TransactionType;
-
 import java.math.BigDecimal;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
@@ -24,7 +23,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
 
   Page<Transaction> findByLeagueIdAndType(Long leagueId, TransactionType type, Pageable pageable);
 
-  @Query("""
+  @Query(
+      """
     SELECT COALESCE(SUM(t.amount / t.pricePerShare), 0)
     FROM Transaction t
     WHERE t.buyTransactionId = :buyTxId

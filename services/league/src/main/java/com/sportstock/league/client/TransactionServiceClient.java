@@ -5,12 +5,11 @@ import com.sportstock.common.dto.transaction.IssueStipendRequest;
 import com.sportstock.common.dto.transaction.StipendResultResponse;
 import com.sportstock.common.dto.transaction.WalletResponse;
 import com.sportstock.common.security.RequestContextAuthorizationHeaderResolver;
-import java.math.BigDecimal;
-import java.util.List;
-
 import com.sportstock.league.entity.LeagueMember;
 import com.sportstock.league.repo.LeagueMemberRepository;
 import com.sportstock.league.repo.LeagueRepository;
+import java.math.BigDecimal;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -45,7 +44,10 @@ public class TransactionServiceClient {
 
   public StipendResultResponse issueInitialStipends(Long leagueId, BigDecimal amount) {
     try {
-      List<Long> userIds = leagueMemberRepository.findAllByLeagueId(leagueId).stream().map(LeagueMember::getUserId).toList();
+      List<Long> userIds =
+          leagueMemberRepository.findAllByLeagueId(leagueId).stream()
+              .map(LeagueMember::getUserId)
+              .toList();
 
       return transactionRestClient
           .post()

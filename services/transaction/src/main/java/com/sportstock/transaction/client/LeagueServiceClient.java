@@ -28,5 +28,4 @@ public class LeagueServiceClient {
       throw new TransactionException("League service unavailable", e);
     }
   }
-
 }

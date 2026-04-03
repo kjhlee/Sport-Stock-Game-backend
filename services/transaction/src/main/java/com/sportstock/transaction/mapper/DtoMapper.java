@@ -21,19 +21,19 @@ public final class DtoMapper {
 
   public static TransactionResponse toTransactionResponse(Transaction entity) {
     return new TransactionResponse(
-            entity.getId(),
-            entity.getWallet().getId(),
-            entity.getType().name(),
-            entity.getAmount(),
-            entity.getBalanceBefore(),
-            entity.getBalanceAfter(),
-            entity.getLeagueId(),
-            entity.getUserId(),
-            entity.getReferenceId(),
-            entity.getDescription(),
-            entity.getIdempotencyKey(),
-            entity.getPricePerShare(),
-            entity.getBuyTransactionId(),
-            entity.getCreatedAt());
+        entity.getId(),
+        entity.getWallet().getId(),
+        entity.getType().name(),
+        entity.getAmount(),
+        entity.getBalanceBefore(),
+        entity.getBalanceAfter(),
+        entity.getLeagueId(),
+        entity.getUserId(),
+        entity.getReferenceId(),
+        entity.getDescription(),
+        entity.getIdempotencyKey(),
+        entity.getPricePerShare(),
+        entity.getBuyTransactionId(),
+        entity.getCreatedAt());
   }
 }

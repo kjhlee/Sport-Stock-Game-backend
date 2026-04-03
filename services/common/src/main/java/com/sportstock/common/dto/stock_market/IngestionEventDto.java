@@ -15,7 +15,13 @@ public class IngestionEventDto {
   private Boolean statusCompleted;
   private String statusState;
 
-  public IngestionEventDto(String espnId, Integer seasonYear, Integer seasonType, Integer weekNumber, Boolean statusCompleted, String statusState) {
+  public IngestionEventDto(
+      String espnId,
+      Integer seasonYear,
+      Integer seasonType,
+      Integer weekNumber,
+      Boolean statusCompleted,
+      String statusState) {
     this.espnId = espnId;
     this.seasonYear = seasonYear;
     this.seasonType = seasonType;

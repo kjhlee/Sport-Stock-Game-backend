@@ -95,36 +95,31 @@ public class WalletController {
   }
 
   @PostMapping("/liquidate")
-  public void liquidateAssets(
-          @RequestParam Long leagueId, @RequestParam int weekNumber) {
+  public void liquidateAssets(@RequestParam Long leagueId, @RequestParam int weekNumber) {
     throw new ResponseStatusException(
         HttpStatus.NOT_IMPLEMENTED, "Asset liquidation is not implemented");
   }
 
   @PostMapping("/stipends/matchup-win")
-  public void matchupWin(
-          @RequestBody IssueStipendRequest request, @RequestParam int weekNumber) {
+  public void matchupWin(@RequestBody IssueStipendRequest request, @RequestParam int weekNumber) {
     throw new ResponseStatusException(
         HttpStatus.NOT_IMPLEMENTED, "Matchup win stipend is not implemented");
   }
 
   @PostMapping("/stipends/matchup-loss")
-  public void matchupLoss(
-          @RequestBody IssueStipendRequest request, @RequestParam int weekNumber) {
+  public void matchupLoss(@RequestBody IssueStipendRequest request, @RequestParam int weekNumber) {
     throw new ResponseStatusException(
         HttpStatus.NOT_IMPLEMENTED, "Matchup loss stipend is not implemented");
   }
 
   @PostMapping("/stipends/playoff-win")
-  public void playoffWin(
-          @RequestBody IssueStipendRequest request, @RequestParam int round) {
+  public void playoffWin(@RequestBody IssueStipendRequest request, @RequestParam int round) {
     throw new ResponseStatusException(
         HttpStatus.NOT_IMPLEMENTED, "Playoff win stipend is not implemented");
   }
 
   @PostMapping("/stipends/playoff-loss")
-  public void playoffLoss(
-          @RequestBody IssueStipendRequest request, @RequestParam int round) {
+  public void playoffLoss(@RequestBody IssueStipendRequest request, @RequestParam int round) {
     throw new ResponseStatusException(
         HttpStatus.NOT_IMPLEMENTED, "Playoff loss stipend is not implemented");
   }

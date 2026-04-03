@@ -1,9 +1,8 @@
 package com.sportstock.stockmarket.repository;
 
+import com.sportstock.common.enums.stock_market.StockStatus;
 import com.sportstock.common.enums.stock_market.StockType;
 import com.sportstock.stockmarket.model.entity.Stock;
-import com.sportstock.common.enums.stock_market.StockStatus;
-
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -40,12 +39,12 @@ public interface StockRepository extends JpaRepository<Stock, UUID> {
 
   @Modifying
   @Query(
-          "UPDATE Stock s SET s.injuryLocked = true WHERE s.espnId IN :espnIds AND s.type = 'PLAYER'")
+      "UPDATE Stock s SET s.injuryLocked = true WHERE s.espnId IN :espnIds AND s.type = 'PLAYER'")
   int setInjuryLockedByEspnIds(@Param("espnIds") List<String> espnIds);
 
   @Modifying
   @Query(
-          "UPDATE Stock s SET s.injuryLocked = false WHERE s.espnId IN :espnIds AND s.type = 'PLAYER'")
+      "UPDATE Stock s SET s.injuryLocked = false WHERE s.espnId IN :espnIds AND s.type = 'PLAYER'")
   int clearInjuryLockedByEspnIds(@Param("espnIds") List<String> espnIds);
 
   Optional<Stock> findByEspnId(String espnId);

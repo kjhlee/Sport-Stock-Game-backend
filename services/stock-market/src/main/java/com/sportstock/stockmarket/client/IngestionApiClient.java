@@ -23,8 +23,8 @@ public class IngestionApiClient {
       new ParameterizedTypeReference<>() {};
   private static final ParameterizedTypeReference<List<IngestionPlayerGameStatsDto>>
       PLAYER_STATS_LIST = new ParameterizedTypeReference<>() {};
-  private static final ParameterizedTypeReference<List<FantasySnapshotResponse>> FANTASY_SNAPSHOT_LIST =
-          new ParameterizedTypeReference<>() {};
+  private static final ParameterizedTypeReference<List<FantasySnapshotResponse>>
+      FANTASY_SNAPSHOT_LIST = new ParameterizedTypeReference<>() {};
 
   private final RestClient restClient;
 
@@ -103,27 +103,32 @@ public class IngestionApiClient {
   }
 
   public FantasySnapshotResponse getFantasySnapshot(
-          String espnId, int seasonYear, int seasonType, int weekNumber) {
+      String espnId, int seasonYear, int seasonType, int weekNumber) {
     return restClient
-            .get()
-            .uri(uriBuilder -> uriBuilder
+        .get()
+        .uri(
+            uriBuilder ->
+                uriBuilder
                     .path("/fantasy-snapshots/by-espn-id")
                     .queryParam("espnId", espnId)
                     .queryParam("seasonYear", seasonYear)
                     .queryParam("seasonType", seasonType)
                     .queryParam("weekNumber", weekNumber)
                     .build())
-            .retrieve()
-            .body(FantasySnapshotResponse.class);
+        .retrieve()
+        .body(FantasySnapshotResponse.class);
   }
 
   public List<FantasySnapshotResponse> getFantasySnapshotsByEvent(String eventEspnId) {
-    List<FantasySnapshotResponse> body = restClient
+    List<FantasySnapshotResponse> body =
+        restClient
             .get()
-            .uri(uriBuilder -> uriBuilder
-                    .path("/fantasy-snapshots")
-                    .queryParam("eventEspnId", eventEspnId)
-                    .build())
+            .uri(
+                uriBuilder ->
+                    uriBuilder
+                        .path("/fantasy-snapshots")
+                        .queryParam("eventEspnId", eventEspnId)
+                        .build())
             .retrieve()
             .body(FANTASY_SNAPSHOT_LIST);
     return body != null ? body : List.of();
@@ -152,10 +157,9 @@ public class IngestionApiClient {
 
   public IngestionEventDto getEvent(String eventEspnId) {
     return restClient
-            .get()
-            .uri("/events/{espnId}", eventEspnId)
-            .retrieve()
-            .body(IngestionEventDto.class);
+        .get()
+        .uri("/events/{espnId}", eventEspnId)
+        .retrieve()
+        .body(IngestionEventDto.class);
   }
-
 }

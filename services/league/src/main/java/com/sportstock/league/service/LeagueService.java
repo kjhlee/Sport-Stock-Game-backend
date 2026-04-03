@@ -7,12 +7,12 @@ import com.sportstock.common.dto.league.LeagueInviteResponse;
 import com.sportstock.common.dto.league.LeagueMemberResponse;
 import com.sportstock.common.dto.league.LeagueResponse;
 import com.sportstock.common.enums.league.InitialStipendStatus;
+import com.sportstock.common.enums.league.LeagueStatus;
 import com.sportstock.league.client.IngestionServiceClient;
 import com.sportstock.league.client.TransactionServiceClient;
 import com.sportstock.league.entity.League;
 import com.sportstock.league.entity.LeagueInvite;
 import com.sportstock.league.entity.LeagueMember;
-import com.sportstock.common.enums.league.LeagueStatus;
 import com.sportstock.league.exception.InvalidInviteException;
 import com.sportstock.league.exception.LeagueAccessDeniedException;
 import com.sportstock.league.exception.LeagueNotFoundException;
@@ -184,13 +184,13 @@ public class LeagueService {
       transactionServiceClient.issueInitialStipends(leagueId, league.getInitialStipendAmount());
       league.setInitialStipendIssuedAt(OffsetDateTime.now());
       leagueRepository.save(league);
-    }
-    else {
+    } else {
       league.setInitialStipendStatus(InitialStipendStatus.PENDING);
-      log.info("NFL season has not started yet, league cannot start, and initial stipend is pending. League id {}", leagueId);
+      log.info(
+          "NFL season has not started yet, league cannot start, and initial stipend is pending. League id {}",
+          leagueId);
     }
     return DtoMapper.toLeagueResponse(league, memberCount);
-
   }
 
   @Transactional
@@ -285,11 +285,12 @@ public class LeagueService {
   @Transactional(readOnly = true)
   public List<LeagueResponse> getLeaguesWithPendingStipend() {
     return leagueRepository
-            .findByStatusAndInitialStipendStatus(LeagueStatus.INACTIVE, InitialStipendStatus.PENDING)
-            .stream()
-            .map(l -> DtoMapper.toLeagueResponse(l, leagueMemberRepository.countByLeagueId(l.getId())))
-            .toList();
+        .findByStatusAndInitialStipendStatus(LeagueStatus.INACTIVE, InitialStipendStatus.PENDING)
+        .stream()
+        .map(l -> DtoMapper.toLeagueResponse(l, leagueMemberRepository.countByLeagueId(l.getId())))
+        .toList();
   }
+
   @Transactional
   public void updateInitialStipendStatus(Long leagueId, String status) {
     League league = findLeagueOrThrow(leagueId);
@@ -300,10 +301,9 @@ public class LeagueService {
   @Transactional(readOnly = true)
   public List<LeagueResponse> getActiveLeagues() {
     return leagueRepository.findByStatus(LeagueStatus.ACTIVE).stream()
-            .map(l -> DtoMapper.toLeagueResponse(l, leagueMemberRepository.countByLeagueId(l.getId())))
-            .toList();
+        .map(l -> DtoMapper.toLeagueResponse(l, leagueMemberRepository.countByLeagueId(l.getId())))
+        .toList();
   }
-
 
   private League findLeagueOrThrow(Long leagueId) {
     return leagueRepository

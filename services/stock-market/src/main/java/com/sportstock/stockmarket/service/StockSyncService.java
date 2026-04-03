@@ -2,16 +2,15 @@ package com.sportstock.stockmarket.service;
 
 import com.sportstock.common.dto.stock_market.IngestionAthleteDto;
 import com.sportstock.common.dto.stock_market.IngestionTeamDto;
+import com.sportstock.common.enums.stock_market.StockStatus;
 import com.sportstock.common.enums.stock_market.StockType;
 import com.sportstock.stockmarket.client.IngestionApiClient;
 import com.sportstock.stockmarket.config.PricingConfig;
 import com.sportstock.stockmarket.model.entity.Stock;
-import com.sportstock.common.enums.stock_market.StockStatus;
 import com.sportstock.stockmarket.repository.StockRepository;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Set;
-
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -117,7 +116,8 @@ public class StockSyncService {
 
     for (IngestionTeamDto team : teams) {
       String espnId = team.getEspnId();
-      Stock existing = stockRepository.findByEspnIdAndType(espnId, StockType.TEAM_DEFENSE).orElse(null);
+      Stock existing =
+          stockRepository.findByEspnIdAndType(espnId, StockType.TEAM_DEFENSE).orElse(null);
 
       if (existing != null) {
         existing.setFullName(team.getDisplayName() + " D/ST");
