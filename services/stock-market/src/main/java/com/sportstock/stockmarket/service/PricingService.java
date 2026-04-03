@@ -1,6 +1,7 @@
 package com.sportstock.stockmarket.service;
 
 import com.sportstock.common.dto.ingestion.FantasySnapshotResponse;
+import com.sportstock.common.dto.stock_market.IngestionEventDto;
 import com.sportstock.common.enums.stock_market.PriceType;
 import com.sportstock.common.enums.stock_market.StockStatus;
 import com.sportstock.common.enums.stock_market.StockType;
@@ -70,6 +71,7 @@ public class PricingService {
 
     List<FantasySnapshotResponse> snapshots =
             ingestionApiClient.getFantasySnapshotsByEvent(eventEspnId);
+    IngestionEventDto eventInfo = ingestionApiClient.getEvent(eventEspnId);
 
     int updated = 0;
     int skipped = 0;
@@ -100,16 +102,14 @@ public class PricingService {
       stock.setCurrentPrice(newPrice);
       stock.setPriceUpdatedAt(Instant.now());
 
-      // Parse season/week from the snapshot's event (need to get from ingestion)
-      // For now, use the event data from the snapshot
-      var eventInfo = ingestionApiClient.getEvent(eventEspnId);
       if (eventInfo != null) {
-        insertFinalPriceHistory(
-                stock,
-                eventInfo.getSeasonYear(),
-                eventInfo.getSeasonType(),
-                eventInfo.getWeekNumber(),
-                newPrice);
+        upsertPriceHistory(
+            stock,
+            eventInfo.getSeasonYear(),
+            eventInfo.getSeasonType(),
+            eventInfo.getWeekNumber(),
+            newPrice,
+            PriceType.FINAL);
       }
       updated++;
     }
@@ -155,18 +155,6 @@ public class PricingService {
       history.setPriceType(priceType);
       priceHistoryRepository.save(history);
     }
-  }
-
-  private void insertFinalPriceHistory(
-          Stock stock, int seasonYear, int seasonType, int week, BigDecimal price) {
-    PriceHistory history = new PriceHistory();
-    history.setStock(stock);
-    history.setSeasonYear(seasonYear);
-    history.setSeasonType(seasonType);
-    history.setWeek(week);
-    history.setPrice(price);
-    history.setPriceType(PriceType.FINAL);
-    priceHistoryRepository.save(history);
   }
 
   public record PriceUpdateResult(int updated, int skipped) {
