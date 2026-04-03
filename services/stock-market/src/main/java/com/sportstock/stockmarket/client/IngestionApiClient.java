@@ -1,5 +1,6 @@
 package com.sportstock.stockmarket.client;
 
+import com.sportstock.common.dto.ingestion.FantasySnapshotResponse;
 import com.sportstock.common.dto.stock_market.IngestionAthleteDto;
 import com.sportstock.common.dto.stock_market.IngestionEventDto;
 import com.sportstock.common.dto.stock_market.IngestionPlayerGameStatsDto;
@@ -22,6 +23,8 @@ public class IngestionApiClient {
       new ParameterizedTypeReference<>() {};
   private static final ParameterizedTypeReference<List<IngestionPlayerGameStatsDto>>
       PLAYER_STATS_LIST = new ParameterizedTypeReference<>() {};
+  private static final ParameterizedTypeReference<List<FantasySnapshotResponse>> FANTASY_SNAPSHOT_LIST =
+          new ParameterizedTypeReference<>() {};
 
   private final RestClient restClient;
 
@@ -98,4 +101,61 @@ public class IngestionApiClient {
 
     return body != null ? body : List.of();
   }
+
+  public FantasySnapshotResponse getFantasySnapshot(
+          String espnId, int seasonYear, int seasonType, int weekNumber) {
+    return restClient
+            .get()
+            .uri(uriBuilder -> uriBuilder
+                    .path("/fantasy-snapshots/by-espn-id")
+                    .queryParam("espnId", espnId)
+                    .queryParam("seasonYear", seasonYear)
+                    .queryParam("seasonType", seasonType)
+                    .queryParam("weekNumber", weekNumber)
+                    .build())
+            .retrieve()
+            .body(FantasySnapshotResponse.class);
+  }
+
+  public List<FantasySnapshotResponse> getFantasySnapshotsByEvent(String eventEspnId) {
+    List<FantasySnapshotResponse> body = restClient
+            .get()
+            .uri(uriBuilder -> uriBuilder
+                    .path("/fantasy-snapshots")
+                    .queryParam("eventEspnId", eventEspnId)
+                    .build())
+            .retrieve()
+            .body(FANTASY_SNAPSHOT_LIST);
+    return body != null ? body : List.of();
+  }
+
+  /** GET /events/{espnId}/teams */
+  public List<String> getEventTeamEspnIds(String eventEspnId) {
+    List<String> body =
+        restClient
+            .get()
+            .uri("/events/{espnId}/teams", eventEspnId)
+            .retrieve()
+            .body(new ParameterizedTypeReference<List<String>>() {});
+    return body != null ? body : List.of();
+  }
+
+  public List<String> getEventRosterEspnIds(String eventEspnId, String teamEspnId) {
+    List<String> body =
+        restClient
+            .get()
+            .uri("/events/{espnId}/roster/{teamEspnId}", eventEspnId, teamEspnId)
+            .retrieve()
+            .body(new ParameterizedTypeReference<List<String>>() {});
+    return body != null ? body : List.of();
+  }
+
+  public IngestionEventDto getEvent(String eventEspnId) {
+    return restClient
+            .get()
+            .uri("/events/{espnId}", eventEspnId)
+            .retrieve()
+            .body(IngestionEventDto.class);
+  }
+
 }

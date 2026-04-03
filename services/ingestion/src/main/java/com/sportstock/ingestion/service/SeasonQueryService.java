@@ -56,4 +56,21 @@ public class SeasonQueryService {
                     sw.getStartDate(),
                     sw.getEndDate()));
   }
+
+  public boolean isSeasonActive() {
+    try {
+      getCurrentWeek();
+      return true;
+    } catch (Exception e) {
+      return false;
+    }
+  }
+
+  public Optional<CurrentWeekResponse> getCurrentWeekOptional() {
+    try {
+      return Optional.of(getCurrentWeek());
+    } catch (Exception e) {
+      return Optional.empty();
+    }
+  }
 }

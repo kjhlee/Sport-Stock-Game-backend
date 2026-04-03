@@ -91,4 +91,34 @@ public class WalletController {
     return walletService.getTransactionHistory(
         userId, leagueId, PageRequest.of(page, Math.min(size, 100)));
   }
+
+  @PostMapping("/liquidate")
+  public StipendResultResponse liquidateAssets(
+          @RequestParam Long leagueId, @RequestParam int weekNumber) {
+    return walletService.liquidateAssets(leagueId, weekNumber);
+  }
+
+  @PostMapping("/stipends/matchup-win")
+  public StipendResultResponse matchupWin(
+          @RequestBody IssueStipendRequest request, @RequestParam int weekNumber) {
+    return new StipendResultResponse(request.leagueId(), 0, 0, request.amount());
+  }
+
+  @PostMapping("/stipends/matchup-loss")
+  public StipendResultResponse matchupLoss(
+          @RequestBody IssueStipendRequest request, @RequestParam int weekNumber) {
+    return new StipendResultResponse(request.leagueId(), 0, 0, request.amount());
+  }
+
+  @PostMapping("/stipends/playoff-win")
+  public StipendResultResponse playoffWin(
+          @RequestBody IssueStipendRequest request, @RequestParam int round) {
+    return new StipendResultResponse(request.leagueId(), 0, 0, request.amount());
+  }
+
+  @PostMapping("/stipends/playoff-loss")
+  public StipendResultResponse playoffLoss(
+          @RequestBody IssueStipendRequest request, @RequestParam int round) {
+    return new StipendResultResponse(request.leagueId(), 0, 0, request.amount());
+  }
 }

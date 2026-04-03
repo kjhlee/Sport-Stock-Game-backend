@@ -2,7 +2,6 @@ package com.sportstock.common.dto.league;
 
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Future;
-import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -16,5 +15,4 @@ public record CreateLeagueRequest(
     @NotNull @Future OffsetDateTime seasonStartAt,
     @NotNull @Future OffsetDateTime seasonEndAt,
     @NotNull @DecimalMin(value = "0.0", inclusive = false) BigDecimal initialStipendAmount,
-    @NotNull @DecimalMin(value = "0.0", inclusive = false) BigDecimal weeklyStipendAmount,
-    @NotNull @Min(0) @Max(6) Short weeklyPayoutDowUtc) {}
+    @NotNull @DecimalMin(value = "0.0", inclusive = false) BigDecimal weeklyStipendAmount) {}

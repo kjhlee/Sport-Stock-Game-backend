@@ -41,7 +41,7 @@ public class Stock {
 
   @Enumerated(EnumType.STRING)
   @Column(name = "type", nullable = false, length = 20)
-  private StockType type = StockType.PLAYER;
+  private StockType type;
 
   @Column(name = "team_espn_id", length = 15)
   private String teamEspnId;

@@ -13,7 +13,7 @@ public record TransactionResponse(
         BigDecimal balanceAfter,
         Long leagueId,
         Long userId,
-        UUID referenceId,
+        String referenceId,
         String description,
         String idempotencyKey,
         BigDecimal pricePerShare,

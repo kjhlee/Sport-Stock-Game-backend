@@ -22,7 +22,7 @@ import com.sportstock.league.client.TransactionServiceClient;
 import com.sportstock.league.entity.League;
 import com.sportstock.league.entity.LeagueInvite;
 import com.sportstock.league.entity.LeagueMember;
-import com.sportstock.league.enums.LeagueStatus;
+import com.sportstock.common.enums.league.LeagueStatus;
 import com.sportstock.league.exception.InvalidInviteException;
 import com.sportstock.league.exception.LeagueAccessDeniedException;
 import com.sportstock.league.exception.LeagueNotFoundException;

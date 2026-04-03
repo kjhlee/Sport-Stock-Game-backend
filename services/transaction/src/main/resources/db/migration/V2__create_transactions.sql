@@ -13,10 +13,12 @@ CREATE TABLE transactions
     reference_id    VARCHAR(255),
     description     VARCHAR(512),
     idempotency_key VARCHAR(255),
+    price_per_share     NUMERIC(19, 4),
+    buy_transaction_id  BIGINT REFERENCES transactions(id),
     created_at      TIMESTAMPTZ    NOT NULL DEFAULT NOW(),
     CONSTRAINT ck_transactions_type CHECK (type IN (
                                                     'INITIAL_STIPEND', 'WEEKLY_STIPEND', 'STOCK_BUY', 'STOCK_SELL',
-                                                    'ADJUSTMENT', 'LIQUIDATE_ASSETS'
+                                                    'ADJUSTMENT', 'LIQUIDATE_ASSETS', 'MATCHUP_WIN', 'MATCHUP_LOSS', 'PLAYOFF_WIN', 'PLAYOFF_LOSS'
         ))
 );
 
@@ -28,3 +30,5 @@ CREATE INDEX idx_transactions_created_at ON transactions (created_at);
 CREATE INDEX idx_transactions_user_league ON transactions (user_id, league_id, created_at DESC);
 CREATE UNIQUE INDEX idx_transactions_idempotency_key ON transactions (idempotency_key)
     WHERE idempotency_key IS NOT NULL;
+CREATE INDEX idx_transactions_buy_tx_id ON transactions(buy_transaction_id)
+    WHERE buy_transaction_id IS NOT NULL;

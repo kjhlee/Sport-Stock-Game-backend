@@ -6,12 +6,13 @@ import com.sportstock.common.dto.league.JoinLeagueRequest;
 import com.sportstock.common.dto.league.LeagueInviteResponse;
 import com.sportstock.common.dto.league.LeagueMemberResponse;
 import com.sportstock.common.dto.league.LeagueResponse;
-import com.sportstock.common.dto.league.StipendEligibleLeagueResponse;
+import com.sportstock.common.enums.league.InitialStipendStatus;
+import com.sportstock.league.client.IngestionServiceClient;
 import com.sportstock.league.client.TransactionServiceClient;
 import com.sportstock.league.entity.League;
 import com.sportstock.league.entity.LeagueInvite;
 import com.sportstock.league.entity.LeagueMember;
-import com.sportstock.league.enums.LeagueStatus;
+import com.sportstock.common.enums.league.LeagueStatus;
 import com.sportstock.league.exception.InvalidInviteException;
 import com.sportstock.league.exception.LeagueAccessDeniedException;
 import com.sportstock.league.exception.LeagueNotFoundException;
@@ -41,6 +42,7 @@ public class LeagueService {
   private final LeagueMemberRepository leagueMemberRepository;
   private final LeagueInviteRepository leagueInviteRepository;
   private final TransactionServiceClient transactionServiceClient;
+  private final IngestionServiceClient ingestionServiceClient;
 
   @Transactional
   public LeagueResponse createLeague(Long userId, CreateLeagueRequest req) {
@@ -53,7 +55,6 @@ public class LeagueService {
     league.setStatus(LeagueStatus.INACTIVE);
     league.setInitialStipendAmount(req.initialStipendAmount());
     league.setWeeklyStipendAmount(req.weeklyStipendAmount());
-    league.setWeeklyPayoutDowUtc(req.weeklyPayoutDowUtc());
     leagueRepository.save(league);
 
     LeagueMember member = new LeagueMember();
@@ -176,13 +177,20 @@ public class LeagueService {
       throw new LeagueStateException("League must have at least 2 members to start");
     }
 
-    league.setStartedAt(OffsetDateTime.now());
-    league.setStatus(LeagueStatus.ACTIVE);
-
-    transactionServiceClient.issueInitialStipends(leagueId, league.getInitialStipendAmount());
-    league.setInitialStipendIssuedAt(OffsetDateTime.now());
-    leagueRepository.save(league);
+    if (ingestionServiceClient.isSeasonActive()) {
+      league.setStartedAt(OffsetDateTime.now());
+      league.setStatus(LeagueStatus.ACTIVE);
+      league.setInitialStipendStatus(InitialStipendStatus.ISSUED);
+      transactionServiceClient.issueInitialStipends(leagueId, league.getInitialStipendAmount());
+      league.setInitialStipendIssuedAt(OffsetDateTime.now());
+      leagueRepository.save(league);
+    }
+    else {
+      league.setInitialStipendStatus(InitialStipendStatus.PENDING);
+      log.info("NFL season has not started yet, league cannot start, and initial stipend is pending. League id {}", leagueId);
+    }
     return DtoMapper.toLeagueResponse(league, memberCount);
+
   }
 
   @Transactional
@@ -275,17 +283,27 @@ public class LeagueService {
   }
 
   @Transactional(readOnly = true)
-  public List<StipendEligibleLeagueResponse> getStipendEligibleLeagues(Short payoutDay) {
-    List<League> leagues =
-        leagueRepository.findByStatusAndStartedAtIsNotNullAndWeeklyPayoutDowUtcOrderByIdAsc(
-            LeagueStatus.ACTIVE, payoutDay);
-    return leagues.stream()
-        .map(
-            l ->
-                new StipendEligibleLeagueResponse(
-                    l.getId(), l.getWeeklyStipendAmount(), l.getInitialStipendIssuedAt()))
-        .toList();
+  public List<LeagueResponse> getLeaguesWithPendingStipend() {
+    return leagueRepository
+            .findByStatusAndInitialStipendStatus(LeagueStatus.INACTIVE, InitialStipendStatus.PENDING)
+            .stream()
+            .map(l -> DtoMapper.toLeagueResponse(l, leagueMemberRepository.countByLeagueId(l.getId())))
+            .toList();
   }
+  @Transactional
+  public void updateInitialStipendStatus(Long leagueId, String status) {
+    League league = findLeagueOrThrow(leagueId);
+    league.setInitialStipendStatus(InitialStipendStatus.valueOf(status));
+    leagueRepository.save(league);
+  }
+
+  @Transactional(readOnly = true)
+  public List<LeagueResponse> getActiveLeagues() {
+    return leagueRepository.findByStatus(LeagueStatus.ACTIVE).stream()
+            .map(l -> DtoMapper.toLeagueResponse(l, leagueMemberRepository.countByLeagueId(l.getId())))
+            .toList();
+  }
+
 
   private League findLeagueOrThrow(Long leagueId) {
     return leagueRepository

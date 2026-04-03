@@ -1,6 +1,8 @@
 package com.sportstock.stockmarket.service;
 
 import com.sportstock.common.dto.stock_market.IngestionAthleteDto;
+import com.sportstock.common.dto.stock_market.IngestionTeamDto;
+import com.sportstock.common.enums.stock_market.StockType;
 import com.sportstock.stockmarket.client.IngestionApiClient;
 import com.sportstock.stockmarket.config.PricingConfig;
 import com.sportstock.stockmarket.model.entity.Stock;
@@ -16,15 +18,15 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
-public class AthleteStockSyncService {
+public class StockSyncService {
 
-  private static final Set<String> SUPPORTED_POSITIONS = Set.of("QB", "RB", "WR", "TE", "K");
+  private static final Set<String> SUPPORTED_POSITIONS = Set.of("QB", "RB", "WR", "TE", "K", "DST");
 
   private final IngestionApiClient ingestionApiClient;
   private final StockRepository stockRepository;
   private final PricingConfig pricingConfig;
 
-  public AthleteStockSyncService(
+  public StockSyncService(
       IngestionApiClient ingestionApiClient,
       StockRepository stockRepository,
       PricingConfig pricingConfig) {
@@ -80,9 +82,9 @@ public class AthleteStockSyncService {
   }
 
   private boolean upsertStockFromAthlete(IngestionAthleteDto athlete, String normalizedPosition) {
-    String athleteEspnId = athlete.getEspnId();
+    String espnId = athlete.getEspnId();
 
-    Stock existing = stockRepository.findByAthleteEspnId(athleteEspnId).orElse(null);
+    Stock existing = stockRepository.findByEspnIdAndType(espnId, StockType.PLAYER).orElse(null);
 
     if (existing != null) {
       existing.setFullName(athlete.getFullName());
@@ -93,7 +95,8 @@ public class AthleteStockSyncService {
     }
 
     Stock stock = new Stock();
-    stock.setAthleteEspnId(athleteEspnId);
+    stock.setEspnId(espnId);
+    stock.setType(StockType.PLAYER);
     stock.setFullName(athlete.getFullName());
     stock.setPosition(normalizedPosition);
     stock.setTeamEspnId(athlete.getTeamEspnId());
@@ -102,6 +105,40 @@ public class AthleteStockSyncService {
 
     stockRepository.save(stock);
     return true;
+  }
+
+  @Transactional
+  public SyncAthletesResult syncTeamDefenseStocks() {
+    log.info("Syncing team defense stocks");
+    List<IngestionTeamDto> teams = ingestionApiClient.getTeams();
+
+    int created = 0;
+    int updated = 0;
+
+    for (IngestionTeamDto team : teams) {
+      String espnId = team.getEspnId();
+      Stock existing = stockRepository.findByEspnIdAndType(espnId, StockType.TEAM_DEFENSE).orElse(null);
+
+      if (existing != null) {
+        existing.setFullName(team.getDisplayName() + " D/ST");
+        existing.setTeamEspnId(espnId);
+        updated++;
+        continue;
+      }
+
+      Stock stock = new Stock();
+      stock.setEspnId(espnId);
+      stock.setType(StockType.TEAM_DEFENSE);
+      stock.setFullName(team.getDisplayName() + " D/ST");
+      stock.setPosition("DST");
+      stock.setTeamEspnId(espnId);
+      stock.setCurrentPrice(resolveInitialPrice("DST"));
+      stock.setStatus(StockStatus.ACTIVE);
+      stockRepository.save(stock);
+      created++;
+    }
+
+    return new SyncAthletesResult(created, updated, 0, teams.size());
   }
 
   /**
@@ -164,14 +201,14 @@ public class AthleteStockSyncService {
     String statusType = athlete.getStatusType();
 
     if (statusType == null || statusType.isBlank()) {
-      return StockStatus.ACTIVE;
+      return StockStatus.DELISTED;
     }
 
     String normalized = statusType.trim().toUpperCase();
 
     return switch (normalized) {
       case "ACTIVE" -> StockStatus.ACTIVE;
-      case "INACTIVE" -> StockStatus.INACTIVE;
+      case "DELISTED" -> StockStatus.DELISTED;
       default -> StockStatus.ACTIVE;
     };
   }

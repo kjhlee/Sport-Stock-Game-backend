@@ -62,6 +62,12 @@ public class Transaction {
   @Column(name = "idempotency_key")
   private String idempotencyKey;
 
+  @Column(name = "price_per_share", precision = 19, scale = 4)
+  private BigDecimal pricePerShare;
+
+  @Column(name = "buy_transaction_id")
+  private Long buyTransactionId;
+
   @Column(name = "created_at", nullable = false)
   private OffsetDateTime createdAt;
 
