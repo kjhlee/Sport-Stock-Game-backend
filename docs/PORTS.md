@@ -8,4 +8,4 @@
 | Transaction  | 8110 | `TRANSACTION_SERVICE_PORT`  | Spring Boot HTTP                  |
 | User Auth    | 8120 | `USER_AUTH_PORT`            | Spring Boot HTTP                  |
 | Stock Market | 8130 | `STOCK_MARKET_SERVICE_PORT` | Spring Boot HTTP                  |
-| Portfolio   | 8130  | `PORTFOLIO.`                | Spring Boot HTTP                  |
+| Portfolio   | 8140  | `PORTFOLIO.`                | Spring Boot HTTP                  |
