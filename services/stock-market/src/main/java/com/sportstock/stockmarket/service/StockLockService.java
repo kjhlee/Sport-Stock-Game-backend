@@ -1,5 +1,7 @@
 package com.sportstock.stockmarket.service;
 
+import com.sportstock.common.dto.stock_market.IngestionInjuryStatusDto;
+import com.sportstock.common.enums.stock_market.StockType;
 import com.sportstock.stockmarket.client.IngestionApiClient;
 import com.sportstock.stockmarket.repository.StockRepository;
 import java.util.ArrayList;
@@ -22,15 +24,22 @@ public class StockLockService {
     log.info("Locking players for event {}", eventEspnId);
 
     List<String> teamEspnIds = ingestionApiClient.getEventTeamEspnIds(eventEspnId);
-    List<String> allEspnIds = new ArrayList<>(teamEspnIds);
+    List<String> playerEspnIds = new ArrayList<>();
 
     for (String teamEspnId : teamEspnIds) {
       List<String> rosterEspnIds =
           ingestionApiClient.getEventRosterEspnIds(eventEspnId, teamEspnId);
-      allEspnIds.addAll(rosterEspnIds);
+      playerEspnIds.addAll(rosterEspnIds);
     }
 
-    int locked = stockRepository.lockByEspnIds(allEspnIds);
+    int locked = 0;
+    if (!teamEspnIds.isEmpty()) {
+      locked += stockRepository.lockByEspnIdsAndType(teamEspnIds, StockType.TEAM_DEFENSE);
+    }
+    if (!playerEspnIds.isEmpty()) {
+      locked += stockRepository.lockByEspnIdsAndType(playerEspnIds, StockType.PLAYER);
+    }
+
     log.info("Locked {} stocks for event {}", locked, eventEspnId);
     return locked;
   }
@@ -43,11 +52,20 @@ public class StockLockService {
   }
 
   @Transactional
-  public InjurySyncResult syncInjuryStatuses() {
-    // TODO: implement full injury sync
-    log.info("Syncing injury statuses -- stub implementation");
-    // Full implementation depends on ingestion exposing injury data endpoint
-    return new InjurySyncResult(0, 0, 0);
+  public InjurySyncResult syncInjuryStatuses(int seasonYear) {
+    log.info("Syncing injury statuses for season {}", seasonYear);
+
+    List<String> injuredEspnIds =
+        ingestionApiClient.getInjuredAthletes(seasonYear).stream()
+            .map(IngestionInjuryStatusDto::athleteEspnId)
+            .distinct()
+            .toList();
+
+    int unlocked = stockRepository.clearAllPlayerInjuryLocks();
+    int locked =
+        injuredEspnIds.isEmpty() ? 0 : stockRepository.setInjuryLockedByEspnIds(injuredEspnIds);
+
+    return new InjurySyncResult(locked, unlocked, 0);
   }
 
   public record InjurySyncResult(int locked, int unlocked, int unchanged) {}

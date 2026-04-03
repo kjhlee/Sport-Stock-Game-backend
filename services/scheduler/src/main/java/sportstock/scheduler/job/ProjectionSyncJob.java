@@ -1,0 +1,79 @@
+package sportstock.scheduler.job;
+
+import com.sportstock.common.dto.ingestion.CurrentWeekResponse;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+import sportstock.scheduler.client.IngestionClient;
+import sportstock.scheduler.client.StockMarketClient;
+
+@Slf4j
+@Component
+@RequiredArgsConstructor
+public class ProjectionSyncJob {
+
+    private static final int FULL_ROSTER_LIMIT = 500;
+
+    private final IngestionClient ingestionClient;
+    private final StockMarketClient stockMarketClient;
+
+    @Scheduled(cron = "${scheduler.projection-sync.cron}")
+    public void run() {
+        log.info("ProjectionSyncJob started");
+
+        if (!ingestionClient.isSeasonActive()) {
+            log.info("Season not active, skipping projection sync");
+            return;
+        }
+
+        CurrentWeekResponse week = ingestionClient.getCurrentWeek();
+        int seasonYear = week.seasonYear();
+        int seasonType = Integer.parseInt(week.seasonType());
+        int weekNumber = week.week();
+
+        log.info("Syncing projections for {}/{} week {}", seasonYear, seasonType, weekNumber);
+
+        try {
+            ingestionClient.syncRosters(seasonYear, FULL_ROSTER_LIMIT);
+            log.info("Refreshed rosters before injury sync");
+        } catch (Exception e) {
+            log.error("Failed to refresh rosters: {}", e.getMessage());
+        }
+
+        try {
+            stockMarketClient.syncAthletes(null);
+            log.info("Synced athlete universe");
+        } catch (Exception e) {
+            log.error("Failed to sync athletes: {}", e.getMessage());
+        }
+
+        try {
+            stockMarketClient.syncInjuries(seasonYear);
+            log.info("Synced injuries");
+        } catch (Exception e) {
+            log.error("Failed to sync injuries: {}", e.getMessage());
+        }
+
+        boolean projectionsSynced = false;
+        try {
+            ingestionClient.syncProjections(seasonYear, seasonType, weekNumber);
+            projectionsSynced = true;
+        } catch (Exception e) {
+            log.error("Failed to sync projections: {}", e.getMessage());
+        }
+
+        if (projectionsSynced) {
+            try {
+                stockMarketClient.updateProjectedPrices(seasonYear, seasonType, weekNumber);
+                log.info("Updated projected prices");
+            } catch (Exception e) {
+                log.error("Failed to update projected prices: {}", e.getMessage());
+            }
+        } else {
+            log.warn("Skipping projected price update because projection sync failed");
+        }
+
+        log.info("ProjectionSyncJob completed");
+    }
+}

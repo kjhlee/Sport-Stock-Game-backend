@@ -1,6 +1,7 @@
 package com.sportstock.ingestion.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.sportstock.common.dto.stock_market.IngestionInjuryStatusDto;
 import com.sportstock.ingestion.client.EspnApiClient;
 import com.sportstock.ingestion.entity.Athlete;
 import com.sportstock.ingestion.entity.Coach;
@@ -210,5 +211,18 @@ public class RosterIngestionService {
       }
     }
     log.info("Ingested rosters for {} teams ({} failed)", success, failed);
+  }
+
+  @Transactional(readOnly = true)
+  public List<IngestionInjuryStatusDto> listInjuredAthletes(Integer seasonYear) {
+    return teamRosterEntryRepository.findInjuredBySeasonYear(seasonYear).stream()
+        .map(
+            entry ->
+                new IngestionInjuryStatusDto(
+                    entry.getAthlete().getEspnId(),
+                    entry.getTeam().getEspnId(),
+                    entry.getInjuryStatus(),
+                    entry.getStatusType()))
+        .toList();
   }
 }

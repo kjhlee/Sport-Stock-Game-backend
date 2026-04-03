@@ -46,12 +46,14 @@ public interface FantasySnapshotRepository extends JpaRepository<FantasySnapshot
       SELECT fs FROM FantasySnapshot fs
       JOIN fs.event e
       WHERE fs.espnId = :espnId
+        AND fs.subjectType = :subjectType
         AND e.seasonYear = :seasonYear
         AND e.seasonType = :seasonType
         AND e.weekNumber = :weekNumber
       """)
-  Optional<FantasySnapshot> findByEspnIdAndWeek(
+  Optional<FantasySnapshot> findByEspnIdAndSubjectTypeAndWeek(
       @Param("espnId") String espnId,
+      @Param("subjectType") String subjectType,
       @Param("seasonYear") int seasonYear,
       @Param("seasonType") int seasonType,
       @Param("weekNumber") int weekNumber);

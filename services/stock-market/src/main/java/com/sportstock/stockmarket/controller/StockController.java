@@ -109,7 +109,7 @@ public class StockController {
   }
 
   @PostMapping("/sync-injuries")
-  public StockLockService.InjurySyncResult syncInjuries() {
-    return stockLockService.syncInjuryStatuses();
+  public StockLockService.InjurySyncResult syncInjuries(@RequestParam int seasonYear) {
+    return stockLockService.syncInjuryStatuses(seasonYear);
   }
 }

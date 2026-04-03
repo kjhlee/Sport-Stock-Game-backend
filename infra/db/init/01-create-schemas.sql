@@ -3,6 +3,7 @@ CREATE SCHEMA IF NOT EXISTS market;
 CREATE SCHEMA IF NOT EXISTS users;
 CREATE SCHEMA IF NOT EXISTS league;
 CREATE SCHEMA IF NOT EXISTS transaction;
+CREATE SCHEMA IF NOT EXISTS scheduler;
 
 
 GRANT ALL ON SCHEMA ingestion TO sportstock;
@@ -10,3 +11,4 @@ GRANT ALL ON SCHEMA market TO sportstock;
 GRANT ALL ON SCHEMA users TO sportstock;
 GRANT ALL ON SCHEMA league TO sportstock;
 GRANT ALL ON SCHEMA transaction TO sportstock;
+GRANT ALL ON SCHEMA scheduler TO sportstock;
