@@ -179,7 +179,8 @@ public class LeagueService {
 
     var currentWeek = ingestionServiceClient.getCurrentWeekOrPreseasonOptional();
     if (currentWeek == null || "2".equals(currentWeek.seasonType())) {
-      throw new LeagueStateException("League cannot be started during the NFL offseason or postseason");
+      throw new LeagueStateException(
+          "League cannot be started during the NFL offseason or postseason");
     }
 
     league.setStartedAt(OffsetDateTime.now());
