@@ -13,7 +13,7 @@ import sportstock.scheduler.client.StockMarketClient;
 @RequiredArgsConstructor
 public class ProjectionSyncJob {
 
-    private static final int FULL_ROSTER_LIMIT = 500;
+    private static final int STALE_ROSTER_HOURS = 6;
 
     private final IngestionClient ingestionClient;
     private final StockMarketClient stockMarketClient;
@@ -35,8 +35,8 @@ public class ProjectionSyncJob {
         log.info("Syncing projections for {}/{} week {}", seasonYear, seasonType, weekNumber);
 
         try {
-            ingestionClient.syncRosters(seasonYear, FULL_ROSTER_LIMIT);
-            log.info("Refreshed rosters before injury sync");
+            ingestionClient.syncStaleRosters(seasonYear, STALE_ROSTER_HOURS);
+            log.info("Refreshed stale rosters before injury sync");
         } catch (Exception e) {
             log.error("Failed to refresh rosters: {}", e.getMessage());
         }

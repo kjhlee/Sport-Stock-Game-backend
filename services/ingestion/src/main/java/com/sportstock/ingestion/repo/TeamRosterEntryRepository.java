@@ -4,7 +4,9 @@ import com.sportstock.ingestion.entity.TeamRosterEntry;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.data.repository.query.Param;
 
 public interface TeamRosterEntryRepository extends JpaRepository<TeamRosterEntry, Long> {
@@ -15,6 +17,19 @@ public interface TeamRosterEntryRepository extends JpaRepository<TeamRosterEntry
   List<TeamRosterEntry> findByTeamEspnIdAndSeasonYear(String espnTeamId, Integer seasonYear);
 
   List<TeamRosterEntry> findByAthleteIdAndSeasonYear(Long athleteId, Integer seasonYear);
+
+  @Modifying
+  @Query(
+      """
+      DELETE FROM TeamRosterEntry tre
+      WHERE tre.team.id = :teamId
+        AND tre.seasonYear = :seasonYear
+        AND tre.athlete.espnId NOT IN :athleteEspnIds
+      """)
+  int deleteMissingByTeamAndSeasonYear(
+      @Param("teamId") Long teamId,
+      @Param("seasonYear") Integer seasonYear,
+      @Param("athleteEspnIds") List<String> athleteEspnIds);
 
   @Query(
       """

@@ -182,7 +182,10 @@ public class GameDayPollingJob {
 
             log.info("Finalized event {}", espnId);
         } catch (Exception e) {
-            log.error("Failed to finalize event {}: {}", espnId, e.getMessage());
+            log.error(
+                    "Failed to finalize event {} after fresh final ingestion; leaving retryable: {}",
+                    espnId,
+                    e.getMessage());
         }
     }
 

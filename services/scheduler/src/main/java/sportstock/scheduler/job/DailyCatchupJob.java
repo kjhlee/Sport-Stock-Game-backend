@@ -16,7 +16,7 @@ import sportstock.scheduler.client.IngestionClient;
 @RequiredArgsConstructor
 public class DailyCatchupJob {
 
-    private static final int FULL_ROSTER_LIMIT = 500;
+    private static final int STALE_ROSTER_HOURS = 24;
 
     private final IngestionClient ingestionClient;
 
@@ -63,7 +63,7 @@ public class DailyCatchupJob {
         }
 
         try {
-            ingestionClient.syncRosters(seasonYear, FULL_ROSTER_LIMIT);
+            ingestionClient.syncStaleRosters(seasonYear, STALE_ROSTER_HOURS);
         } catch (Exception e) {
             log.warn("Failed to refresh rosters during daily catchup: {}", e.getMessage());
         }

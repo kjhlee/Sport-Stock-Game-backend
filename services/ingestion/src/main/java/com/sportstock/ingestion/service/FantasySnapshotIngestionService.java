@@ -151,13 +151,6 @@ public class FantasySnapshotIngestionService {
             .findByEspnId(eventEspnId)
             .orElseThrow(() -> new RuntimeException("Event not found: " + eventEspnId));
 
-    List<FantasySnapshot> snapshots =
-        fantasySnapshotRepository.findIncompleteByEventEspnId(eventEspnId);
-
-    if (snapshots.isEmpty()) {
-      return new IngestResult(0, 0, 0);
-    }
-
     List<Integer> teamIds =
         eventCompetitorRepository.findByEventId(event.getId()).stream()
             .map(ec -> Integer.parseInt(ec.getTeam().getEspnId()))
@@ -170,34 +163,68 @@ public class FantasySnapshotIngestionService {
       return new IngestResult(0, 0, 0);
     }
 
-    Map<String, JsonNode> playersByEspnId = new HashMap<>();
+    Map<String, FantasySnapshot> existingSnapshots = new HashMap<>();
+    for (FantasySnapshot snapshot : fantasySnapshotRepository.findByEventId(event.getId())) {
+      existingSnapshots.put(snapshot.getSubjectType() + ":" + snapshot.getEspnId(), snapshot);
+    }
+
+    int updated = 0;
+    int skipped = 0;
+    List<FantasySnapshot> toSave = new ArrayList<>();
+
     for (JsonNode playerNode : root) {
       boolean isDst = FantasySnapshotMapper.isTeamDefense(playerNode);
+      String subjectType = isDst ? "TEAM_DEFENSE" : "PLAYER";
       String espnId =
           isDst
               ? FantasySnapshotMapper.extractProTeamId(playerNode)
               : FantasySnapshotMapper.extractPlayerId(playerNode);
-      playersByEspnId.put(espnId, playerNode);
-    }
+      String key = subjectType + ":" + espnId;
 
-    int updated = 0;
-    List<FantasySnapshot> toSave = new ArrayList<>();
-    for (FantasySnapshot snapshot : snapshots) {
-      JsonNode playerNode = playersByEspnId.get(snapshot.getEspnId());
-      if (playerNode == null) {
-        continue;
-      }
+      FantasySnapshot snapshot =
+          existingSnapshots.computeIfAbsent(
+              key,
+              k -> {
+                FantasySnapshot fs = new FantasySnapshot();
+                fs.setEvent(event);
+                fs.setSubjectType(subjectType);
+                fs.setEspnId(espnId);
+                return fs;
+              });
+
+      snapshot.setFullName(FantasySnapshotMapper.extractFullName(playerNode));
+      snapshot.setProjectedFantasyPoints(
+          FantasySnapshotMapper.extractProjectedFantasyPoints(playerNode, event.getWeekNumber()));
+      snapshot.setProjectedStats(
+          FantasySnapshotMapper.extractProjectedStatsJson(playerNode, event.getWeekNumber()));
+
       BigDecimal actualFp =
           FantasySnapshotMapper.extractActualFantasyPoints(playerNode, event.getWeekNumber());
       if (actualFp != null) {
         snapshot.setActualFantasyPoints(actualFp);
-        toSave.add(snapshot);
         updated++;
+      } else {
+        skipped++;
       }
+
+      toSave.add(snapshot);
     }
 
     fantasySnapshotRepository.saveAll(toSave);
-    return new IngestResult(updated, 0, 0);
+
+    if (updated == 0) {
+      throw new IllegalStateException(
+          "Final actual fantasy ingestion produced no usable actual points for event "
+              + eventEspnId);
+    }
+
+    log.info(
+        "Final actual fantasy ingestion for event {} refreshed {} subjects ({} without actual points)",
+        eventEspnId,
+        updated,
+        skipped);
+
+    return new IngestResult(updated, skipped, 0);
   }
 
   @Transactional
