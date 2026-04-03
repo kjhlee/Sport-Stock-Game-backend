@@ -20,7 +20,7 @@ public class StockMarketServiceClient {
     try {
       return stockMarketRestClient
           .get()
-          .uri("/api/v1/stocks/{stockId}", stockId)
+          .uri("/api/internal/stocks/{stockId}", stockId)
           .retrieve()
           .body(StockResponse.class);
     } catch (RestClientResponseException e) {

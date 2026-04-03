@@ -78,6 +78,7 @@ class WalletServiceTest {
             txManager,
             leagueServiceClient,
             stockMarketServiceClient);
+    when(leagueServiceClient.getMemberUserIdsInternal(TEST_LEAGUE_ID)).thenReturn(List.of(TEST_USER_ID));
   }
 
   @Nested
@@ -203,7 +204,7 @@ class WalletServiceTest {
       when(walletRepository.findAllByLeagueId(TEST_LEAGUE_ID)).thenReturn(wallets);
 
       // When
-      List<WalletResponse> responses = walletService.getLeagueWallets(TEST_LEAGUE_ID);
+      List<WalletResponse> responses = walletService.getLeagueWallets(TEST_USER_ID, TEST_LEAGUE_ID);
 
       // Then
       assertThat(responses).hasSize(3);
@@ -222,7 +223,7 @@ class WalletServiceTest {
       when(walletRepository.findAllByLeagueId(TEST_LEAGUE_ID)).thenReturn(List.of());
 
       // When
-      List<WalletResponse> responses = walletService.getLeagueWallets(TEST_LEAGUE_ID);
+      List<WalletResponse> responses = walletService.getLeagueWallets(TEST_USER_ID, TEST_LEAGUE_ID);
 
       // Then
       assertThat(responses).isEmpty();

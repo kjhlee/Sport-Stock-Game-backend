@@ -19,7 +19,7 @@ public class SecurityConfig {
         .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(
             auth ->
-                auth.requestMatchers("/api/v1/leagues/internal/**")
+                auth.requestMatchers("/api/internal/**")
                     .permitAll()
                     .anyRequest()
                     .authenticated())

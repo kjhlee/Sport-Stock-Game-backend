@@ -14,8 +14,8 @@ Spring Boot service that manages player stocks, pricing, and price history for t
 | `GET`  | `/api/v1/stocks`                         | List stocks (paginated)                         |
 | `GET`  | `/api/v1/stocks/{stockId}`               | Get a single stock by ID                        |
 | `GET`  | `/api/v1/stocks/{stockId}/price-history` | Get week-by-week price history for a stock      |
-| `POST` | `/api/v1/stocks/sync-athletes`           | Sync player stocks from the ingestion service   |
-| `POST` | `/api/v1/stocks/update-prices`           | Update prices for a given week using game stats |
+| `POST` | `/api/internal/stocks/sync-athletes`     | Sync player stocks from the ingestion service   |
+| `POST` | `/api/internal/stocks/update-projected-prices` | Update projected prices for a given week |
 
 ---
 
@@ -61,7 +61,7 @@ curl "http://localhost:8130/api/v1/stocks/<uuid>/price-history?seasonYear=2024&s
 
 ---
 
-### `POST /api/v1/stocks/sync-athletes`
+### `POST /api/internal/stocks/sync-athletes`
 
 Pulls athletes from the ingestion service and creates/updates `PlayerStock` records. Assigns base prices by position on first creation.
 
@@ -73,15 +73,15 @@ Query params:
 
 ```bash
 # sync all positions
-curl -X POST "http://localhost:8130/api/v1/stocks/sync-athletes"
+curl -X POST "http://localhost:8130/api/internal/stocks/sync-athletes"
 
 # sync QBs only
-curl -X POST "http://localhost:8130/api/v1/stocks/sync-athletes?position=QB"
+curl -X POST "http://localhost:8130/api/internal/stocks/sync-athletes?position=QB"
 ```
 
 ---
 
-### `POST /api/v1/stocks/update-prices`
+### `POST /api/internal/stocks/update-projected-prices`
 
 Fetches completed game stats from ingestion for the given week, computes a fantasy-points-based performance score per player, applies exponential smoothing to their current price, and saves a `PriceHistory` record.
 
@@ -98,7 +98,7 @@ Query params:
 | `weekNumber` | Yes      | Week number within the season                    |
 
 ```bash
-curl -X POST "http://localhost:8130/api/v1/stocks/update-prices?seasonYear=2024&seasonType=2&weekNumber=1"
+curl -X POST "http://localhost:8130/api/internal/stocks/update-projected-prices?seasonYear=2024&seasonType=2&weekNumber=1"
 ```
 
 ---
@@ -141,10 +141,10 @@ mvn -f services/stock-market/pom.xml spring-boot:run
 Pull teams, rosters, and the NFL 2024 regular season week 1 schedule:
 
 ```bash
-curl -X POST "http://localhost:8090/api/v1/ingestion/sync/teams"
-curl -X POST "http://localhost:8090/api/v1/ingestion/sync/teams/details?seasonYear=2024"
-curl -X POST "http://localhost:8090/api/v1/ingestion/sync/rosters?seasonYear=2024&rosterLimit=500"
-curl -X POST "http://localhost:8090/api/v1/ingestion/sync/scoreboard?seasonYear=2024&seasonType=2&week=1"
+curl -X POST "http://localhost:8090/api/internal/ingestion/sync/teams"
+curl -X POST "http://localhost:8090/api/internal/ingestion/sync/teams/details?seasonYear=2024"
+curl -X POST "http://localhost:8090/api/internal/ingestion/sync/rosters?seasonYear=2024&rosterLimit=500"
+curl -X POST "http://localhost:8090/api/internal/ingestion/sync/scoreboard?seasonYear=2024&seasonType=2&week=1"
 ```
 
 ### Step 3 — Sync player stocks
@@ -152,7 +152,7 @@ curl -X POST "http://localhost:8090/api/v1/ingestion/sync/scoreboard?seasonYear=
 Creates a `PlayerStock` record for every athlete in ingestion. Run this once (or again after a new roster sync):
 
 ```bash
-curl -X POST "http://localhost:8130/api/v1/stocks/sync-athletes"
+curl -X POST "http://localhost:8130/api/internal/stocks/sync-athletes"
 ```
 
 Example response:
@@ -170,7 +170,7 @@ Example response:
 Fetches completed game stats from ingestion, computes a performance score per player, and writes a `PriceHistory` record. Safe to call multiple times for the same week — it will update the existing record rather than insert a duplicate.
 
 ```bash
-curl -X POST "http://localhost:8130/api/v1/stocks/update-prices?seasonYear=2024&seasonType=2&weekNumber=1"
+curl -X POST "http://localhost:8130/api/internal/stocks/update-projected-prices?seasonYear=2024&seasonType=2&weekNumber=1"
 ```
 
 Example response:
@@ -186,8 +186,8 @@ Example response:
 Repeat for additional weeks to build up history:
 
 ```bash
-curl -X POST "http://localhost:8130/api/v1/stocks/update-prices?seasonYear=2024&seasonType=2&weekNumber=2"
-curl -X POST "http://localhost:8130/api/v1/stocks/update-prices?seasonYear=2024&seasonType=2&weekNumber=3"
+curl -X POST "http://localhost:8130/api/internal/stocks/update-projected-prices?seasonYear=2024&seasonType=2&weekNumber=2"
+curl -X POST "http://localhost:8130/api/internal/stocks/update-projected-prices?seasonYear=2024&seasonType=2&weekNumber=3"
 ```
 
 ### Step 5 — Browse stocks

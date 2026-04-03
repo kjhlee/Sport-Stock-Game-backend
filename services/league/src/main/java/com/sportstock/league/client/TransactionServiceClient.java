@@ -51,7 +51,7 @@ public class TransactionServiceClient {
 
       return transactionRestClient
           .post()
-          .uri("/api/v1/wallets/stipends/initial")
+          .uri("/api/internal/wallets/stipends/initial")
           .body(new IssueStipendRequest(leagueId, amount, userIds))
           .retrieve()
           .body(StipendResultResponse.class);

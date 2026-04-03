@@ -15,4 +15,11 @@ public record CreateLeagueRequest(
     @NotNull @Future OffsetDateTime seasonStartAt,
     @NotNull @Future OffsetDateTime seasonEndAt,
     @NotNull @DecimalMin(value = "0.0", inclusive = false) BigDecimal initialStipendAmount,
-    @NotNull @DecimalMin(value = "0.0", inclusive = false) BigDecimal weeklyStipendAmount) {}
+    @NotNull @DecimalMin(value = "0.0", inclusive = false) BigDecimal weeklyStipendAmount) {
+
+  public CreateLeagueRequest {
+    if (seasonStartAt != null && seasonEndAt != null && !seasonEndAt.isAfter(seasonStartAt)) {
+      throw new IllegalArgumentException("seasonEndAt must be after seasonStartAt");
+    }
+  }
+}

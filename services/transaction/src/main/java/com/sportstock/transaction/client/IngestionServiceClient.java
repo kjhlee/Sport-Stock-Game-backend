@@ -19,7 +19,7 @@ public class IngestionServiceClient {
     try {
       return ingestionRestClient
           .get()
-          .uri("/api/v1/ingestion/seasons/current-week")
+          .uri("/api/internal/ingestion/seasons/current-week")
           .retrieve()
           .body(CurrentWeekResponse.class);
     } catch (RestClientResponseException e) {

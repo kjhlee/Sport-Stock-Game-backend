@@ -31,7 +31,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @Validated
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/ingestion")
+@RequestMapping("/api/internal/ingestion")
 public class EventIngestionController {
 
   private static final String ESPN_ID_PATTERN = "\\d{1,15}";

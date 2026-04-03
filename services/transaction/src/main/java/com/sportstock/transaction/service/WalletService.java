@@ -13,6 +13,7 @@ import com.sportstock.transaction.enums.TransactionType;
 import com.sportstock.transaction.exception.InsufficientFundsException;
 import com.sportstock.transaction.exception.InvalidTradeRequestException;
 import com.sportstock.transaction.exception.StockNotActiveException;
+import com.sportstock.transaction.exception.TransactionAccessDeniedException;
 import com.sportstock.transaction.exception.WalletAlreadyExistsException;
 import com.sportstock.transaction.exception.WalletNotFoundException;
 import com.sportstock.transaction.mapper.DtoMapper;
@@ -57,6 +58,7 @@ public class WalletService {
 
   @Transactional
   public WalletResponse createWallet(Long userId, Long leagueId) {
+    verifyLeagueMembership(userId, leagueId);
     if (walletRepository.existsByUserIdAndLeagueId(userId, leagueId)) {
       throw new WalletAlreadyExistsException(userId, leagueId);
     }
@@ -159,6 +161,7 @@ public class WalletService {
 
   public TransactionResponse processStockBuy(
       Long userId, Long leagueId, StockTransactionRequest request) {
+    verifyLeagueMembership(userId, leagueId);
     validateTradeRequest(request);
     StockResponse stock = stockMarketServiceClient.getStock(request.stockId());
     validateStockActive(stock);
@@ -234,6 +237,7 @@ public class WalletService {
 
   public TransactionResponse processStockSell(
       Long userId, Long leagueId, StockTransactionRequest request) {
+    verifyLeagueMembership(userId, leagueId);
     validateTradeRequest(request);
     StockResponse stock = stockMarketServiceClient.getStock(request.stockId());
     validateStockActive(stock);
@@ -352,6 +356,7 @@ public class WalletService {
 
   @Transactional(readOnly = true)
   public WalletResponse getWallet(Long userId, Long leagueId) {
+    verifyLeagueMembership(userId, leagueId);
     return DtoMapper.toWalletResponse(
         walletRepository
             .findByUserIdAndLeagueId(userId, leagueId)
@@ -362,13 +367,15 @@ public class WalletService {
   @Transactional(readOnly = true)
   public Page<TransactionResponse> getTransactionHistory(
       Long userId, Long leagueId, Pageable pageable) {
+    verifyLeagueMembership(userId, leagueId);
     return transactionRepository
         .findByUserIdAndLeagueIdOrderByCreatedAtDesc(userId, leagueId, pageable)
         .map(DtoMapper::toTransactionResponse);
   }
 
   @Transactional(readOnly = true)
-  public List<WalletResponse> getLeagueWallets(Long leagueId) {
+  public List<WalletResponse> getLeagueWallets(Long userId, Long leagueId) {
+    verifyLeagueMembership(userId, leagueId);
     return walletRepository.findAllByLeagueId(leagueId).stream()
         .map(DtoMapper::toWalletResponse)
         .toList();
@@ -502,5 +509,14 @@ public class WalletService {
   public StipendResultResponse liquidateAssets(Long leagueId, int weekNumber) {
     // TODO: Implement liquidation logic
     return new StipendResultResponse(leagueId, 0, 0, BigDecimal.ZERO);
+  }
+
+  private void verifyLeagueMembership(Long userId, Long leagueId) {
+    boolean isMember =
+        leagueServiceClient.getMemberUserIdsInternal(leagueId).stream().anyMatch(userId::equals);
+    if (!isMember) {
+      throw new TransactionAccessDeniedException(
+          "User is not a member of league " + leagueId);
+    }
   }
 }

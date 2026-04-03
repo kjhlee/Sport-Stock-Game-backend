@@ -20,7 +20,7 @@ public class LeagueServiceClient {
     try {
       return leagueRestClient
           .get()
-          .uri("/api/v1/leagues/internal/{leagueId}/member-ids", leagueId)
+          .uri("/api/internal/leagues/{leagueId}/member-ids", leagueId)
           .retrieve()
           .body(new ParameterizedTypeReference<>() {});
     } catch (RestClientResponseException e) {
