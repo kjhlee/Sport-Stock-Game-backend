@@ -71,6 +71,12 @@ public class EventIngestionController {
     return ResponseEntity.ok(eventIngestionService.listEvents(seasonYear, seasonType, weekNumber));
   }
 
+  @GetMapping("/events/{eventEspnId}")
+  public ResponseEntity<IngestionEventDto> getEvent(
+      @PathVariable @NotBlank @Pattern(regexp = ESPN_ID_PATTERN) String eventEspnId) {
+    return ResponseEntity.ok(eventIngestionService.getEventByEspnId(eventEspnId));
+  }
+
   @GetMapping("/events/{eventEspnId}/team-stats")
   public ResponseEntity<List<BoxscoreTeamStatResponse>> getEventTeamStats(
       @PathVariable @NotBlank @Pattern(regexp = ESPN_ID_PATTERN) String eventEspnId) {
