@@ -11,6 +11,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -64,6 +65,15 @@ public class TeamIngestionController {
           List<@Pattern(regexp = ESPN_ID_PATTERN) String> teamEspnIds) {
     rosterIngestionService.ingestAllRosters(seasonYear, rosterLimit, teamEspnIds);
     return ResponseEntity.accepted().body(accepted("rostersSync"));
+  }
+
+  @PostMapping("/sync/rosters/stale")
+  public ResponseEntity<Map<String, Object>> syncStaleRosters(
+      @RequestParam @Min(2000) @Max(2100) Integer seasonYear,
+      @RequestParam(defaultValue = "24") @Min(1) @Max(168) Integer staleHours) {
+    rosterIngestionService.ingestRostersNeedingSync(
+        seasonYear, Instant.now().minus(staleHours, ChronoUnit.HOURS));
+    return ResponseEntity.accepted().body(accepted("staleRostersSync"));
   }
 
   @GetMapping("/teams")

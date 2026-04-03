@@ -90,6 +90,21 @@ public class IngestionClient {
         log.info("Synced rosters for season {} with rosterLimit {}", seasonYear, rosterLimit);
     }
 
+    public void syncStaleRosters(int seasonYear, int staleHours) {
+        restClient
+                .post()
+                .uri(
+                        uriBuilder ->
+                                uriBuilder
+                                        .path("/sync/rosters/stale")
+                                        .queryParam("seasonYear", seasonYear)
+                                        .queryParam("staleHours", staleHours)
+                                        .build())
+                .retrieve()
+                .toBodilessEntity();
+        log.info("Synced stale rosters for season {} with staleHours {}", seasonYear, staleHours);
+    }
+
     public void syncEventSummary(String eventEspnId) {
         restClient
                 .post()

@@ -18,7 +18,9 @@ import com.sportstock.ingestion.repo.TeamRosterEntryRepository;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -79,6 +81,8 @@ public class RosterIngestionService {
     }
 
     int count = 0;
+    boolean hitRosterLimit = false;
+    Set<String> seenAthleteEspnIds = new HashSet<>();
     for (JsonNode group : athleteGroups) {
       String rosterGroup = group.path("position").asText("unknown");
       JsonNode items = group.path("items");
@@ -88,9 +92,11 @@ public class RosterIngestionService {
 
       for (JsonNode athleteNode : items) {
         if (rosterLimit != null && count >= rosterLimit) {
+          hitRosterLimit = true;
           break;
         }
 
+        seenAthleteEspnIds.add(athleteNode.path("id").asText());
         Athlete athlete = upsertAthlete(athleteNode);
 
         TeamRosterEntry entry =
@@ -103,6 +109,7 @@ public class RosterIngestionService {
         count++;
       }
       if (rosterLimit != null && count >= rosterLimit) {
+        hitRosterLimit = true;
         break;
       }
     }
@@ -111,9 +118,11 @@ public class RosterIngestionService {
     if (seasonYearValue == 0) {
       seasonYearValue = seasonYear;
     }
+    Set<String> seenCoachEspnIds = new HashSet<>();
     if (coachArray.isArray()) {
       for (JsonNode coachNode : coachArray) {
         String coachEspnId = coachNode.path("id").asText();
+        seenCoachEspnIds.add(coachEspnId);
         Coach coach =
             coachRepository
                 .findByEspnIdAndTeamIdAndSeasonYear(coachEspnId, team.getId(), seasonYearValue)
@@ -121,6 +130,40 @@ public class RosterIngestionService {
         AthleteMapper.applyCoachFields(coachNode, coach, team, seasonYearValue);
         coachRepository.save(coach);
       }
+    }
+
+    // Only prune when we know we ingested the full upstream roster rather than a capped subset.
+    if (!hitRosterLimit) {
+      if (!seenAthleteEspnIds.isEmpty()) {
+        int deletedRosterEntries =
+            teamRosterEntryRepository.deleteMissingByTeamAndSeasonYear(
+                team.getId(), seasonYear, List.copyOf(seenAthleteEspnIds));
+        if (deletedRosterEntries > 0) {
+          log.info(
+              "Pruned {} stale roster entries for team {} ({})",
+              deletedRosterEntries,
+              team.getDisplayName(),
+              teamEspnId);
+        }
+      }
+      if (!seenCoachEspnIds.isEmpty()) {
+        int deletedCoaches =
+            coachRepository.deleteMissingByTeamAndSeasonYear(
+                team.getId(), seasonYearValue, List.copyOf(seenCoachEspnIds));
+        if (deletedCoaches > 0) {
+          log.info(
+              "Pruned {} stale coaches for team {} ({})",
+              deletedCoaches,
+              team.getDisplayName(),
+              teamEspnId);
+        }
+      }
+    } else {
+      log.info(
+          "Skipped stale roster pruning for team {} ({}) because rosterLimit={} truncated the sync",
+          team.getDisplayName(),
+          teamEspnId,
+          rosterLimit);
     }
 
     log.info(
