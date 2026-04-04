@@ -82,43 +82,18 @@ public class FantasySnapshotIngestionService {
 
       for (JsonNode playerNode : root) {
         try {
-          boolean isDst = FantasySnapshotMapper.isTeamDefense(playerNode);
-          String subjectType = isDst ? "TEAM_DEFENSE" : "PLAYER";
-          String espnId =
-              isDst
-                  ? FantasySnapshotMapper.extractProTeamId(playerNode)
-                  : FantasySnapshotMapper.extractPlayerId(playerNode);
-          String fullName = FantasySnapshotMapper.extractFullName(playerNode);
-
-          BigDecimal projectedFp =
-              FantasySnapshotMapper.extractProjectedFantasyPoints(playerNode, weekNumber);
-          String projectedStatsJson =
-              FantasySnapshotMapper.extractProjectedStatsJson(playerNode, weekNumber);
-
-          if (projectedFp == null) {
+          FantasySnapshot snapshot =
+              buildSnapshotFromPlayerNode(playerNode, existingSnapshots, event, weekNumber);
+          if (snapshot == null || snapshot.getProjectedFantasyPoints() == null) {
             skipped++;
             continue;
           }
-
-          String key = subjectType + ":" + espnId;
-          FantasySnapshot snapshot =
-              existingSnapshots.computeIfAbsent(
-                  key,
-                  k -> {
-                    FantasySnapshot fs = new FantasySnapshot();
-                    fs.setEvent(event);
-                    fs.setSubjectType(subjectType);
-                    fs.setEspnId(espnId);
-                    return fs;
-                  });
-
-          snapshot.setFullName(fullName);
-          snapshot.setProjectedFantasyPoints(projectedFp);
-          snapshot.setProjectedStats(projectedStatsJson);
           toSave.add(snapshot);
           updated++;
         } catch (Exception e) {
-          log.error("Failed to process player node for event {}: {}", event.getEspnId(),
+          log.error(
+              "Failed to process player node for event {}: {}",
+              event.getEspnId(),
               e.getMessage());
           skipped++;
         }
@@ -173,50 +148,34 @@ public class FantasySnapshotIngestionService {
     List<FantasySnapshot> toSave = new ArrayList<>();
 
     for (JsonNode playerNode : root) {
-      boolean isDst = FantasySnapshotMapper.isTeamDefense(playerNode);
-      String subjectType = isDst ? "TEAM_DEFENSE" : "PLAYER";
-      String espnId =
-          isDst
-              ? FantasySnapshotMapper.extractProTeamId(playerNode)
-              : FantasySnapshotMapper.extractPlayerId(playerNode);
-      String key = subjectType + ":" + espnId;
+      try {
+        FantasySnapshot snapshot =
+            buildSnapshotFromPlayerNode(playerNode, existingSnapshots, event, event.getWeekNumber());
+        if (snapshot == null) {
+          skipped++;
+          continue;
+        }
 
-      FantasySnapshot snapshot =
-          existingSnapshots.computeIfAbsent(
-              key,
-              k -> {
-                FantasySnapshot fs = new FantasySnapshot();
-                fs.setEvent(event);
-                fs.setSubjectType(subjectType);
-                fs.setEspnId(espnId);
-                return fs;
-              });
+        BigDecimal actualFp =
+            FantasySnapshotMapper.extractActualFantasyPoints(playerNode, event.getWeekNumber());
+        if (actualFp != null) {
+          snapshot.setActualFantasyPoints(actualFp);
+          updated++;
+        } else {
+          skipped++;
+        }
 
-      snapshot.setFullName(FantasySnapshotMapper.extractFullName(playerNode));
-      snapshot.setProjectedFantasyPoints(
-          FantasySnapshotMapper.extractProjectedFantasyPoints(playerNode, event.getWeekNumber()));
-      snapshot.setProjectedStats(
-          FantasySnapshotMapper.extractProjectedStatsJson(playerNode, event.getWeekNumber()));
-
-      BigDecimal actualFp =
-          FantasySnapshotMapper.extractActualFantasyPoints(playerNode, event.getWeekNumber());
-      if (actualFp != null) {
-        snapshot.setActualFantasyPoints(actualFp);
-        updated++;
-      } else {
+        toSave.add(snapshot);
+      } catch (Exception e) {
+        log.error(
+            "Failed to process actual fantasy node for event {}: {}",
+            eventEspnId,
+            e.getMessage());
         skipped++;
       }
-
-      toSave.add(snapshot);
     }
 
     fantasySnapshotRepository.saveAll(toSave);
-
-    if (updated == 0) {
-      throw new IllegalStateException(
-          "Final actual fantasy ingestion produced no usable actual points for event "
-              + eventEspnId);
-    }
 
     log.info(
         "Final actual fantasy ingestion for event {} refreshed {} subjects ({} without actual points)",
@@ -232,6 +191,42 @@ public class FantasySnapshotIngestionService {
     int count = fantasySnapshotRepository.markCompletedByEventEspnId(eventEspnId);
     log.info("Marked {} snapshots as completed for event {}", count, eventEspnId);
     return count;
+  }
+
+  private FantasySnapshot buildSnapshotFromPlayerNode(
+      JsonNode playerNode,
+      Map<String, FantasySnapshot> existingSnapshots,
+      Event event,
+      int scoringPeriodId) {
+    boolean isDst = FantasySnapshotMapper.isTeamDefense(playerNode);
+    String subjectType = isDst ? "TEAM_DEFENSE" : "PLAYER";
+    String espnId =
+        isDst
+            ? FantasySnapshotMapper.extractProTeamId(playerNode)
+            : FantasySnapshotMapper.extractPlayerId(playerNode);
+
+    if (espnId == null || espnId.isBlank()) {
+      return null;
+    }
+
+    String key = subjectType + ":" + espnId;
+    FantasySnapshot snapshot =
+        existingSnapshots.computeIfAbsent(
+            key,
+            k -> {
+              FantasySnapshot fs = new FantasySnapshot();
+              fs.setEvent(event);
+              fs.setSubjectType(subjectType);
+              fs.setEspnId(espnId);
+              return fs;
+            });
+
+    snapshot.setFullName(FantasySnapshotMapper.extractFullName(playerNode));
+    snapshot.setProjectedFantasyPoints(
+        FantasySnapshotMapper.extractProjectedFantasyPoints(playerNode, scoringPeriodId));
+    snapshot.setProjectedStats(
+        FantasySnapshotMapper.extractProjectedStatsJson(playerNode, scoringPeriodId));
+    return snapshot;
   }
 
   public record IngestResult(int updated, int skipped, int errors) {}

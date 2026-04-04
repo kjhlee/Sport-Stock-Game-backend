@@ -36,57 +36,61 @@ public class GameDayPollingJob {
 
     @Scheduled(fixedDelayString = "${scheduler.game-poll.interval-ms}")
     public void run() {
-        if (!ingestionClient.isSeasonActive()) {
-            return;
-        }
-
-        CurrentWeekResponse week = ingestionClient.getCurrentWeek();
-        int seasonYear = week.seasonYear();
-        int seasonType = Integer.parseInt(week.seasonType());
-        int weekNumber = week.week();
-
-        List<EventResponse> events =
-                ingestionClient.getEvents(seasonYear, seasonType, weekNumber);
-
-        if (events.isEmpty()) {
-            return;
-        }
-
-        Instant now = Instant.now();
-        boolean hasRelevantWindow =
-                events.stream()
-                        .anyMatch(
-                                event ->
-                                        Boolean.TRUE.equals(event.statusCompleted())
-                                                || STATUS_IN.equalsIgnoreCase(event.statusState())
-                                                || isNearKickoff(event.date(), now));
-
-        if (!hasRelevantWindow) {
-            return;
-        }
-
         try {
-            ingestionClient.syncScoreboard(seasonYear, seasonType, weekNumber);
-            events = ingestionClient.getEvents(seasonYear, seasonType, weekNumber);
-        } catch (Exception e) {
-            log.warn("Failed to sync scoreboard, using cached data: {}", e.getMessage());
-        }
-
-        Map<String, EventState> stateMap =
-                eventStateRepository
-                        .findByWeekNumberAndSeasonYearAndSeasonType(
-                                weekNumber, seasonYear, seasonType)
-                        .stream()
-                        .collect(
-                                Collectors.toMap(
-                                        EventState::getEventEspnId, Function.identity()));
-
-        for (EventResponse event : events) {
-            try {
-                processEvent(event, stateMap, weekNumber, seasonYear, seasonType);
-            } catch (Exception e) {
-                log.error("Error processing event {}: {}", event.espnId(), e.getMessage());
+            if (!ingestionClient.isSeasonActive()) {
+                return;
             }
+
+            CurrentWeekResponse week = ingestionClient.getCurrentWeek();
+            int seasonYear = week.seasonYear();
+            int seasonType = Integer.parseInt(week.seasonType());
+            int weekNumber = week.week();
+
+            List<EventResponse> events =
+                    ingestionClient.getEvents(seasonYear, seasonType, weekNumber);
+
+            if (events.isEmpty()) {
+                return;
+            }
+
+            Instant now = Instant.now();
+            boolean hasRelevantWindow =
+                    events.stream()
+                            .anyMatch(
+                                    event ->
+                                            Boolean.TRUE.equals(event.statusCompleted())
+                                                    || STATUS_IN.equalsIgnoreCase(event.statusState())
+                                                    || isNearKickoff(event.date(), now));
+
+            if (!hasRelevantWindow) {
+                return;
+            }
+
+            try {
+                ingestionClient.syncScoreboard(seasonYear, seasonType, weekNumber);
+                events = ingestionClient.getEvents(seasonYear, seasonType, weekNumber);
+            } catch (Exception e) {
+                log.warn("Failed to sync scoreboard, using cached data: {}", e.getMessage());
+            }
+
+            Map<String, EventState> stateMap =
+                    eventStateRepository
+                            .findByWeekNumberAndSeasonYearAndSeasonType(
+                                    weekNumber, seasonYear, seasonType)
+                            .stream()
+                            .collect(
+                                    Collectors.toMap(
+                                            EventState::getEventEspnId, Function.identity()));
+
+            for (EventResponse event : events) {
+                try {
+                    processEvent(event, stateMap, weekNumber, seasonYear, seasonType, now);
+                } catch (Exception e) {
+                    log.error("Error processing event {}: {}", event.espnId(), e.getMessage());
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Skipping game-day polling cycle because dependencies are unavailable: {}", e.getMessage());
         }
     }
 
@@ -95,11 +99,17 @@ public class GameDayPollingJob {
             Map<String, EventState> stateMap,
             int weekNumber,
             int seasonYear,
-            int seasonType) {
+            int seasonType,
+            Instant now) {
 
         String espnId = event.espnId();
         String statusState = event.statusState();
         EventState state = stateMap.get(espnId);
+
+        if (STATUS_PRE.equalsIgnoreCase(statusState) && isNearKickoff(event.date(), now)) {
+            handlePreKickoffLock(espnId, state, weekNumber, seasonYear, seasonType);
+            return;
+        }
 
         if (STATUS_PRE.equalsIgnoreCase(statusState)) {
             return;
@@ -114,6 +124,29 @@ public class GameDayPollingJob {
                 || Boolean.TRUE.equals(event.statusCompleted())) {
             handleCompleted(espnId, state, weekNumber, seasonYear, seasonType);
         }
+    }
+
+    private void handlePreKickoffLock(
+            String espnId,
+            EventState state,
+            int weekNumber,
+            int seasonYear,
+            int seasonType) {
+        if (state != null) {
+            return;
+        }
+
+        int locked = stockMarketClient.lockEvent(espnId);
+        log.info("Locked {} stocks for event {} (near kickoff)", locked, espnId);
+
+        EventState newState = new EventState();
+        newState.setEventEspnId(espnId);
+        newState.setStatus(STATE_LOCKED);
+        newState.setLockedAt(Instant.now());
+        newState.setWeekNumber(weekNumber);
+        newState.setSeasonYear(seasonYear);
+        newState.setSeasonType(seasonType);
+        eventStateRepository.save(newState);
     }
 
     private void handleInProgress(
