@@ -1,4 +1,4 @@
-package sportstock.scheduler.entity;
+package com.sportstock.scheduler.entity;
 
 import jakarta.persistence.*;
 import java.time.Instant;

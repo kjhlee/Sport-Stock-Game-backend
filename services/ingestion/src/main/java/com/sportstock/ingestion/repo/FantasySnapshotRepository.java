@@ -20,7 +20,7 @@ public interface FantasySnapshotRepository extends JpaRepository<FantasySnapshot
   @Query(
       """
       SELECT fs FROM FantasySnapshot fs
-      JOIN fs.event e
+      JOIN FETCH fs.event e
       WHERE e.espnId = :eventEspnId
       """)
   List<FantasySnapshot> findByEventEspnId(@Param("eventEspnId") String eventEspnId);
@@ -44,7 +44,7 @@ public interface FantasySnapshotRepository extends JpaRepository<FantasySnapshot
   @Query(
       """
       SELECT fs FROM FantasySnapshot fs
-      JOIN fs.event e
+      JOIN FETCH fs.event e
       WHERE fs.espnId = :espnId
         AND fs.subjectType = :subjectType
         AND e.seasonYear = :seasonYear

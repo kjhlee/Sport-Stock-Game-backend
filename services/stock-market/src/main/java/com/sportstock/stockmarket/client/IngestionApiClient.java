@@ -10,6 +10,7 @@ import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 
 @Slf4j
@@ -107,20 +108,31 @@ public class IngestionApiClient {
 
   public FantasySnapshotResponse getFantasySnapshot(
       String espnId, String subjectType, int seasonYear, int seasonType, int weekNumber) {
-    return restClient
-        .get()
-        .uri(
-            uriBuilder ->
-                uriBuilder
-                    .path("/fantasy-snapshots/by-espn-id")
-                    .queryParam("espnId", espnId)
-                    .queryParam("subjectType", subjectType)
-                    .queryParam("seasonYear", seasonYear)
-                    .queryParam("seasonType", seasonType)
-                    .queryParam("weekNumber", weekNumber)
-                    .build())
-        .retrieve()
-        .body(FantasySnapshotResponse.class);
+    try {
+      return restClient
+          .get()
+          .uri(
+              uriBuilder ->
+                  uriBuilder
+                      .path("/fantasy-snapshots/by-espn-id")
+                      .queryParam("espnId", espnId)
+                      .queryParam("subjectType", subjectType)
+                      .queryParam("seasonYear", seasonYear)
+                      .queryParam("seasonType", seasonType)
+                      .queryParam("weekNumber", weekNumber)
+                      .build())
+          .retrieve()
+          .body(FantasySnapshotResponse.class);
+    } catch (HttpClientErrorException.NotFound e) {
+      log.debug(
+          "No fantasy snapshot found for espnId={} subjectType={} seasonYear={} seasonType={} weekNumber={}",
+          espnId,
+          subjectType,
+          seasonYear,
+          seasonType,
+          weekNumber);
+      return null;
+    }
   }
 
   public List<FantasySnapshotResponse> getFantasySnapshotsByEvent(String eventEspnId) {

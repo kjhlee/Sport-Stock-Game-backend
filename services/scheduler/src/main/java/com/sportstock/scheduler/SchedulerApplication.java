@@ -1,10 +1,10 @@
-package sportstock.scheduler;
+package com.sportstock.scheduler;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = {"com.sportstock"})
 @EnableScheduling
 public class SchedulerApplication {
 

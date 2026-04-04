@@ -1,6 +1,6 @@
-package sportstock.scheduler.repo;
+package com.sportstock.scheduler.repo;
 
-import sportstock.scheduler.entity.EventState;
+import com.sportstock.scheduler.entity.EventState;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 
