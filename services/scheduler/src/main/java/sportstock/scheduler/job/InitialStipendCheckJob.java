@@ -23,24 +23,28 @@ public class InitialStipendCheckJob {
     public void run() {
         log.info("InitialStipendCheckJob started");
 
-        if (!ingestionClient.isSeasonActive()) {
-            log.info("Season not active, skipping initial stipend check");
-            return;
+        try {
+            if (!ingestionClient.isSeasonActive()) {
+                log.info("Season not active, skipping initial stipend check");
+                return;
+            }
+
+            List<LeagueResponse> pendingLeagues = leagueClient.getPendingInitialStipendLeagues();
+            if (pendingLeagues.isEmpty()) {
+                log.info("No leagues pending initial stipend");
+                return;
+            }
+
+            log.info("Found {} leagues pending initial stipend", pendingLeagues.size());
+
+            for (LeagueResponse league : pendingLeagues) {
+                processLeague(league);
+            }
+
+            log.info("InitialStipendCheckJob completed");
+        } catch (Exception e) {
+            log.warn("Skipping initial stipend check because dependencies are unavailable: {}", e.getMessage());
         }
-
-        List<LeagueResponse> pendingLeagues = leagueClient.getPendingInitialStipendLeagues();
-        if (pendingLeagues.isEmpty()) {
-            log.info("No leagues pending initial stipend");
-            return;
-        }
-
-        log.info("Found {} leagues pending initial stipend", pendingLeagues.size());
-
-        for (LeagueResponse league : pendingLeagues) {
-            processLeague(league);
-        }
-
-        log.info("InitialStipendCheckJob completed");
     }
 
     private void processLeague(LeagueResponse league) {

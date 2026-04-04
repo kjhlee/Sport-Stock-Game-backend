@@ -2,6 +2,7 @@ package com.sportstock.ingestion.client;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -41,7 +42,7 @@ public class EspnFantasyClient {
             .body(String.class);
 
     try {
-      return objectMapper.readTree(response);
+      return extractPlayersArray(objectMapper.readTree(response));
     } catch (Exception e) {
       log.error("Failed to parse ESPN fantasy API response", e);
       throw new RuntimeException("Failed to parse ESPN fantasy response", e);
@@ -69,10 +70,31 @@ public class EspnFantasyClient {
             .body(String.class);
 
     try {
-      return objectMapper.readTree(response);
+      return extractPlayersArray(objectMapper.readTree(response));
     } catch (Exception e) {
       log.error("Failed to parse ESPN fantasy API response", e);
       throw new RuntimeException("Failed to parse ESPN fantasy response", e);
     }
+  }
+
+  private JsonNode extractPlayersArray(JsonNode root) {
+    if (root == null || root.isNull()) {
+      return objectMapper.createArrayNode();
+    }
+    if (root.isArray()) {
+      return root;
+    }
+
+    JsonNode players = root.path("players");
+    if (players.isArray()) {
+      return players;
+    }
+
+    // Defensive fallback for unexpected object payloads so callers can fail with context.
+    ArrayNode singleEntry = objectMapper.createArrayNode();
+    if (root.isObject()) {
+      log.warn("Unexpected ESPN fantasy payload shape; top-level fields={}", root.fieldNames());
+    }
+    return singleEntry;
   }
 }

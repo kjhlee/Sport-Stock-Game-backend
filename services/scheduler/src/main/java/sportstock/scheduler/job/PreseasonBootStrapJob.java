@@ -26,24 +26,28 @@ public class PreseasonBootstrapJob {
         log.info("PreseasonBootstrapJob started for season {}", year);
 
         try {
-            ingestionClient.syncTeams();
-        } catch (Exception e) {
-            log.warn("Failed to sync teams: {}", e.getMessage());
-        }
+            try {
+                ingestionClient.syncTeams();
+            } catch (Exception e) {
+                log.warn("Failed to sync teams: {}", e.getMessage());
+            }
 
-        try {
-            ingestionClient.syncAllTeamDetails(year);
-        } catch (Exception e) {
-            log.warn("Failed to sync team details: {}", e.getMessage());
-        }
+            try {
+                ingestionClient.syncAllTeamDetails(year);
+            } catch (Exception e) {
+                log.warn("Failed to sync team details: {}", e.getMessage());
+            }
 
-        try {
-            ingestionClient.syncRosters(year, FULL_ROSTER_LIMIT);
-            log.info("Synced full rosters");
-        } catch (Exception e) {
-            log.warn("Failed to sync rosters: {}", e.getMessage());
-        }
+            try {
+                ingestionClient.syncRosters(year, FULL_ROSTER_LIMIT);
+                log.info("Synced full rosters");
+            } catch (Exception e) {
+                log.warn("Failed to sync rosters: {}", e.getMessage());
+            }
 
-        log.info("PreseasonBootstrapJob completed for season {}", year);
+            log.info("PreseasonBootstrapJob completed for season {}", year);
+        } catch (Exception e) {
+            log.warn("Skipping preseason bootstrap because dependencies are unavailable: {}", e.getMessage());
+        }
     }
 }

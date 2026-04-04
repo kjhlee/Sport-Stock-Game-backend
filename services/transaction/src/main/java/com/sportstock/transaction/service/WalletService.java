@@ -180,10 +180,10 @@ public class WalletService {
     AtomicReference<Transaction> result = new AtomicReference<>();
     transactionTemplate.executeWithoutResult(
         status -> {
-          if (transactionRepository.existsByIdempotencyKey(request.idempotencyKey())) {
-            Transaction existingTransaction =
-                transactionRepository.findByIdempotencyKey(request.idempotencyKey()).orElseThrow();
-
+          Transaction existingTransaction =
+              findExistingTransaction(request.idempotencyKey(), userId, leagueId);
+          if (existingTransaction != null) {
+            validateReplayableTransaction(existingTransaction, TransactionType.STOCK_BUY, request);
             result.set(existingTransaction);
             return;
           }
@@ -210,29 +210,15 @@ public class WalletService {
                     request.buyTransactionId()));
             // TODO: call portfolio service to update
           } catch (DataIntegrityViolationException e) {
-            Transaction existingTransaction =
-                transactionRepository.findByIdempotencyKey(request.idempotencyKey()).orElseThrow();
-            result.set(existingTransaction);
+            Transaction replayTransaction =
+                loadRequiredTransaction(request.idempotencyKey(), userId, leagueId);
+            validateReplayableTransaction(replayTransaction, TransactionType.STOCK_BUY, request);
+            result.set(replayTransaction);
             status.setRollbackOnly();
           }
         });
 
-    Transaction transaction = result.get();
-    return new TransactionResponse(
-        transaction.getId(),
-        transaction.getWallet().getId(),
-        TransactionType.STOCK_BUY.name(),
-        totalAmount,
-        transaction.getBalanceBefore(),
-        transaction.getBalanceAfter(),
-        leagueId,
-        userId,
-        request.stockId().toString(),
-        "Buy " + quantity + " shares of " + stock.fullName(),
-        transaction.getIdempotencyKey(),
-        pricePerShare,
-        transaction.getBuyTransactionId(),
-        transaction.getCreatedAt());
+    return DtoMapper.toTransactionResponse(result.get());
   }
 
   public TransactionResponse processStockSell(
@@ -300,10 +286,10 @@ public class WalletService {
     AtomicReference<Transaction> result = new AtomicReference<>();
     transactionTemplate.executeWithoutResult(
         status -> {
-          if (transactionRepository.existsByIdempotencyKey(request.idempotencyKey())) {
-            Transaction existingTransaction =
-                transactionRepository.findByIdempotencyKey(request.idempotencyKey()).orElseThrow();
-
+          Transaction existingTransaction =
+              findExistingTransaction(request.idempotencyKey(), userId, leagueId);
+          if (existingTransaction != null) {
+            validateReplayableTransaction(existingTransaction, TransactionType.STOCK_SELL, request);
             result.set(existingTransaction);
             return;
           }
@@ -330,28 +316,14 @@ public class WalletService {
                     request.buyTransactionId()));
             // TODO: call portfolio service to update
           } catch (DataIntegrityViolationException e) {
-            Transaction existingTransaction =
-                transactionRepository.findByIdempotencyKey(request.idempotencyKey()).orElseThrow();
-            result.set(existingTransaction);
+            Transaction replayTransaction =
+                loadRequiredTransaction(request.idempotencyKey(), userId, leagueId);
+            validateReplayableTransaction(replayTransaction, TransactionType.STOCK_SELL, request);
+            result.set(replayTransaction);
             status.setRollbackOnly();
           }
         });
-    Transaction transaction = result.get();
-    return new TransactionResponse(
-        transaction.getId(),
-        transaction.getWallet().getId(),
-        TransactionType.STOCK_SELL.name(),
-        totalCredit,
-        transaction.getBalanceBefore(),
-        transaction.getBalanceAfter(),
-        leagueId,
-        userId,
-        request.stockId().toString(),
-        "Sell " + quantity + " shares of " + stock.fullName(),
-        transaction.getIdempotencyKey(),
-        pricePerShare,
-        transaction.getBuyTransactionId(),
-        transaction.getCreatedAt());
+    return DtoMapper.toTransactionResponse(result.get());
   }
 
   @Transactional(readOnly = true)
@@ -509,6 +481,54 @@ public class WalletService {
   public StipendResultResponse liquidateAssets(Long leagueId, int weekNumber) {
     // TODO: Implement liquidation logic
     return new StipendResultResponse(leagueId, 0, 0, BigDecimal.ZERO);
+  }
+
+  private Transaction findExistingTransaction(String idempotencyKey, Long userId, Long leagueId) {
+    return transactionRepository
+        .findByIdempotencyKey(idempotencyKey)
+        .filter(tx -> tx.getUserId().equals(userId) && tx.getLeagueId().equals(leagueId))
+        .orElse(null);
+  }
+
+  private Transaction loadRequiredTransaction(String idempotencyKey, Long userId, Long leagueId) {
+    Transaction existingTransaction =
+        transactionRepository
+            .findByIdempotencyKey(idempotencyKey)
+            .orElseThrow(
+                () ->
+                    new InvalidTradeRequestException(
+                        "Trade replay failed for idempotency key " + idempotencyKey));
+    if (!existingTransaction.getUserId().equals(userId)
+        || !existingTransaction.getLeagueId().equals(leagueId)) {
+      throw new InvalidTradeRequestException(
+          "Idempotency key is already in use by another trade context");
+    }
+    return existingTransaction;
+  }
+
+  private void validateReplayableTransaction(
+      Transaction existingTransaction,
+      TransactionType expectedType,
+      StockTransactionRequest request) {
+    if (existingTransaction.getType() != expectedType) {
+      throw new InvalidTradeRequestException(
+          "Idempotency key already belongs to a different transaction type");
+    }
+
+    String expectedReferenceId = "stock:" + request.stockId();
+    if (!expectedReferenceId.equals(existingTransaction.getReferenceId())) {
+      throw new InvalidTradeRequestException(
+          "Idempotency key already belongs to a different stock trade");
+    }
+
+    Long existingBuyTransactionId = existingTransaction.getBuyTransactionId();
+    Long requestedBuyTransactionId = request.buyTransactionId();
+    if ((existingBuyTransactionId == null && requestedBuyTransactionId != null)
+        || (existingBuyTransactionId != null
+            && !existingBuyTransactionId.equals(requestedBuyTransactionId))) {
+      throw new InvalidTradeRequestException(
+          "Idempotency key already belongs to a different buyTransactionId");
+    }
   }
 
   private void verifyLeagueMembership(Long userId, Long leagueId) {

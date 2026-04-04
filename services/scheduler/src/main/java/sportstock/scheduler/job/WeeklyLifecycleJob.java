@@ -28,49 +28,53 @@ public class WeeklyLifecycleJob {
     public void run() {
         log.info("WeeklyLifecycleJob started");
 
-        if (!ingestionClient.isSeasonActive()) {
-            log.info("Season not active, skipping weekly lifecycle");
-            return;
-        }
-
-        CurrentWeekResponse currentWeek = ingestionClient.getCurrentWeek();
-        int currentWeekNum = currentWeek.week();
-        int seasonYear = currentWeek.seasonYear();
-        int seasonType = Integer.parseInt(currentWeek.seasonType());
-        int priorWeekNum = currentWeekNum - 1;
-
-        log.info(
-                "Running weekly lifecycle: season {}/{}, currentWeek={}, priorWeek={}",
-                seasonYear,
-                seasonType,
-                currentWeekNum,
-                priorWeekNum);
-
         try {
-            ingestionClient.syncScoreboard(seasonYear, seasonType, currentWeekNum);
-            log.info("Seeded events for season {}/{} week {}", seasonYear, seasonType, currentWeekNum);
-        } catch (Exception e) {
-            log.error(
-                    "Failed to seed events for season {}/{} week {}: {}",
+            if (!ingestionClient.isSeasonActive()) {
+                log.info("Season not active, skipping weekly lifecycle");
+                return;
+            }
+
+            CurrentWeekResponse currentWeek = ingestionClient.getCurrentWeek();
+            int currentWeekNum = currentWeek.week();
+            int seasonYear = currentWeek.seasonYear();
+            int seasonType = Integer.parseInt(currentWeek.seasonType());
+            int priorWeekNum = currentWeekNum - 1;
+
+            log.info(
+                    "Running weekly lifecycle: season {}/{}, currentWeek={}, priorWeek={}",
                     seasonYear,
                     seasonType,
                     currentWeekNum,
-                    e.getMessage());
+                    priorWeekNum);
+
+            try {
+                ingestionClient.syncScoreboard(seasonYear, seasonType, currentWeekNum);
+                log.info("Seeded events for season {}/{} week {}", seasonYear, seasonType, currentWeekNum);
+            } catch (Exception e) {
+                log.error(
+                        "Failed to seed events for season {}/{} week {}: {}",
+                        seasonYear,
+                        seasonType,
+                        currentWeekNum,
+                        e.getMessage());
+            }
+
+            List<LeagueResponse> activeLeagues = leagueClient.getActiveLeagues();
+            log.info("Processing {} active leagues", activeLeagues.size());
+
+            for (LeagueResponse league : activeLeagues) {
+                processLeague(league, currentWeekNum, priorWeekNum);
+            }
+
+            int unlocked = stockMarketClient.unlockAll();
+            log.info("Unlocked {} stocks", unlocked);
+
+            clearPriorWeekEventStates(priorWeekNum, seasonYear, seasonType);
+
+            log.info("WeeklyLifecycleJob completed");
+        } catch (Exception e) {
+            log.warn("Skipping weekly lifecycle because dependencies are unavailable: {}", e.getMessage());
         }
-
-        List<LeagueResponse> activeLeagues = leagueClient.getActiveLeagues();
-        log.info("Processing {} active leagues", activeLeagues.size());
-
-        for (LeagueResponse league : activeLeagues) {
-            processLeague(league, currentWeekNum, priorWeekNum);
-        }
-
-        int unlocked = stockMarketClient.unlockAll();
-        log.info("Unlocked {} stocks", unlocked);
-
-        clearPriorWeekEventStates(priorWeekNum, seasonYear, seasonType);
-
-        log.info("WeeklyLifecycleJob completed");
     }
 
     private void processLeague(

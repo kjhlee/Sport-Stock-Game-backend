@@ -106,7 +106,7 @@ public class EventIngestionController {
 
   @GetMapping("/events/{espnId}/teams")
   public List<String> getEventTeamEspnIds(@PathVariable String espnId) {
-    return eventCompetitorRepository.findByEventEspnId(espnId).stream()
+    return eventCompetitorRepository.findByEventEspnIdWithTeam(espnId).stream()
         .map(ec -> ec.getTeam().getEspnId())
         .toList();
   }
