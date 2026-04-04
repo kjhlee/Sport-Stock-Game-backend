@@ -1,7 +1,8 @@
-package sportstock.scheduler.client;
+package com.sportstock.scheduler.client;
 
 import com.sportstock.common.dto.ingestion.CurrentWeekResponse;
 import com.sportstock.common.dto.ingestion.EventResponse;
+import com.sportstock.common.dto.stock_market.IngestionEventDto;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +39,14 @@ public class IngestionClient {
                         .retrieve()
                         .body(new ParameterizedTypeReference<List<EventResponse>>() {});
         return body != null ? body : List.of();
+    }
+
+    public IngestionEventDto getEvent(String eventEspnId) {
+        return restClient
+                .get()
+                .uri("/events/{eventEspnId}", eventEspnId)
+                .retrieve()
+                .body(IngestionEventDto.class);
     }
 
     public void syncProjections(int seasonYear, int seasonType, int weekNumber) {
@@ -105,17 +114,20 @@ public class IngestionClient {
         log.info("Synced stale rosters for season {} with staleHours {}", seasonYear, staleHours);
     }
 
-    public void syncEventSummary(String eventEspnId) {
-        restClient
+    public Map<String, Object> syncEventSummary(String eventEspnId) {
+        Map<String, Object> body =
+                restClient
                 .post()
                 .uri("/sync/events/{eventEspnId}/summary", eventEspnId)
                 .retrieve()
-                .toBodilessEntity();
+                .body(new ParameterizedTypeReference<Map<String, Object>>() {});
         log.info("Synced event summary for event {}", eventEspnId);
+        return body != null ? body : Map.of();
     }
 
-    public void syncActualFantasyPoints(String eventEspnId) {
-        restClient
+    public Map<String, Object> syncActualFantasyPoints(String eventEspnId) {
+        Map<String, Object> body =
+                restClient
                 .post()
                 .uri(
                         uriBuilder ->
@@ -124,12 +136,14 @@ public class IngestionClient {
                                         .queryParam("eventEspnId", eventEspnId)
                                         .build())
                 .retrieve()
-                .toBodilessEntity();
+                .body(new ParameterizedTypeReference<Map<String, Object>>() {});
         log.info("Synced actual fantasy points for event {}", eventEspnId);
+        return body != null ? body : Map.of();
     }
 
-    public void markEventCompleted(String eventEspnId) {
-        restClient
+    public Map<String, Object> markEventCompleted(String eventEspnId) {
+        Map<String, Object> body =
+                restClient
                 .post()
                 .uri(
                         uriBuilder ->
@@ -138,8 +152,9 @@ public class IngestionClient {
                                         .queryParam("eventEspnId", eventEspnId)
                                         .build())
                 .retrieve()
-                .toBodilessEntity();
+                .body(new ParameterizedTypeReference<Map<String, Object>>() {});
         log.info("Marked event {} completed", eventEspnId);
+        return body != null ? body : Map.of();
     }
 
     public void syncScoreboard(int seasonYear, int seasonType, int week) {

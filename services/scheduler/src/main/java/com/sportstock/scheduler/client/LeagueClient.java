@@ -1,4 +1,4 @@
-package sportstock.scheduler.client;
+package com.sportstock.scheduler.client;
 
 import com.sportstock.common.dto.league.LeagueResponse;
 import com.sportstock.common.dto.league.UpdateInitialStipendStatusRequest;

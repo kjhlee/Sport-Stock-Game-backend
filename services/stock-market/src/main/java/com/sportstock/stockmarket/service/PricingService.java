@@ -1,6 +1,7 @@
 package com.sportstock.stockmarket.service;
 
 import com.sportstock.common.dto.ingestion.FantasySnapshotResponse;
+import com.sportstock.common.dto.stock_market.IngestionAthleteDto;
 import com.sportstock.common.dto.stock_market.IngestionEventDto;
 import com.sportstock.common.enums.stock_market.PriceType;
 import com.sportstock.common.enums.stock_market.StockStatus;
@@ -86,15 +87,7 @@ public class PricingService {
         continue;
       }
 
-      Stock stock =
-          stockRepository
-              .findByEspnIdAndType(
-                  snapshot.espnId(),
-                  "TEAM_DEFENSE".equals(snapshot.subjectType())
-                      ? StockType.TEAM_DEFENSE
-                      : StockType.PLAYER)
-              .orElse(null);
-
+      Stock stock = findOrCreateStockForSnapshot(snapshot);
       if (stock == null) {
         skipped++;
         continue;
@@ -135,6 +128,64 @@ public class PricingService {
       return BigDecimal.ONE;
     }
     return pricingConfig.getMultipliers().getOrDefault(position, BigDecimal.ONE);
+  }
+
+  private Stock findOrCreateStockForSnapshot(FantasySnapshotResponse snapshot) {
+    StockType stockType =
+        "TEAM_DEFENSE".equals(snapshot.subjectType()) ? StockType.TEAM_DEFENSE : StockType.PLAYER;
+
+    Stock existing = stockRepository.findByEspnIdAndType(snapshot.espnId(), stockType).orElse(null);
+    if (existing != null) {
+      return existing;
+    }
+
+    if (stockType == StockType.TEAM_DEFENSE) {
+      Stock stock = new Stock();
+      stock.setEspnId(snapshot.espnId());
+      stock.setType(StockType.TEAM_DEFENSE);
+      stock.setPosition("DST");
+      stock.setTeamEspnId(snapshot.espnId());
+      stock.setFullName(snapshot.fullName());
+      stock.setStatus(StockStatus.ACTIVE);
+      return stockRepository.save(stock);
+    }
+
+    IngestionAthleteDto athlete = ingestionApiClient.getAthlete(snapshot.espnId());
+    if (athlete == null || athlete.getPositionAbbreviation() == null) {
+      return null;
+    }
+
+    Stock stock = new Stock();
+    stock.setEspnId(snapshot.espnId());
+    stock.setType(StockType.PLAYER);
+    stock.setPosition(normalizePosition(athlete.getPositionAbbreviation()));
+    stock.setTeamEspnId(athlete.getTeamEspnId());
+    stock.setFullName(
+        athlete.getFullName() != null && !athlete.getFullName().isBlank()
+            ? athlete.getFullName()
+            : snapshot.fullName());
+    stock.setStatus(resolveStatus(athlete.getStatusType()));
+    return stockRepository.save(stock);
+  }
+
+  private String normalizePosition(String rawPosition) {
+    if (rawPosition == null || rawPosition.isBlank()) {
+      return rawPosition;
+    }
+    String normalized = rawPosition.trim().toUpperCase();
+    return "PK".equals(normalized) ? "K" : normalized;
+  }
+
+  private StockStatus resolveStatus(String rawStatus) {
+    if (rawStatus == null || rawStatus.isBlank()) {
+      return StockStatus.ACTIVE;
+    }
+
+    String normalized = rawStatus.trim().toUpperCase();
+    return switch (normalized) {
+      case "DELISTED" -> StockStatus.DELISTED;
+      default -> StockStatus.ACTIVE;
+    };
   }
 
   private void upsertPriceHistory(

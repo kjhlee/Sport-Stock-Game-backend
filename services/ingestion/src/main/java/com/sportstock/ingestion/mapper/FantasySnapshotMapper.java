@@ -7,6 +7,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 
@@ -51,27 +52,14 @@ public final class FantasySnapshotMapper {
   }
 
   public static String extractProjectedStatsJson(JsonNode playerNode, int scoringPeriodId) {
-    JsonNode statsEntry = findStatsEntry(playerNode, 1, scoringPeriodId);
-    if (statsEntry == null) {
-      return null;
-    }
-
-    JsonNode statsMap = statsEntry.path("stats");
-    if (statsMap.isMissingNode() || !statsMap.isObject()) {
+    Map<String, BigDecimal> projectedStats = extractDisplayableStats(playerNode, 1, scoringPeriodId);
+    if (projectedStats.isEmpty()) {
       return null;
     }
 
     ObjectNode result = MAPPER.createObjectNode();
-    Iterator<Map.Entry<String, JsonNode>> fields = statsMap.fields();
-    while (fields.hasNext()) {
-      Map.Entry<String, JsonNode> field = fields.next();
-      try {
-        int statId = Integer.parseInt(field.getKey());
-        String readableName = EspnStatIdMapping.resolve(statId);
-        result.put(readableName, field.getValue().asDouble());
-      } catch (NumberFormatException e) {
-        log.debug("Skipping non-numeric stat key: {}", field.getKey());
-      }
+    for (Map.Entry<String, BigDecimal> entry : projectedStats.entrySet()) {
+      result.put(entry.getKey(), entry.getValue());
     }
 
     try {
@@ -99,12 +87,52 @@ public final class FantasySnapshotMapper {
     }
 
     if (isTeamDefense(playerNode)) {
-      return computeDefenseFantasyPoints(stats);
+      return computeDefenseFantasyPoints(stats).total();
     } else if (isKicker(playerNode)) {
-      return computeKickerFantasyPoints(stats);
+      return computeKickerFantasyPoints(stats).total();
     } else {
-      return computeOffenseFantasyPoints(stats);
+      return computeOffenseFantasyPoints(stats).total();
     }
+  }
+
+  public static Map<String, Object> explainFantasyPoints(
+      JsonNode playerNode, int statSourceId, int scoringPeriodId) {
+    JsonNode entry = findStatsEntry(playerNode, statSourceId, scoringPeriodId);
+    if (entry == null) {
+      return Map.of(
+          "available", false,
+          "statSourceId", statSourceId,
+          "scoringPeriodId", scoringPeriodId);
+    }
+
+    Map<Integer, BigDecimal> rawStats = extractStats(entry);
+    Map<String, BigDecimal> displayableStats =
+        extractDisplayableStats(playerNode, statSourceId, scoringPeriodId);
+    JsonNode appliedTotalNode = entry.path("appliedTotal");
+
+    boolean usedAppliedTotal = !appliedTotalNode.isMissingNode() && !appliedTotalNode.isNull();
+    BigDecimal appliedTotal =
+        usedAppliedTotal
+            ? BigDecimal.valueOf(appliedTotalNode.asDouble()).setScale(2, RoundingMode.HALF_UP)
+            : null;
+
+    FantasyComputation computation =
+        isTeamDefense(playerNode)
+            ? computeDefenseFantasyPoints(rawStats)
+            : isKicker(playerNode)
+                ? computeKickerFantasyPoints(rawStats)
+                : computeOffenseFantasyPoints(rawStats);
+
+    Map<String, Object> explanation = new LinkedHashMap<>();
+    explanation.put("available", true);
+    explanation.put("statSourceId", statSourceId);
+    explanation.put("scoringPeriodId", scoringPeriodId);
+    explanation.put("usedAppliedTotal", usedAppliedTotal);
+    explanation.put("appliedTotal", appliedTotal);
+    explanation.put("computedFantasyPoints", computation.total());
+    explanation.put("normalizedStats", displayableStats);
+    explanation.put("scoringBreakdown", computation.breakdown());
+    return explanation;
   }
 
   private static JsonNode findStatsEntry(
@@ -141,63 +169,89 @@ public final class FantasySnapshotMapper {
     return stats;
   }
 
-  private static BigDecimal computeOffenseFantasyPoints(Map<Integer, BigDecimal> stats) {
-    BigDecimal total = ZERO;
-    // Passing
-    total = total.add(stat(stats, 3).multiply(new BigDecimal("0.04")));
-    total = total.add(stat(stats, 4).multiply(new BigDecimal("4")));
-    total = total.add(stat(stats, 19).multiply(new BigDecimal("2")));
-    total = total.subtract(stat(stats, 20).multiply(new BigDecimal("2")));
-    // Rushing
-    total = total.add(stat(stats, 24).multiply(new BigDecimal("0.1")));
-    total = total.add(stat(stats, 25).multiply(new BigDecimal("6")));
-    total = total.add(stat(stats, 26).multiply(new BigDecimal("2")));
-    // Receiving (PPR)
-    total = total.add(stat(stats, 41));
-    total = total.add(stat(stats, 42).multiply(new BigDecimal("0.1")));
-    total = total.add(stat(stats, 43).multiply(new BigDecimal("6")));
-    total = total.add(stat(stats, 44).multiply(new BigDecimal("2")));
-    // Misc
-    total = total.add(stat(stats, 63).multiply(new BigDecimal("6")));
-    total = total.subtract(stat(stats, 72).multiply(new BigDecimal("2")));
-    return total.setScale(2, RoundingMode.HALF_UP);
+  private static FantasyComputation computeOffenseFantasyPoints(Map<Integer, BigDecimal> stats) {
+    Map<String, BigDecimal> breakdown = new LinkedHashMap<>();
+    addContribution(breakdown, "passingYards", stat(stats, 3), new BigDecimal("0.04"));
+    addContribution(breakdown, "passingTouchdowns", stat(stats, 4), new BigDecimal("4"));
+    addContribution(breakdown, "passing2PtConversions", stat(stats, 19), new BigDecimal("2"));
+    addContribution(
+        breakdown, "passingInterceptions", stat(stats, 20), new BigDecimal("-2"));
+    addContribution(breakdown, "rushingYards", stat(stats, 24), new BigDecimal("0.1"));
+    addContribution(breakdown, "rushingTouchdowns", stat(stats, 25), new BigDecimal("6"));
+    addContribution(breakdown, "rushing2PtConversions", stat(stats, 26), new BigDecimal("2"));
+    addContribution(breakdown, "receptions", stat(stats, 41), BigDecimal.ONE);
+    addContribution(breakdown, "receivingYards", stat(stats, 42), new BigDecimal("0.1"));
+    addContribution(breakdown, "receivingTouchdowns", stat(stats, 43), new BigDecimal("6"));
+    addContribution(
+        breakdown, "receiving2PtConversions", stat(stats, 44), new BigDecimal("2"));
+    addContribution(
+        breakdown, "fumbleRecoveredForTD", stat(stats, 63), new BigDecimal("6"));
+    addContribution(breakdown, "lostFumbles", stat(stats, 72), new BigDecimal("-2"));
+    return new FantasyComputation(sumBreakdown(breakdown), breakdown);
   }
 
-  private static BigDecimal computeKickerFantasyPoints(Map<Integer, BigDecimal> stats) {
-    BigDecimal total = ZERO;
-    // Kicking
-    total = total.add(stat(stats, 80).multiply(new BigDecimal("3")));
-    total = total.add(stat(stats, 77).multiply(new BigDecimal("4")));
-    total = total.add(stat(stats, 74).multiply(new BigDecimal("5")));
-    total = total.add(stat(stats, 86));
-    total = total.subtract(stat(stats, 88));
-    // Non-kicking plays (trick plays, fumble recoveries, etc.)
-    total = total.add(stat(stats, 3).multiply(new BigDecimal("0.04")));
-    total = total.add(stat(stats, 4).multiply(new BigDecimal("4")));
-    total = total.add(stat(stats, 19).multiply(new BigDecimal("2")));
-    total = total.subtract(stat(stats, 20).multiply(new BigDecimal("2")));
-    total = total.add(stat(stats, 24).multiply(new BigDecimal("0.1")));
-    total = total.add(stat(stats, 25).multiply(new BigDecimal("6")));
-    total = total.add(stat(stats, 26).multiply(new BigDecimal("2")));
-    total = total.add(stat(stats, 41));
-    total = total.add(stat(stats, 42).multiply(new BigDecimal("0.1")));
-    total = total.add(stat(stats, 43).multiply(new BigDecimal("6")));
-    total = total.add(stat(stats, 44).multiply(new BigDecimal("2")));
-    total = total.add(stat(stats, 63).multiply(new BigDecimal("6")));
-    total = total.subtract(stat(stats, 72).multiply(new BigDecimal("2")));
-    return total.setScale(2, RoundingMode.HALF_UP);
+  private static FantasyComputation computeKickerFantasyPoints(Map<Integer, BigDecimal> stats) {
+    Map<String, BigDecimal> breakdown = new LinkedHashMap<>();
+    addContribution(
+        breakdown, "madeFieldGoalsFromUnder40", stat(stats, 80), new BigDecimal("3"));
+    addContribution(
+        breakdown, "madeFieldGoalsFrom40To49", stat(stats, 77), new BigDecimal("4"));
+    addContribution(
+        breakdown, "madeFieldGoalsFrom50Plus", stat(stats, 74), new BigDecimal("5"));
+    addContribution(breakdown, "madeExtraPoints", stat(stats, 86), BigDecimal.ONE);
+    addContribution(breakdown, "missedExtraPoints", stat(stats, 88), new BigDecimal("-1"));
+    addContribution(breakdown, "passingYards", stat(stats, 3), new BigDecimal("0.04"));
+    addContribution(breakdown, "passingTouchdowns", stat(stats, 4), new BigDecimal("4"));
+    addContribution(breakdown, "passing2PtConversions", stat(stats, 19), new BigDecimal("2"));
+    addContribution(
+        breakdown, "passingInterceptions", stat(stats, 20), new BigDecimal("-2"));
+    addContribution(breakdown, "rushingYards", stat(stats, 24), new BigDecimal("0.1"));
+    addContribution(breakdown, "rushingTouchdowns", stat(stats, 25), new BigDecimal("6"));
+    addContribution(breakdown, "rushing2PtConversions", stat(stats, 26), new BigDecimal("2"));
+    addContribution(breakdown, "receptions", stat(stats, 41), BigDecimal.ONE);
+    addContribution(breakdown, "receivingYards", stat(stats, 42), new BigDecimal("0.1"));
+    addContribution(breakdown, "receivingTouchdowns", stat(stats, 43), new BigDecimal("6"));
+    addContribution(
+        breakdown, "receiving2PtConversions", stat(stats, 44), new BigDecimal("2"));
+    addContribution(
+        breakdown, "fumbleRecoveredForTD", stat(stats, 63), new BigDecimal("6"));
+    addContribution(breakdown, "lostFumbles", stat(stats, 72), new BigDecimal("-2"));
+    return new FantasyComputation(sumBreakdown(breakdown), breakdown);
   }
 
-  private static BigDecimal computeDefenseFantasyPoints(Map<Integer, BigDecimal> stats) {
-    BigDecimal total = ZERO;
-    total = total.add(stat(stats, 99));
-    total = total.add(stat(stats, 95).multiply(new BigDecimal("2")));
-    total = total.add(stat(stats, 96).multiply(new BigDecimal("2")));
-    total = total.add(stat(stats, 97).multiply(new BigDecimal("2")));
-    total = total.add(stat(stats, 98).multiply(new BigDecimal("2")));
-    total = total.add(stat(stats, 105).multiply(new BigDecimal("6")));
-    total = total.add(pointsAllowedBonus(stat(stats, 120)));
-    return total.setScale(2, RoundingMode.HALF_UP);
+  private static FantasyComputation computeDefenseFantasyPoints(Map<Integer, BigDecimal> stats) {
+    Map<String, BigDecimal> breakdown = new LinkedHashMap<>();
+    addContribution(
+        breakdown, "defensiveSacks", firstPresentStat(stats, 83, 99), BigDecimal.ONE);
+    addContribution(
+        breakdown,
+        "defensiveInterceptions",
+        firstPresentStat(stats, 85, 95),
+        new BigDecimal("2"));
+    addContribution(
+        breakdown,
+        "defensiveFumblesRecovered",
+        firstPresentStat(stats, 86, 96),
+        new BigDecimal("2"));
+    addContribution(
+        breakdown,
+        "defensiveBlockedKicks",
+        firstPresentStat(stats, 88, 97),
+        new BigDecimal("2"));
+    addContribution(
+        breakdown, "defensiveSafeties", firstPresentStat(stats, 90, 98), new BigDecimal("2"));
+    addContribution(
+        breakdown,
+        "defensivePlusSpecialTeamsTouchdowns",
+        firstPresentStat(stats, 89, 105),
+        new BigDecimal("6"));
+    BigDecimal pointsAllowed = firstPresentNullableStat(stats, 95, 120);
+    if (pointsAllowed != null) {
+      breakdown.put(
+          "defensivePointsAllowedBonus",
+          pointsAllowedBonus(pointsAllowed).setScale(2, RoundingMode.HALF_UP));
+    }
+    return new FantasyComputation(sumBreakdown(breakdown), breakdown);
   }
 
   private static BigDecimal pointsAllowedBonus(BigDecimal pointsAllowed) {
@@ -232,4 +286,99 @@ public final class FantasySnapshotMapper {
   private static BigDecimal stat(Map<Integer, BigDecimal> stats, int statId) {
     return stats.getOrDefault(statId, ZERO);
   }
+
+  private static BigDecimal firstPresentStat(Map<Integer, BigDecimal> stats, int... statIds) {
+    BigDecimal stat = firstPresentNullableStat(stats, statIds);
+    return stat != null ? stat : ZERO;
+  }
+
+  private static BigDecimal firstPresentNullableStat(
+      Map<Integer, BigDecimal> stats, int... statIds) {
+    for (int statId : statIds) {
+      if (stats.containsKey(statId)) {
+        return stats.get(statId);
+      }
+    }
+    return null;
+  }
+
+  private static Map<String, BigDecimal> extractDisplayableStats(
+      JsonNode playerNode, int statSourceId, int scoringPeriodId) {
+    JsonNode entry = findStatsEntry(playerNode, statSourceId, scoringPeriodId);
+    if (entry == null) {
+      return Map.of();
+    }
+
+    JsonNode statsMap = entry.path("stats");
+    if (statsMap.isMissingNode() || !statsMap.isObject()) {
+      return Map.of();
+    }
+
+    boolean teamDefense = isTeamDefense(playerNode);
+    boolean kicker = isKicker(playerNode);
+    Map<String, BigDecimal> result = new LinkedHashMap<>();
+    Iterator<Map.Entry<String, JsonNode>> fields = statsMap.fields();
+    while (fields.hasNext()) {
+      Map.Entry<String, JsonNode> field = fields.next();
+      try {
+        int statId = Integer.parseInt(field.getKey());
+        String readableName = resolveDisplayableStatName(statId, teamDefense, kicker);
+        if (readableName == null) {
+          continue;
+        }
+        result.put(readableName, BigDecimal.valueOf(field.getValue().asDouble()));
+      } catch (NumberFormatException e) {
+        log.debug("Skipping non-numeric stat key: {}", field.getKey());
+      }
+    }
+    return result;
+  }
+
+  private static String resolveDisplayableStatName(
+      int statId, boolean teamDefense, boolean kicker) {
+    if (teamDefense) {
+      return switch (statId) {
+        case 83, 99 -> "defensiveSacks";
+        case 85, 95 -> "defensiveInterceptions";
+        case 86, 96 -> "defensiveFumblesRecovered";
+        case 88, 97 -> "defensiveBlockedKicks";
+        case 89, 105 -> "defensivePlusSpecialTeamsTouchdowns";
+        case 90, 98 -> "defensiveSafeties";
+        case 120 -> "defensivePointsAllowed";
+        default -> null;
+      };
+    }
+
+    if (kicker) {
+      return switch (statId) {
+        case 3, 4, 19, 20, 24, 25, 26, 41, 42, 43, 44, 63, 68, 72, 74, 77, 80, 83, 84, 85, 86,
+            87, 88 -> EspnStatIdMapping.resolve(statId);
+        default -> null;
+      };
+    }
+
+    return switch (statId) {
+      case 0, 1, 2, 3, 4, 19, 20, 23, 24, 25, 26, 41, 42, 43, 44, 53, 63, 68, 72 ->
+          EspnStatIdMapping.resolve(statId);
+      default -> null;
+    };
+  }
+
+  private static void addContribution(
+      Map<String, BigDecimal> breakdown,
+      String label,
+      BigDecimal value,
+      BigDecimal multiplier) {
+    breakdown.put(label, value.multiply(multiplier).setScale(2, RoundingMode.HALF_UP));
+  }
+
+  private static BigDecimal sumBreakdown(Map<String, BigDecimal> breakdown) {
+    BigDecimal total = ZERO;
+    for (BigDecimal value : breakdown.values()) {
+      total = total.add(value);
+    }
+    return total.setScale(2, RoundingMode.HALF_UP);
+  }
+
+  private record FantasyComputation(BigDecimal total, Map<String, BigDecimal> breakdown) {}
 }

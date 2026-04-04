@@ -1,4 +1,4 @@
-package sportstock.scheduler.job;
+package com.sportstock.scheduler.job;
 
 import com.sportstock.common.dto.ingestion.CurrentWeekResponse;
 import com.sportstock.common.dto.league.LeagueResponse;
@@ -7,11 +7,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import sportstock.scheduler.client.IngestionClient;
-import sportstock.scheduler.client.LeagueClient;
-import sportstock.scheduler.client.StockMarketClient;
-import sportstock.scheduler.client.TransactionClient;
-import sportstock.scheduler.repo.EventStateRepository;
+import com.sportstock.scheduler.client.IngestionClient;
+import com.sportstock.scheduler.client.LeagueClient;
+import com.sportstock.scheduler.client.StockMarketClient;
+import com.sportstock.scheduler.client.TransactionClient;
+import com.sportstock.scheduler.repo.EventStateRepository;
 
 @Slf4j
 @Component

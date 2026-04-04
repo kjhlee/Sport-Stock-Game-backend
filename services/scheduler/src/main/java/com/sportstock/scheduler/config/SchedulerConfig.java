@@ -1,13 +1,13 @@
-package sportstock.scheduler.config;
+package com.sportstock.scheduler.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestClient;
-import sportstock.scheduler.client.IngestionClient;
-import sportstock.scheduler.client.LeagueClient;
-import sportstock.scheduler.client.StockMarketClient;
-import sportstock.scheduler.client.TransactionClient;
+import com.sportstock.scheduler.client.IngestionClient;
+import com.sportstock.scheduler.client.LeagueClient;
+import com.sportstock.scheduler.client.StockMarketClient;
+import com.sportstock.scheduler.client.TransactionClient;
 
 @Configuration
 public class SchedulerConfig {

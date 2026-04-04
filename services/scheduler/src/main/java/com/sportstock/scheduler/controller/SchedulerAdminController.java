@@ -1,16 +1,16 @@
-package sportstock.scheduler.controller;
+package com.sportstock.scheduler.controller;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import sportstock.scheduler.job.DailyCatchupJob;
-import sportstock.scheduler.job.GameDayPollingJob;
-import sportstock.scheduler.job.InitialStipendCheckJob;
-import sportstock.scheduler.job.PreseasonBootstrapJob;
-import sportstock.scheduler.job.ProjectionSyncJob;
-import sportstock.scheduler.job.WeeklyLifecycleJob;
+import com.sportstock.scheduler.job.DailyCatchupJob;
+import com.sportstock.scheduler.job.GameDayPollingJob;
+import com.sportstock.scheduler.job.InitialStipendCheckJob;
+import com.sportstock.scheduler.job.PreseasonBootstrapJob;
+import com.sportstock.scheduler.job.ProjectionSyncJob;
+import com.sportstock.scheduler.job.WeeklyLifecycleJob;
 
 @RestController
 @RequestMapping("/api/v1/scheduler")
@@ -42,6 +42,12 @@ public class SchedulerAdminController {
         return "triggered";
     }
 
+    @PostMapping("/trigger/close-event")
+    public GameDayPollingJob.CloseEventResult triggerCloseEvent(
+            @RequestParam String eventEspnId) {
+        return gameDayPollingJob.closeEvent(eventEspnId);
+    }
+
     @PostMapping("/trigger/daily-catchup")
     public String triggerDailyCatchup() {
         dailyCatchupJob.run();
@@ -59,5 +65,11 @@ public class SchedulerAdminController {
             @RequestParam(required = false) Integer seasonYear) {
         preseasonBootstrapJob.run(seasonYear);
         return "triggered";
+    }
+
+    @PostMapping("/test/close-event")
+    public GameDayPollingJob.CloseEventResult testCloseEvent(
+            @RequestParam String eventEspnId) {
+        return gameDayPollingJob.closeEvent(eventEspnId);
     }
 }

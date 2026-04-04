@@ -1,12 +1,12 @@
-package sportstock.scheduler.job;
+package com.sportstock.scheduler.job;
 
 import com.sportstock.common.dto.ingestion.CurrentWeekResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import sportstock.scheduler.client.IngestionClient;
-import sportstock.scheduler.client.StockMarketClient;
+import com.sportstock.scheduler.client.IngestionClient;
+import com.sportstock.scheduler.client.StockMarketClient;
 
 @Slf4j
 @Component

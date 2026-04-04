@@ -1,7 +1,9 @@
-package sportstock.scheduler.job;
+package com.sportstock.scheduler.job;
 
 import com.sportstock.common.dto.ingestion.CurrentWeekResponse;
 import com.sportstock.common.dto.ingestion.EventResponse;
+import com.sportstock.common.dto.stock_market.IngestionEventDto;
+import com.sportstock.common.dto.stock_market.PriceUpdateResponse;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -12,10 +14,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import sportstock.scheduler.client.IngestionClient;
-import sportstock.scheduler.client.StockMarketClient;
-import sportstock.scheduler.entity.EventState;
-import sportstock.scheduler.repo.EventStateRepository;
+import com.sportstock.scheduler.client.IngestionClient;
+import com.sportstock.scheduler.client.StockMarketClient;
+import com.sportstock.scheduler.entity.EventState;
+import com.sportstock.scheduler.repo.EventStateRepository;
 
 @Slf4j
 @Component
@@ -92,6 +94,53 @@ public class GameDayPollingJob {
         } catch (Exception e) {
             log.warn("Skipping game-day polling cycle because dependencies are unavailable: {}", e.getMessage());
         }
+    }
+
+    public CloseEventResult closeEvent(String eventEspnId) {
+        IngestionEventDto event = ingestionClient.getEvent(eventEspnId);
+        if (event == null) {
+            throw new IllegalArgumentException("Event not found: " + eventEspnId);
+        }
+
+        Integer seasonType = event.getSeasonType();
+        Integer weekNumber = event.getWeekNumber();
+        if (seasonType == null || weekNumber == null) {
+            throw new IllegalStateException(
+                    "Event " + eventEspnId + " is missing season metadata required for finalization");
+        }
+
+        EventState state = eventStateRepository.findById(eventEspnId).orElse(null);
+        boolean alreadyFinalized = state != null && STATE_FINALIZED.equals(state.getStatus());
+
+        Map<String, Object> summaryResult = ingestionClient.syncEventSummary(eventEspnId);
+        Map<String, Object> fantasyResult = ingestionClient.syncActualFantasyPoints(eventEspnId);
+        PriceUpdateResponse priceResult = stockMarketClient.updateFinalPrices(eventEspnId);
+        Map<String, Object> completionResult = ingestionClient.markEventCompleted(eventEspnId);
+
+        if (state == null) {
+            state = new EventState();
+            state.setEventEspnId(eventEspnId);
+            state.setLockedAt(Instant.now());
+            state.setWeekNumber(weekNumber);
+            state.setSeasonYear(event.getSeasonYear());
+            state.setSeasonType(seasonType);
+        }
+
+        state.setStatus(STATE_FINALIZED);
+        state.setFinalizedAt(Instant.now());
+        eventStateRepository.save(state);
+
+        log.info("Closed event {} via admin/test endpoint", eventEspnId);
+
+        return new CloseEventResult(
+                eventEspnId,
+                summaryResult,
+                asInt(fantasyResult.get("updated")),
+                asInt(fantasyResult.get("skipped")),
+                priceResult != null ? priceResult.updated() : 0,
+                priceResult != null ? priceResult.skipped() : 0,
+                asInt(completionResult.get("markedCompleted")),
+                alreadyFinalized);
     }
 
     private void processEvent(
@@ -205,6 +254,7 @@ public class GameDayPollingJob {
         }
 
         try {
+            ingestionClient.syncEventSummary(espnId);
             ingestionClient.syncActualFantasyPoints(espnId);
             stockMarketClient.updateFinalPrices(espnId);
             ingestionClient.markEventCompleted(espnId);
@@ -230,4 +280,21 @@ public class GameDayPollingJob {
         Instant windowEnd = now.plus(6, ChronoUnit.HOURS);
         return !eventDate.isBefore(windowStart) && !eventDate.isAfter(windowEnd);
     }
+
+    private int asInt(Object value) {
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        return 0;
+    }
+
+    public record CloseEventResult(
+            String eventEspnId,
+            Map<String, Object> summaryResult,
+            int actualFantasyUpdated,
+            int actualFantasySkipped,
+            int finalPricesUpdated,
+            int finalPricesSkipped,
+            int markedCompleted,
+            boolean alreadyFinalized) {}
 }

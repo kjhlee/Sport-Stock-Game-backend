@@ -3,8 +3,10 @@ package com.sportstock.ingestion.controller;
 import com.sportstock.common.dto.ingestion.FantasySnapshotResponse;
 import com.sportstock.ingestion.entity.FantasySnapshot;
 import com.sportstock.ingestion.repo.FantasySnapshotRepository;
+import com.sportstock.ingestion.service.EventSummaryIngestionService;
 import com.sportstock.ingestion.service.FantasySnapshotIngestionService;
 import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -16,6 +18,7 @@ public class FantasySnapshotController {
 
   private final FantasySnapshotIngestionService fantasySnapshotIngestionService;
   private final FantasySnapshotRepository fantasySnapshotRepository;
+  private final EventSummaryIngestionService eventSummaryIngestionService;
 
   @PostMapping("/sync/projections")
   public ResponseEntity<?> syncProjections(
@@ -29,6 +32,18 @@ public class FantasySnapshotController {
   public ResponseEntity<?> syncActualFantasyPoints(@RequestParam String eventEspnId) {
     var result = fantasySnapshotIngestionService.ingestActualFantasyPoints(eventEspnId);
     return ResponseEntity.ok(result);
+  }
+
+  @PostMapping("/sync/events/{eventEspnId}/postgame")
+  public ResponseEntity<?> syncPostgame(@PathVariable String eventEspnId) {
+    eventSummaryIngestionService.ingestEventSummary(eventEspnId);
+    var fantasyResult = fantasySnapshotIngestionService.ingestActualFantasyPoints(eventEspnId);
+    return ResponseEntity.ok(
+        Map.of(
+            "eventEspnId", eventEspnId,
+            "summaryIngested", true,
+            "actualFantasyUpdated", fantasyResult.updated(),
+            "actualFantasySkipped", fantasyResult.skipped()));
   }
 
   @PostMapping("/sync/mark-event-completed")
@@ -57,6 +72,25 @@ public class FantasySnapshotController {
         .map(this::toResponse)
         .map(ResponseEntity::ok)
         .orElse(ResponseEntity.notFound().build());
+  }
+
+  @GetMapping("/debug/events/{eventEspnId}/fantasy/{subjectType}/{espnId}")
+  public ResponseEntity<Map<String, Object>> debugFantasyForEvent(
+      @PathVariable String eventEspnId,
+      @PathVariable String subjectType,
+      @PathVariable String espnId) {
+    return ResponseEntity.ok(
+        fantasySnapshotIngestionService.debugFantasyForEvent(eventEspnId, subjectType, espnId));
+  }
+
+  @GetMapping("/debug/events/{eventEspnId}/fantasy/team/{teamEspnId}")
+  public ResponseEntity<Map<String, Object>> debugFantasyForTeam(
+      @PathVariable String eventEspnId,
+      @PathVariable String teamEspnId,
+      @RequestParam(required = false) String subjectType) {
+    return ResponseEntity.ok(
+        fantasySnapshotIngestionService.debugFantasyForTeam(
+            eventEspnId, teamEspnId, subjectType));
   }
 
   private FantasySnapshotResponse toResponse(FantasySnapshot fs) {
