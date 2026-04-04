@@ -7,6 +7,7 @@ import com.sportstock.ingestion.entity.EventCompetitor;
 import com.sportstock.ingestion.entity.FantasySnapshot;
 import com.sportstock.ingestion.entity.TeamRosterEntry;
 import com.sportstock.ingestion.mapper.FantasySnapshotMapper;
+import com.sportstock.ingestion.mapper.PlayerGameStatsFantasyPointCalculator;
 import com.sportstock.ingestion.repo.EventCompetitorRepository;
 import com.sportstock.ingestion.repo.EventRepository;
 import com.sportstock.ingestion.repo.FantasySnapshotRepository;
@@ -33,12 +34,14 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 @Service
 public class FantasySnapshotIngestionService {
+  private static final Set<Integer> SUPPORTED_POSITION_IDS = Set.of(1, 2, 3, 4, 5);
 
   private final EspnFantasyClient espnFantasyClient;
   private final FantasySnapshotRepository fantasySnapshotRepository;
   private final EventRepository eventRepository;
   private final EventCompetitorRepository eventCompetitorRepository;
   private final PlayerGameStatRepository playerGameStatRepository;
+  private final PlayerGameStatsFantasyPointCalculator playerGameStatsFantasyPointCalculator;
   private final TeamRosterEntryRepository teamRosterEntryRepository;
 
   @Transactional
@@ -72,7 +75,6 @@ public class FantasySnapshotIngestionService {
       List<Integer> teamIds =
           competitors.stream().map(ec -> Integer.parseInt(ec.getTeam().getEspnId())).toList();
       Set<String> rosterAthleteIds = loadRosterAthleteIds(competitors, event.getSeasonYear());
-      Set<String> defenseIds = loadCanonicalDefenseIds(competitors);
 
       if (teamIds.isEmpty()) {
         log.warn("No competitors found for event {}", event.getEspnId());
@@ -99,7 +101,7 @@ public class FantasySnapshotIngestionService {
       for (JsonNode playerNode : root) {
         try {
           ResolvedSubject subject =
-              resolveSubject(playerNode, competitors, rosterAthleteIds, defenseIds);
+              resolveSubject(playerNode, rosterAthleteIds);
           if (subject == null) {
             skipped++;
             continue;
@@ -113,8 +115,9 @@ public class FantasySnapshotIngestionService {
                   weekNumber,
                   subject.subjectType(),
                   subject.espnId(),
-                  subject.fullName());
-          if (snapshot == null || snapshot.getProjectedFantasyPoints() == null) {
+                  subject.fullName(),
+                  true);
+          if (snapshot == null || !hasProjectedStats(snapshot)) {
             skipped++;
             continue;
           }
@@ -168,7 +171,6 @@ public class FantasySnapshotIngestionService {
         playerGameStatRepository.findByEventId(event.getId()).stream()
             .map(pgs -> pgs.getAthleteEspnId())
             .collect(Collectors.toSet());
-    Set<String> defenseIds = loadCanonicalDefenseIds(competitors);
 
     JsonNode root =
         espnFantasyClient.fetchPlayersByTeams(
@@ -189,36 +191,29 @@ public class FantasySnapshotIngestionService {
 
     for (JsonNode playerNode : root) {
       try {
-        ResolvedSubject subject = resolveSubject(playerNode, competitors, athleteIds, defenseIds);
+        ResolvedSubject subject = resolveSubject(playerNode, athleteIds);
         if (subject == null) {
           skipped++;
           continue;
         }
 
-        FantasySnapshot snapshot =
-            buildSnapshotFromPlayerNode(
-                playerNode,
-                existingSnapshots,
-                event,
-                event.getWeekNumber(),
-                subject.subjectType(),
-                subject.espnId(),
-                subject.fullName());
+        FantasySnapshot snapshot = existingSnapshots.get(subject.key());
         if (snapshot == null) {
           skipped++;
           continue;
         }
 
         BigDecimal actualFp =
-            FantasySnapshotMapper.extractActualFantasyPoints(playerNode, event.getWeekNumber());
-        if (actualFp != null) {
-          snapshot.setActualFantasyPoints(actualFp);
-          toSave.add(snapshot);
-          retainedKeys.add(subject.key());
-          updated++;
-        } else {
+            playerGameStatsFantasyPointCalculator.computePlayerFantasyPoints(
+                event.getId(), subject.espnId());
+        if (!hasProjectedStats(snapshot) && actualFp == null) {
           skipped++;
+          continue;
         }
+        snapshot.setActualFantasyPoints(actualFp);
+        toSave.add(snapshot);
+        retainedKeys.add(subject.key());
+        updated++;
       } catch (Exception e) {
         log.error(
             "Failed to process actual fantasy node for event {}: {}",
@@ -264,8 +259,6 @@ public class FantasySnapshotIngestionService {
         playerGameStatRepository.findByEventId(event.getId()).stream()
             .map(pgs -> pgs.getAthleteEspnId())
             .collect(Collectors.toSet());
-    Set<String> defenseIds = loadCanonicalDefenseIds(competitors);
-
     JsonNode root =
         espnFantasyClient.fetchPlayersByTeams(
             event.getSeasonYear(), event.getWeekNumber(), event.getSeasonType(), teamIds);
@@ -275,7 +268,7 @@ public class FantasySnapshotIngestionService {
 
     String normalizedSubjectType = normalizeSubjectType(subjectType);
     for (JsonNode playerNode : root) {
-      ResolvedSubject subject = resolveSubject(playerNode, competitors, athleteIds, defenseIds);
+      ResolvedSubject subject = resolveSubject(playerNode, athleteIds);
       if (subject == null
           || !normalizedSubjectType.equals(subject.subjectType())
           || !espnId.equals(subject.espnId())) {
@@ -336,7 +329,6 @@ public class FantasySnapshotIngestionService {
             .filter(pgs -> teamEspnId.equals(pgs.getTeam().getEspnId()))
             .map(pgs -> pgs.getAthleteEspnId())
             .collect(Collectors.toSet());
-    Set<String> defenseIds = Set.of(teamEspnId);
 
     JsonNode root =
         espnFantasyClient.fetchPlayersByTeams(
@@ -349,8 +341,7 @@ public class FantasySnapshotIngestionService {
     List<Map<String, Object>> results = new ArrayList<>();
 
     for (JsonNode playerNode : root) {
-      ResolvedSubject subject =
-          resolveSubject(playerNode, competitors, teamAthleteIds, defenseIds);
+      ResolvedSubject subject = resolveSubject(playerNode, teamAthleteIds);
       if (subject == null
           || (!"ALL".equals(normalizedSubjectType)
               && !normalizedSubjectType.equals(subject.subjectType()))) {
@@ -400,7 +391,8 @@ public class FantasySnapshotIngestionService {
       int scoringPeriodId,
       String subjectType,
       String espnId,
-      String fullName) {
+      String fullName,
+      boolean refreshProjectedFields) {
     if (espnId == null || espnId.isBlank()) {
       return null;
     }
@@ -421,11 +413,17 @@ public class FantasySnapshotIngestionService {
         fullName != null && !fullName.isBlank()
             ? fullName
             : FantasySnapshotMapper.extractFullName(playerNode));
-    snapshot.setProjectedFantasyPoints(
-        FantasySnapshotMapper.extractProjectedFantasyPoints(playerNode, scoringPeriodId));
-    snapshot.setProjectedStats(
-        FantasySnapshotMapper.extractProjectedStatsJson(playerNode, scoringPeriodId));
+    if (refreshProjectedFields) {
+      snapshot.setProjectedFantasyPoints(
+          FantasySnapshotMapper.extractProjectedFantasyPoints(playerNode, scoringPeriodId));
+      snapshot.setProjectedStats(
+          FantasySnapshotMapper.extractProjectedStatsJson(playerNode, scoringPeriodId));
+    }
     return snapshot;
+  }
+
+  private boolean hasProjectedStats(FantasySnapshot snapshot) {
+    return snapshot.getProjectedStats() != null && !snapshot.getProjectedStats().isBlank();
   }
 
   private String normalizeSubjectType(String subjectType) {
@@ -459,25 +457,23 @@ public class FantasySnapshotIngestionService {
     return competitors.stream().map(ec -> ec.getTeam().getEspnId()).collect(Collectors.toSet());
   }
 
-  private ResolvedSubject resolveSubject(
-      JsonNode playerNode,
-      List<EventCompetitor> competitors,
-      Set<String> playerAllowlist,
-      Set<String> defenseAllowlist) {
-    if (FantasySnapshotMapper.isTeamDefense(playerNode)) {
-      String defenseId = resolveCanonicalDefenseId(playerNode, competitors);
-      if (defenseId == null || !defenseAllowlist.contains(defenseId)) {
-        return null;
-      }
-      return new ResolvedSubject(
-          "TEAM_DEFENSE", defenseId, resolveDefenseDisplayName(defenseId, competitors));
+  private ResolvedSubject resolveSubject(JsonNode playerNode, Set<String> playerAllowlist) {
+    if (!isSupportedFantasyPlayer(playerNode)) {
+      return null;
     }
-
     String playerId = FantasySnapshotMapper.extractPlayerId(playerNode);
     if (playerId == null || !playerAllowlist.contains(playerId)) {
       return null;
     }
     return new ResolvedSubject("PLAYER", playerId, null);
+  }
+
+  private boolean isSupportedFantasyPlayer(JsonNode playerNode) {
+    if (FantasySnapshotMapper.isTeamDefense(playerNode)) {
+      return false;
+    }
+    int defaultPositionId = playerNode.path("defaultPositionId").asInt(-1);
+    return SUPPORTED_POSITION_IDS.contains(defaultPositionId);
   }
 
   private String resolveCanonicalDefenseId(JsonNode playerNode, List<EventCompetitor> competitors) {

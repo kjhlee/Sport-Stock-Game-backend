@@ -72,6 +72,10 @@ public final class FantasySnapshotMapper {
 
   private static BigDecimal extractAppliedTotal(
       JsonNode playerNode, int statSourceId, int scoringPeriodId) {
+    if (isTeamDefense(playerNode)) {
+      return null;
+    }
+
     JsonNode entry = findStatsEntry(playerNode, statSourceId, scoringPeriodId);
     if (entry == null) {
       return null;
@@ -86,9 +90,7 @@ public final class FantasySnapshotMapper {
       return null;
     }
 
-    if (isTeamDefense(playerNode)) {
-      return computeDefenseFantasyPoints(stats).total();
-    } else if (isKicker(playerNode)) {
+    if (isKicker(playerNode)) {
       return computeKickerFantasyPoints(stats).total();
     } else {
       return computeOffenseFantasyPoints(stats).total();
@@ -110,6 +112,16 @@ public final class FantasySnapshotMapper {
         extractDisplayableStats(playerNode, statSourceId, scoringPeriodId);
     JsonNode appliedTotalNode = entry.path("appliedTotal");
 
+    if (isTeamDefense(playerNode)) {
+      return Map.of(
+          "available", false,
+          "unsupported", true,
+          "reason", "TEAM_DEFENSE fantasy point computation is disabled",
+          "statSourceId", statSourceId,
+          "scoringPeriodId", scoringPeriodId,
+          "normalizedStats", displayableStats);
+    }
+
     boolean usedAppliedTotal = !appliedTotalNode.isMissingNode() && !appliedTotalNode.isNull();
     BigDecimal appliedTotal =
         usedAppliedTotal
@@ -117,11 +129,9 @@ public final class FantasySnapshotMapper {
             : null;
 
     FantasyComputation computation =
-        isTeamDefense(playerNode)
-            ? computeDefenseFantasyPoints(rawStats)
-            : isKicker(playerNode)
-                ? computeKickerFantasyPoints(rawStats)
-                : computeOffenseFantasyPoints(rawStats);
+        isKicker(playerNode)
+            ? computeKickerFantasyPoints(rawStats)
+            : computeOffenseFantasyPoints(rawStats);
 
     Map<String, Object> explanation = new LinkedHashMap<>();
     explanation.put("available", true);
@@ -219,70 +229,6 @@ public final class FantasySnapshotMapper {
     return new FantasyComputation(sumBreakdown(breakdown), breakdown);
   }
 
-  private static FantasyComputation computeDefenseFantasyPoints(Map<Integer, BigDecimal> stats) {
-    Map<String, BigDecimal> breakdown = new LinkedHashMap<>();
-    addContribution(
-        breakdown, "defensiveSacks", firstPresentStat(stats, 83, 99), BigDecimal.ONE);
-    addContribution(
-        breakdown,
-        "defensiveInterceptions",
-        firstPresentStat(stats, 85, 95),
-        new BigDecimal("2"));
-    addContribution(
-        breakdown,
-        "defensiveFumblesRecovered",
-        firstPresentStat(stats, 86, 96),
-        new BigDecimal("2"));
-    addContribution(
-        breakdown,
-        "defensiveBlockedKicks",
-        firstPresentStat(stats, 88, 97),
-        new BigDecimal("2"));
-    addContribution(
-        breakdown, "defensiveSafeties", firstPresentStat(stats, 90, 98), new BigDecimal("2"));
-    addContribution(
-        breakdown,
-        "defensivePlusSpecialTeamsTouchdowns",
-        firstPresentStat(stats, 89, 105),
-        new BigDecimal("6"));
-    BigDecimal pointsAllowed = firstPresentNullableStat(stats, 95, 120);
-    if (pointsAllowed != null) {
-      breakdown.put(
-          "defensivePointsAllowedBonus",
-          pointsAllowedBonus(pointsAllowed).setScale(2, RoundingMode.HALF_UP));
-    }
-    return new FantasyComputation(sumBreakdown(breakdown), breakdown);
-  }
-
-  private static BigDecimal pointsAllowedBonus(BigDecimal pointsAllowed) {
-    int pa = pointsAllowed.setScale(0, RoundingMode.DOWN).intValue();
-    if (pa == 0) {
-      return new BigDecimal("10");
-    }
-    if (pa <= 6) {
-      return new BigDecimal("7");
-    }
-    if (pa <= 13) {
-      return new BigDecimal("4");
-    }
-    if (pa <= 17) {
-      return BigDecimal.ONE;
-    }
-    if (pa <= 21) {
-      return ZERO;
-    }
-    if (pa <= 27) {
-      return new BigDecimal("-1");
-    }
-    if (pa <= 34) {
-      return new BigDecimal("-4");
-    }
-    if (pa <= 45) {
-      return new BigDecimal("-7");
-    }
-    return new BigDecimal("-7");
-  }
-
   private static BigDecimal stat(Map<Integer, BigDecimal> stats, int statId) {
     return stats.getOrDefault(statId, ZERO);
   }
@@ -337,16 +283,7 @@ public final class FantasySnapshotMapper {
   private static String resolveDisplayableStatName(
       int statId, boolean teamDefense, boolean kicker) {
     if (teamDefense) {
-      return switch (statId) {
-        case 83, 99 -> "defensiveSacks";
-        case 85, 95 -> "defensiveInterceptions";
-        case 86, 96 -> "defensiveFumblesRecovered";
-        case 88, 97 -> "defensiveBlockedKicks";
-        case 89, 105 -> "defensivePlusSpecialTeamsTouchdowns";
-        case 90, 98 -> "defensiveSafeties";
-        case 120 -> "defensivePointsAllowed";
-        default -> null;
-      };
+      return null;
     }
 
     if (kicker) {

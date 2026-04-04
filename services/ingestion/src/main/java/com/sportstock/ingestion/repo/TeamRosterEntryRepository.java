@@ -7,7 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.data.repository.query.Param;
 
 public interface TeamRosterEntryRepository extends JpaRepository<TeamRosterEntry, Long> {
 
@@ -17,6 +16,15 @@ public interface TeamRosterEntryRepository extends JpaRepository<TeamRosterEntry
   List<TeamRosterEntry> findByTeamEspnIdAndSeasonYear(String espnTeamId, Integer seasonYear);
 
   List<TeamRosterEntry> findByAthleteIdAndSeasonYear(Long athleteId, Integer seasonYear);
+
+  @Query(
+      """
+      SELECT tre FROM TeamRosterEntry tre
+      JOIN FETCH tre.team t
+      WHERE tre.athlete.id = :athleteId
+      ORDER BY tre.seasonYear DESC, tre.updatedAt DESC
+      """)
+  List<TeamRosterEntry> findLatestByAthleteId(@Param("athleteId") Long athleteId);
 
   @Modifying
   @Query(
