@@ -32,4 +32,5 @@ public record AthleteResponse(
     String statusId,
     String statusName,
     String statusType,
-    String handType) {}
+    String handType,
+    String teamEspnId) {}

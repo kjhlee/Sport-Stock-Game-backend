@@ -62,6 +62,7 @@ public class PricingService {
 
       stock.setCurrentPrice(newPrice);
       stock.setPriceUpdatedAt(Instant.now());
+      stockRepository.save(stock);
 
       upsertPriceHistory(stock, seasonYear, seasonType, weekNumber, newPrice, PriceType.BASE);
       updated++;
@@ -98,6 +99,7 @@ public class PricingService {
 
       stock.setCurrentPrice(newPrice);
       stock.setPriceUpdatedAt(Instant.now());
+      stockRepository.save(stock);
 
       if (eventInfo != null) {
         upsertPriceHistory(
@@ -146,7 +148,7 @@ public class PricingService {
       stock.setPosition("DST");
       stock.setTeamEspnId(snapshot.espnId());
       stock.setFullName(snapshot.fullName());
-      stock.setStatus(StockStatus.ACTIVE);
+      stock.setStatus(StockStatus.DELISTED);
       return stockRepository.save(stock);
     }
 
@@ -195,20 +197,18 @@ public class PricingService {
       int week,
       BigDecimal price,
       PriceType priceType) {
-    int updatedRows =
-        priceHistoryRepository.updatePrice(
-            stock.getId(), seasonYear, seasonType, week, priceType, price);
-
-    if (updatedRows == 0) {
-      PriceHistory history = new PriceHistory();
-      history.setStock(stock);
-      history.setSeasonYear(seasonYear);
-      history.setSeasonType(seasonType);
-      history.setWeek(week);
-      history.setPrice(price);
-      history.setPriceType(priceType);
-      priceHistoryRepository.save(history);
-    }
+    PriceHistory history =
+        priceHistoryRepository
+            .findByStockIdAndSeasonYearAndSeasonTypeAndWeekAndPriceType(
+                stock.getId(), seasonYear, seasonType, week, priceType)
+            .orElseGet(PriceHistory::new);
+    history.setStock(stock);
+    history.setSeasonYear(seasonYear);
+    history.setSeasonType(seasonType);
+    history.setWeek(week);
+    history.setPrice(price);
+    history.setPriceType(priceType);
+    priceHistoryRepository.save(history);
   }
 
   public record PriceUpdateResult(int updated, int skipped) {}

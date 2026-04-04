@@ -22,7 +22,7 @@ public final class DtoMapper {
 
   private DtoMapper() {}
 
-  public static AthleteResponse toAthleteResponse(Athlete entity) {
+  public static AthleteResponse toAthleteResponse(Athlete entity, String teamEspnId) {
     return new AthleteResponse(
         entity.getEspnId(),
         entity.getFirstName(),
@@ -52,7 +52,8 @@ public final class DtoMapper {
         entity.getStatusId(),
         entity.getStatusName(),
         entity.getStatusType(),
-        entity.getHandType());
+        entity.getHandType(),
+        teamEspnId);
   }
 
   public static TeamResponse toTeamResponse(Team entity) {

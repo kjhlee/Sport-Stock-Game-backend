@@ -122,6 +122,7 @@ public class StockSyncService {
       if (existing != null) {
         existing.setFullName(team.getDisplayName() + " D/ST");
         existing.setTeamEspnId(espnId);
+        existing.setStatus(StockStatus.DELISTED);
         updated++;
         continue;
       }
@@ -133,7 +134,7 @@ public class StockSyncService {
       stock.setPosition("DST");
       stock.setTeamEspnId(espnId);
       stock.setCurrentPrice(resolveInitialPrice("DST"));
-      stock.setStatus(StockStatus.ACTIVE);
+      stock.setStatus(StockStatus.DELISTED);
       stockRepository.save(stock);
       created++;
     }

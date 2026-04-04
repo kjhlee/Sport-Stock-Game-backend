@@ -12,6 +12,7 @@ import com.sportstock.ingestion.exception.IngestionException;
 import com.sportstock.ingestion.mapper.DtoMapper;
 import com.sportstock.ingestion.mapper.JsonPayloadCodec;
 import com.sportstock.ingestion.repo.AthleteRepository;
+import com.sportstock.ingestion.repo.TeamRosterEntryRepository;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -36,6 +37,7 @@ public class AthleteIngestionService {
 
   private final EspnApiClient espnApiClient;
   private final AthleteRepository athleteRepository;
+  private final TeamRosterEntryRepository teamRosterEntryRepository;
   private final EspnApiProperties espnApiProperties;
   private final EntityManager entityManager;
   private final JsonPayloadCodec jsonPayloadCodec;
@@ -140,37 +142,38 @@ public class AthleteIngestionService {
   }
 
   public List<AthleteResponse> listAthletes(String positionAbbreviation, boolean includeStubs) {
+    List<Athlete> athletes;
     if (includeStubs) {
       if (positionAbbreviation != null && !positionAbbreviation.isBlank()) {
-        return athleteRepository
-            .findByPositionAbbreviationOrderByFullNameAsc(positionAbbreviation)
-            .stream()
-            .map(DtoMapper::toAthleteResponse)
-            .toList();
+        athletes = athleteRepository.findByPositionAbbreviationOrderByFullNameAsc(positionAbbreviation);
+      } else {
+        athletes = athleteRepository.findAllByOrderByFullNameAsc();
       }
-      return athleteRepository.findAllByOrderByFullNameAsc().stream()
-          .map(DtoMapper::toAthleteResponse)
-          .toList();
+    } else if (positionAbbreviation != null && !positionAbbreviation.isBlank()) {
+      athletes =
+          athleteRepository.findByPositionAbbreviationAndStubFalseOrderByFullNameAsc(
+              positionAbbreviation);
+    } else {
+      athletes = athleteRepository.findByStubFalseOrderByFullNameAsc();
     }
-
-    if (positionAbbreviation != null && !positionAbbreviation.isBlank()) {
-      return athleteRepository
-          .findByPositionAbbreviationAndStubFalseOrderByFullNameAsc(positionAbbreviation)
-          .stream()
-          .map(DtoMapper::toAthleteResponse)
-          .toList();
-    }
-    return athleteRepository.findByStubFalseOrderByFullNameAsc().stream()
-        .map(DtoMapper::toAthleteResponse)
-        .toList();
+    return athletes.stream().map(this::toAthleteResponseWithTeam).toList();
   }
 
   public AthleteResponse getAthleteByEspnId(String athleteEspnId) {
     return athleteRepository
         .findByEspnId(athleteEspnId)
-        .map(DtoMapper::toAthleteResponse)
+        .map(this::toAthleteResponseWithTeam)
         .orElseThrow(
             () -> new EntityNotFoundException("Athlete not found with ESPN ID: " + athleteEspnId));
+  }
+
+  private AthleteResponse toAthleteResponseWithTeam(Athlete athlete) {
+    String teamEspnId =
+        teamRosterEntryRepository.findLatestByAthleteId(athlete.getId()).stream()
+            .findFirst()
+            .map(entry -> entry.getTeam().getEspnId())
+            .orElse(null);
+    return DtoMapper.toAthleteResponse(athlete, teamEspnId);
   }
 
   private String extractAthleteIdFromRef(String ref) {
