@@ -197,7 +197,16 @@ public class FantasySnapshotIngestionService {
           continue;
         }
 
-        FantasySnapshot snapshot = existingSnapshots.get(subject.key());
+        FantasySnapshot snapshot =
+            buildSnapshotFromPlayerNode(
+                playerNode,
+                existingSnapshots,
+                event,
+                event.getWeekNumber(),
+                subject.subjectType(),
+                subject.espnId(),
+                subject.fullName(),
+                false);
         if (snapshot == null) {
           skipped++;
           continue;
