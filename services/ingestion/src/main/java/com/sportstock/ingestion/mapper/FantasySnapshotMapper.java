@@ -93,7 +93,7 @@ public final class FantasySnapshotMapper {
     if (isKicker(playerNode)) {
       return computeKickerFantasyPoints(stats).total();
     } else {
-      return computeOffenseFantasyPoints(stats).total();
+      return computeOffenseFantasyPoints(stats, statSourceId).total();
     }
   }
 
@@ -131,7 +131,7 @@ public final class FantasySnapshotMapper {
     FantasyComputation computation =
         isKicker(playerNode)
             ? computeKickerFantasyPoints(rawStats)
-            : computeOffenseFantasyPoints(rawStats);
+            : computeOffenseFantasyPoints(rawStats, statSourceId);
 
     Map<String, Object> explanation = new LinkedHashMap<>();
     explanation.put("available", true);
@@ -179,7 +179,8 @@ public final class FantasySnapshotMapper {
     return stats;
   }
 
-  private static FantasyComputation computeOffenseFantasyPoints(Map<Integer, BigDecimal> stats) {
+  private static FantasyComputation computeOffenseFantasyPoints(
+      Map<Integer, BigDecimal> stats, int statSourceId) {
     Map<String, BigDecimal> breakdown = new LinkedHashMap<>();
     addContribution(breakdown, "passingYards", stat(stats, 3), new BigDecimal("0.04"));
     addContribution(breakdown, "passingTouchdowns", stat(stats, 4), new BigDecimal("4"));
@@ -189,8 +190,13 @@ public final class FantasySnapshotMapper {
     addContribution(breakdown, "rushingYards", stat(stats, 24), new BigDecimal("0.1"));
     addContribution(breakdown, "rushingTouchdowns", stat(stats, 25), new BigDecimal("6"));
     addContribution(breakdown, "rushing2PtConversions", stat(stats, 26), new BigDecimal("2"));
-    addContribution(breakdown, "receptions", stat(stats, 41), BigDecimal.ONE);
-    addContribution(breakdown, "receivingYards", stat(stats, 42), new BigDecimal("0.1"));
+    addContribution(
+        breakdown, "receptions", offenseReceptions(stats, statSourceId), BigDecimal.ONE);
+    addContribution(
+        breakdown,
+        "receivingYards",
+        offenseReceivingYards(stats, statSourceId),
+        new BigDecimal("0.1"));
     addContribution(breakdown, "receivingTouchdowns", stat(stats, 43), new BigDecimal("6"));
     addContribution(
         breakdown, "receiving2PtConversions", stat(stats, 44), new BigDecimal("2"));
@@ -233,6 +239,29 @@ public final class FantasySnapshotMapper {
     return stats.getOrDefault(statId, ZERO);
   }
 
+  private static BigDecimal offenseReceptions(Map<Integer, BigDecimal> stats, int statSourceId) {
+    if (statSourceId == 1) {
+      return firstPresentStat(stats, 53, 41);
+    }
+    return firstPresentStat(stats, 41, 53);
+  }
+
+  private static BigDecimal offenseReceivingTargets(
+      Map<Integer, BigDecimal> stats, int statSourceId) {
+    if (statSourceId == 1) {
+      return firstPresentStat(stats, 58, 53);
+    }
+    return firstPresentStat(stats, 53, 58);
+  }
+
+  private static BigDecimal offenseReceivingYards(
+      Map<Integer, BigDecimal> stats, int statSourceId) {
+    if (statSourceId == 1) {
+      return firstPresentStat(stats, 42, 61);
+    }
+    return firstPresentStat(stats, 42, 61);
+  }
+
   private static BigDecimal firstPresentStat(Map<Integer, BigDecimal> stats, int... statIds) {
     BigDecimal stat = firstPresentNullableStat(stats, statIds);
     return stat != null ? stat : ZERO;
@@ -260,45 +289,69 @@ public final class FantasySnapshotMapper {
       return Map.of();
     }
 
-    boolean teamDefense = isTeamDefense(playerNode);
-    boolean kicker = isKicker(playerNode);
-    Map<String, BigDecimal> result = new LinkedHashMap<>();
-    Iterator<Map.Entry<String, JsonNode>> fields = statsMap.fields();
-    while (fields.hasNext()) {
-      Map.Entry<String, JsonNode> field = fields.next();
-      try {
-        int statId = Integer.parseInt(field.getKey());
-        String readableName = resolveDisplayableStatName(statId, teamDefense, kicker);
-        if (readableName == null) {
-          continue;
-        }
-        result.put(readableName, BigDecimal.valueOf(field.getValue().asDouble()));
-      } catch (NumberFormatException e) {
-        log.debug("Skipping non-numeric stat key: {}", field.getKey());
-      }
+    if (isTeamDefense(playerNode)) {
+      return Map.of();
     }
-    return result;
+
+    Map<Integer, BigDecimal> stats = extractStats(entry);
+    if (stats.isEmpty()) {
+      return Map.of();
+    }
+
+    if (isKicker(playerNode)) {
+      Map<String, BigDecimal> kickerStats = new LinkedHashMap<>();
+      putIfPresent(kickerStats, "madeFieldGoalsFromUnder40", firstPresentNullableStat(stats, 80));
+      putIfPresent(kickerStats, "madeFieldGoalsFrom40To49", firstPresentNullableStat(stats, 77));
+      putIfPresent(kickerStats, "madeFieldGoalsFrom50Plus", firstPresentNullableStat(stats, 74));
+      putIfPresent(kickerStats, "madeExtraPoints", firstPresentNullableStat(stats, 86));
+      putIfPresent(kickerStats, "missedExtraPoints", firstPresentNullableStat(stats, 88));
+      putIfPresent(kickerStats, "passingYards", firstPresentNullableStat(stats, 3));
+      putIfPresent(kickerStats, "passingTouchdowns", firstPresentNullableStat(stats, 4));
+      putIfPresent(kickerStats, "passing2PtConversions", firstPresentNullableStat(stats, 19));
+      putIfPresent(kickerStats, "passingInterceptions", firstPresentNullableStat(stats, 20));
+      putIfPresent(kickerStats, "rushingYards", firstPresentNullableStat(stats, 24));
+      putIfPresent(kickerStats, "rushingTouchdowns", firstPresentNullableStat(stats, 25));
+      putIfPresent(kickerStats, "rushing2PtConversions", firstPresentNullableStat(stats, 26));
+      putIfPresent(kickerStats, "receptions", firstPresentNullableStat(stats, 41));
+      putIfPresent(kickerStats, "receivingYards", firstPresentNullableStat(stats, 42, 61));
+      putIfPresent(kickerStats, "receivingTouchdowns", firstPresentNullableStat(stats, 43));
+      putIfPresent(kickerStats, "receiving2PtConversions", firstPresentNullableStat(stats, 44));
+      putIfPresent(kickerStats, "fumbleRecoveredForTD", firstPresentNullableStat(stats, 63));
+      putIfPresent(kickerStats, "fumbles", firstPresentNullableStat(stats, 68));
+      putIfPresent(kickerStats, "lostFumbles", firstPresentNullableStat(stats, 72));
+      return kickerStats;
+    }
+
+    Map<String, BigDecimal> offenseStats = new LinkedHashMap<>();
+    putIfPresent(offenseStats, "passingAttempts", firstPresentNullableStat(stats, 0));
+    putIfPresent(offenseStats, "passingCompletions", firstPresentNullableStat(stats, 1));
+    putIfPresent(offenseStats, "passingIncompletions", firstPresentNullableStat(stats, 2));
+    putIfPresent(offenseStats, "passingYards", firstPresentNullableStat(stats, 3));
+    putIfPresent(offenseStats, "passingTouchdowns", firstPresentNullableStat(stats, 4));
+    putIfPresent(offenseStats, "passing2PtConversions", firstPresentNullableStat(stats, 19));
+    putIfPresent(offenseStats, "passingInterceptions", firstPresentNullableStat(stats, 20));
+    putIfPresent(offenseStats, "rushingAttempts", firstPresentNullableStat(stats, 23));
+    putIfPresent(offenseStats, "rushingYards", firstPresentNullableStat(stats, 24, 40));
+    putIfPresent(offenseStats, "rushingTouchdowns", firstPresentNullableStat(stats, 25));
+    putIfPresent(offenseStats, "rushing2PtConversions", firstPresentNullableStat(stats, 26));
+    putIfPresent(offenseStats, "receptions", offenseReceptions(stats, statSourceId));
+    putIfPresent(
+        offenseStats, "receivingYards", offenseReceivingYards(stats, statSourceId));
+    putIfPresent(offenseStats, "receivingTouchdowns", firstPresentNullableStat(stats, 43));
+    putIfPresent(offenseStats, "receiving2PtConversions", firstPresentNullableStat(stats, 44));
+    putIfPresent(
+        offenseStats, "receivingTargets", offenseReceivingTargets(stats, statSourceId));
+    putIfPresent(offenseStats, "fumbleRecoveredForTD", firstPresentNullableStat(stats, 63));
+    putIfPresent(offenseStats, "fumbles", firstPresentNullableStat(stats, 68));
+    putIfPresent(offenseStats, "lostFumbles", firstPresentNullableStat(stats, 72));
+    return offenseStats;
   }
 
-  private static String resolveDisplayableStatName(
-      int statId, boolean teamDefense, boolean kicker) {
-    if (teamDefense) {
-      return null;
+  private static void putIfPresent(
+      Map<String, BigDecimal> result, String name, BigDecimal value) {
+    if (value != null) {
+      result.put(name, value);
     }
-
-    if (kicker) {
-      return switch (statId) {
-        case 3, 4, 19, 20, 24, 25, 26, 41, 42, 43, 44, 63, 68, 72, 74, 77, 80, 83, 84, 85, 86,
-            87, 88 -> EspnStatIdMapping.resolve(statId);
-        default -> null;
-      };
-    }
-
-    return switch (statId) {
-      case 0, 1, 2, 3, 4, 19, 20, 23, 24, 25, 26, 41, 42, 43, 44, 53, 63, 68, 72 ->
-          EspnStatIdMapping.resolve(statId);
-      default -> null;
-    };
   }
 
   private static void addContribution(
