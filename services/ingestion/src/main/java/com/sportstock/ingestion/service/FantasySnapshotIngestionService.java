@@ -34,7 +34,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 @Service
 public class FantasySnapshotIngestionService {
-  private static final Set<Integer> SUPPORTED_POSITION_IDS = Set.of(1, 2, 3, 4, 5);
+  private static final Set<Integer> SUPPORTED_POSITION_IDS = Set.of(1, 2, 3, 4);
 
   private final EspnFantasyClient espnFantasyClient;
   private final FantasySnapshotRepository fantasySnapshotRepository;
@@ -153,6 +153,86 @@ public class FantasySnapshotIngestionService {
   }
 
   @Transactional
+  public IngestResult ingestProjectionsForEvent(String eventEspnId) {
+    log.info("Ingesting projections for event {} (no status check)", eventEspnId);
+
+    Event event =
+        eventRepository
+            .findByEspnId(eventEspnId)
+            .orElseThrow(() -> new RuntimeException("Event not found: " + eventEspnId));
+
+    List<EventCompetitor> competitors =
+        eventCompetitorRepository.findByEventEspnIdWithTeam(eventEspnId);
+    List<Integer> teamIds =
+        competitors.stream().map(ec -> Integer.parseInt(ec.getTeam().getEspnId())).toList();
+    Set<String> rosterAthleteIds = loadRosterAthleteIds(competitors, event.getSeasonYear());
+
+    if (teamIds.isEmpty()) {
+      log.warn("No competitors found for event {}", eventEspnId);
+      return new IngestResult(0, 0, 0);
+    }
+
+    Map<String, FantasySnapshot> existingSnapshots = new HashMap<>();
+    for (FantasySnapshot fs : fantasySnapshotRepository.findByEventId(event.getId())) {
+      existingSnapshots.put(fs.getSubjectType() + ":" + fs.getEspnId(), fs);
+    }
+
+    JsonNode root =
+        espnFantasyClient.fetchPlayersByTeams(
+            event.getSeasonYear(), event.getWeekNumber(), event.getSeasonType(), teamIds);
+    if (!root.isArray()) {
+      log.warn("ESPN fantasy API returned non-array response for event {}", eventEspnId);
+      return new IngestResult(0, 0, 0);
+    }
+
+    int updated = 0;
+    int skipped = 0;
+    List<FantasySnapshot> toSave = new ArrayList<>();
+    Set<String> retainedKeys = new HashSet<>();
+
+    for (JsonNode playerNode : root) {
+      try {
+        ResolvedSubject subject = resolveSubject(playerNode, rosterAthleteIds);
+        if (subject == null) {
+          skipped++;
+          continue;
+        }
+
+        FantasySnapshot snapshot =
+            buildSnapshotFromPlayerNode(
+                playerNode,
+                existingSnapshots,
+                event,
+                event.getWeekNumber(),
+                subject.subjectType(),
+                subject.espnId(),
+                subject.fullName(),
+                true);
+        if (snapshot == null || !hasProjectedStats(snapshot)) {
+          skipped++;
+          continue;
+        }
+        toSave.add(snapshot);
+        retainedKeys.add(subject.key());
+        updated++;
+      } catch (Exception e) {
+        log.error(
+            "Failed to process player node for event {}: {}", eventEspnId, e.getMessage());
+        skipped++;
+      }
+    }
+
+    fantasySnapshotRepository.saveAll(toSave);
+    pruneSnapshots(event.getId(), retainedKeys);
+    log.info(
+        "Projection ingestion for event {}: {} updated, {} skipped",
+        eventEspnId,
+        updated,
+        skipped);
+    return new IngestResult(updated, skipped, 0);
+  }
+
+  @Transactional
   public IngestResult ingestActualFantasyPoints(String eventEspnId) {
     log.info("Ingesting actual fantasy points for event {}", eventEspnId);
 
@@ -215,6 +295,9 @@ public class FantasySnapshotIngestionService {
         BigDecimal actualFp =
             playerGameStatsFantasyPointCalculator.computePlayerFantasyPoints(
                 event.getId(), subject.espnId());
+        if (actualFp == null) {
+          actualFp = FantasySnapshotMapper.extractActualFantasyPoints(playerNode, event.getWeekNumber());
+        }
         if (!hasProjectedStats(snapshot) && actualFp == null) {
           skipped++;
           continue;

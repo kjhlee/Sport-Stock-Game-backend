@@ -30,23 +30,6 @@ public final class EspnStatIdMapping {
           Map.entry(63, "fumbleRecoveredForTD"),
           Map.entry(68, "fumbles"),
           Map.entry(72, "lostFumbles"),
-          // Kicking — field goals by distance
-          Map.entry(74, "madeFieldGoalsFrom50Plus"),
-          Map.entry(75, "attemptedFieldGoalsFrom50Plus"),
-          Map.entry(76, "missedFieldGoalsFrom50Plus"),
-          Map.entry(77, "madeFieldGoalsFrom40To49"),
-          Map.entry(78, "attemptedFieldGoalsFrom40To49"),
-          Map.entry(79, "missedFieldGoalsFrom40To49"),
-          Map.entry(80, "madeFieldGoalsFromUnder40"),
-          Map.entry(81, "attemptedFieldGoalsFromUnder40"),
-          Map.entry(82, "missedFieldGoalsFromUnder40"),
-          // Kicking — totals
-          Map.entry(83, "madeFieldGoals"),
-          Map.entry(84, "attemptedFieldGoals"),
-          Map.entry(85, "missedFieldGoals"),
-          Map.entry(86, "madeExtraPoints"),
-          Map.entry(87, "attemptedExtraPoints"),
-          Map.entry(88, "missedExtraPoints"),
           // Defense / Special Teams
           Map.entry(95, "defensiveInterceptions"),
           Map.entry(96, "defensiveFumblesRecovered"),

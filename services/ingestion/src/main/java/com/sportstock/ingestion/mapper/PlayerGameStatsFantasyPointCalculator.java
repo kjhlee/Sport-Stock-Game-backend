@@ -34,6 +34,10 @@ public class PlayerGameStatsFantasyPointCalculator {
     Map<String, String> receiving = category(rows, "receiving");
     Map<String, String> fumbles = category(rows, "fumbles");
 
+    if (passing.isEmpty() && rushing.isEmpty() && receiving.isEmpty() && fumbles.isEmpty()) {
+      return null;
+    }
+
     BigDecimal total = ZERO;
 
     total = total.add(num(passing, "passingYards").multiply(new BigDecimal("0.04")));
