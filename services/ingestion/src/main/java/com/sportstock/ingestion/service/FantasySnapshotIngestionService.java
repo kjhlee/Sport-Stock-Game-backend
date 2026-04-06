@@ -74,7 +74,6 @@ public class FantasySnapshotIngestionService {
           eventCompetitorRepository.findByEventEspnIdWithTeam(event.getEspnId());
       List<Integer> teamIds =
           competitors.stream().map(ec -> Integer.parseInt(ec.getTeam().getEspnId())).toList();
-      Set<String> rosterAthleteIds = loadRosterAthleteIds(competitors, event.getSeasonYear());
 
       if (teamIds.isEmpty()) {
         log.warn("No competitors found for event {}", event.getEspnId());
@@ -100,8 +99,7 @@ public class FantasySnapshotIngestionService {
 
       for (JsonNode playerNode : root) {
         try {
-          ResolvedSubject subject =
-              resolveSubject(playerNode, rosterAthleteIds);
+          ResolvedSubject subject = resolveSubjectFromEspn(playerNode);
           if (subject == null) {
             skipped++;
             continue;
@@ -165,7 +163,6 @@ public class FantasySnapshotIngestionService {
         eventCompetitorRepository.findByEventEspnIdWithTeam(eventEspnId);
     List<Integer> teamIds =
         competitors.stream().map(ec -> Integer.parseInt(ec.getTeam().getEspnId())).toList();
-    Set<String> rosterAthleteIds = loadRosterAthleteIds(competitors, event.getSeasonYear());
 
     if (teamIds.isEmpty()) {
       log.warn("No competitors found for event {}", eventEspnId);
@@ -192,7 +189,7 @@ public class FantasySnapshotIngestionService {
 
     for (JsonNode playerNode : root) {
       try {
-        ResolvedSubject subject = resolveSubject(playerNode, rosterAthleteIds);
+        ResolvedSubject subject = resolveSubjectFromEspn(playerNode);
         if (subject == null) {
           skipped++;
           continue;
@@ -547,6 +544,17 @@ public class FantasySnapshotIngestionService {
 
   private Set<String> loadCanonicalDefenseIds(List<EventCompetitor> competitors) {
     return competitors.stream().map(ec -> ec.getTeam().getEspnId()).collect(Collectors.toSet());
+  }
+
+  private ResolvedSubject resolveSubjectFromEspn(JsonNode playerNode) {
+    if (!isSupportedFantasyPlayer(playerNode)) {
+      return null;
+    }
+    String playerId = FantasySnapshotMapper.extractPlayerId(playerNode);
+    if (playerId == null) {
+      return null;
+    }
+    return new ResolvedSubject("PLAYER", playerId, null);
   }
 
   private ResolvedSubject resolveSubject(JsonNode playerNode, Set<String> playerAllowlist) {
