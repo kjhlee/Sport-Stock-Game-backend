@@ -1,8 +1,10 @@
 package com.sportstock.stockmarket.controller;
 
+import com.sportstock.common.dto.stock_market.DelistResponse;
 import com.sportstock.common.dto.stock_market.PagedStockResponse;
 import com.sportstock.common.dto.stock_market.PriceHistoryResponse;
 import com.sportstock.common.dto.stock_market.PriceUpdateResponse;
+import com.sportstock.common.dto.stock_market.RelistResponse;
 import com.sportstock.common.dto.stock_market.StockResponse;
 import com.sportstock.common.dto.stock_market.SyncAthletesResponse;
 import com.sportstock.common.enums.stock_market.StockStatus;
@@ -117,5 +119,21 @@ public class StockController {
   @PostMapping("/internal/stocks/sync-injuries")
   public StockLockService.InjurySyncResult syncInjuries(@RequestParam int seasonYear) {
     return stockLockService.syncInjuryStatuses(seasonYear);
+  }
+
+  @PostMapping("/internal/stocks/delist-unprojected")
+  public DelistResponse delistUnprojectedStocks(
+      @RequestParam int seasonYear, @RequestParam int seasonType, @RequestParam int weekNumber) {
+    PricingService.DelistResult result =
+        pricingService.delistUnprojectedStocks(seasonYear, seasonType, weekNumber);
+    return new DelistResponse(result.delisted(), result.kept());
+  }
+
+  @PostMapping("/internal/stocks/relist-projected")
+  public RelistResponse relistProjectedStocks(
+      @RequestParam int seasonYear, @RequestParam int seasonType, @RequestParam int weekNumber) {
+    PricingService.RelistResult result =
+        pricingService.relistProjectedStocks(seasonYear, seasonType, weekNumber);
+    return new RelistResponse(result.relisted(), result.kept());
   }
 }

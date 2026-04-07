@@ -21,6 +21,8 @@ public interface StockRepository extends JpaRepository<Stock, UUID> {
 
   Page<Stock> findByStatus(StockStatus status, Pageable pageable);
 
+  List<Stock> findByStatus(StockStatus status);
+
   Page<Stock> findByPosition(String position, Pageable pageable);
 
   Page<Stock> findByPositionAndStatus(String position, StockStatus status, Pageable pageable);

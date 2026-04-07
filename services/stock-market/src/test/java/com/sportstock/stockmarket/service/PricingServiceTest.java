@@ -2,6 +2,7 @@ package com.sportstock.stockmarket.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -55,7 +56,8 @@ class PricingServiceTest {
               }
               return stock;
             });
-    when(priceHistoryRepository.save(any(PriceHistory.class)))
+    lenient()
+        .when(priceHistoryRepository.save(any(PriceHistory.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
   }
 
@@ -116,6 +118,97 @@ class PricingServiceTest {
     assertEquals("DST", created.getPosition());
     assertEquals(StockStatus.DELISTED, created.getStatus());
     assertEquals(bd("9.00"), repriced.getCurrentPrice());
+  }
+
+  @Test
+  void delistUnprojectedStocks_delistsStocksWithNoProjection() {
+    Stock withProjection = new Stock();
+    withProjection.setId(UUID.randomUUID());
+    withProjection.setEspnId("100");
+    withProjection.setType(StockType.PLAYER);
+    withProjection.setPosition("QB");
+    withProjection.setStatus(StockStatus.ACTIVE);
+
+    Stock withoutProjection = new Stock();
+    withoutProjection.setId(UUID.randomUUID());
+    withoutProjection.setEspnId("200");
+    withoutProjection.setType(StockType.PLAYER);
+    withoutProjection.setPosition("RB");
+    withoutProjection.setStatus(StockStatus.ACTIVE);
+
+    when(stockRepository.findByStatus(StockStatus.ACTIVE))
+        .thenReturn(List.of(withProjection, withoutProjection));
+    when(ingestionApiClient.getFantasySnapshot("100", "PLAYER", 2026, 2, 6))
+        .thenReturn(
+            new FantasySnapshotResponse(
+                null, null, "PLAYER", "100", "Player A", null, bd("15.00"), null, false, null));
+    when(ingestionApiClient.getFantasySnapshot("200", "PLAYER", 2026, 2, 6)).thenReturn(null);
+
+    var result = service.delistUnprojectedStocks(2026, 2, 6);
+
+    assertEquals(1, result.delisted());
+    assertEquals(1, result.kept());
+    assertEquals(StockStatus.ACTIVE, withProjection.getStatus());
+    assertEquals(StockStatus.DELISTED, withoutProjection.getStatus());
+  }
+
+  @Test
+  void delistUnprojectedStocks_delistsWhenProjectionPointsAreNull() {
+    Stock stock = new Stock();
+    stock.setId(UUID.randomUUID());
+    stock.setEspnId("300");
+    stock.setType(StockType.PLAYER);
+    stock.setPosition("WR");
+    stock.setStatus(StockStatus.ACTIVE);
+
+    when(stockRepository.findByStatus(StockStatus.ACTIVE)).thenReturn(List.of(stock));
+    when(ingestionApiClient.getFantasySnapshot("300", "PLAYER", 2026, 2, 6))
+        .thenReturn(
+            new FantasySnapshotResponse(
+                null, null, "PLAYER", "300", "Player B", null, null, null, false, null));
+
+    var result = service.delistUnprojectedStocks(2026, 2, 6);
+
+    assertEquals(1, result.delisted());
+    assertEquals(0, result.kept());
+    assertEquals(StockStatus.DELISTED, stock.getStatus());
+  }
+
+  @Test
+  void relistProjectedStocks_relistsAndPricesDelistedStocksWithProjections() {
+    Stock delistedWithProjection = new Stock();
+    delistedWithProjection.setId(UUID.randomUUID());
+    delistedWithProjection.setEspnId("400");
+    delistedWithProjection.setType(StockType.PLAYER);
+    delistedWithProjection.setPosition("QB");
+    delistedWithProjection.setStatus(StockStatus.DELISTED);
+    delistedWithProjection.setCurrentPrice(bd("5.00"));
+
+    Stock delistedWithoutProjection = new Stock();
+    delistedWithoutProjection.setId(UUID.randomUUID());
+    delistedWithoutProjection.setEspnId("500");
+    delistedWithoutProjection.setType(StockType.PLAYER);
+    delistedWithoutProjection.setPosition("RB");
+    delistedWithoutProjection.setStatus(StockStatus.DELISTED);
+
+    when(stockRepository.findByStatus(StockStatus.DELISTED))
+        .thenReturn(List.of(delistedWithProjection, delistedWithoutProjection));
+    when(ingestionApiClient.getFantasySnapshot("400", "PLAYER", 2026, 2, 6))
+        .thenReturn(
+            new FantasySnapshotResponse(
+                null, null, "PLAYER", "400", "Player C", null, bd("20.00"), null, false, null));
+    when(ingestionApiClient.getFantasySnapshot("500", "PLAYER", 2026, 2, 6)).thenReturn(null);
+    when(priceHistoryRepository.findByStockIdAndSeasonYearAndSeasonTypeAndWeekAndPriceType(
+            delistedWithProjection.getId(), 2026, 2, 6, PriceType.BASE))
+        .thenReturn(Optional.empty());
+
+    var result = service.relistProjectedStocks(2026, 2, 6);
+
+    assertEquals(1, result.relisted());
+    assertEquals(1, result.kept());
+    assertEquals(StockStatus.ACTIVE, delistedWithProjection.getStatus());
+    assertEquals(bd("10.00"), delistedWithProjection.getCurrentPrice());
+    assertEquals(StockStatus.DELISTED, delistedWithoutProjection.getStatus());
   }
 
   private static BigDecimal bd(String value) {
