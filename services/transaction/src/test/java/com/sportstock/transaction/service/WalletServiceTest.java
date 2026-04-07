@@ -75,8 +75,7 @@ class WalletServiceTest {
         service.processStockBuy(
             USER_ID,
             LEAGUE_ID,
-            new StockTransactionRequest(
-                LEAGUE_ID, STOCK_ID, bd("2.0000"), null, null, "buy-1"));
+            new StockTransactionRequest(LEAGUE_ID, STOCK_ID, bd("2.0000"), null, null, "buy-1"));
 
     assertEquals("STOCK_BUY", response.type());
     assertEquals(bd("25.0000"), response.amount());
@@ -137,8 +136,7 @@ class WalletServiceTest {
         service.processStockSell(
             USER_ID,
             LEAGUE_ID,
-            new StockTransactionRequest(
-                LEAGUE_ID, STOCK_ID, bd("1.0000"), null, 900L, "sell-1"));
+            new StockTransactionRequest(LEAGUE_ID, STOCK_ID, bd("1.0000"), null, 900L, "sell-1"));
 
     assertEquals("STOCK_SELL", response.type());
     assertEquals(bd("9.0000"), response.amount());
@@ -184,8 +182,7 @@ class WalletServiceTest {
     Wallet wallet = wallet(USER_ID, LEAGUE_ID, "250.0000");
 
     when(leagueServiceClient.getMemberUserIdsInternal(LEAGUE_ID)).thenReturn(List.of(USER_ID));
-    when(transactionRepository.existsByIdempotencyKey("WEEKLY_STIPEND:7:42:3"))
-        .thenReturn(true);
+    when(transactionRepository.existsByIdempotencyKey("WEEKLY_STIPEND:7:42:3")).thenReturn(true);
 
     var response = service.issueWeeklyStipends(LEAGUE_ID, bd("25.0000"), 3);
 

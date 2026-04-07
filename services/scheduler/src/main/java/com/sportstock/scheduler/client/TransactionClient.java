@@ -13,49 +13,46 @@ import org.springframework.web.client.RestClient;
 @RequiredArgsConstructor
 public class TransactionClient {
 
-    private final RestClient restClient;
+  private final RestClient restClient;
 
-    public StipendResultResponse issueWeeklyStipends(
-            Long leagueId, BigDecimal amount, int weekNumber) {
-        IssueStipendRequest request = new IssueStipendRequest(leagueId, amount, null);
-        return restClient
-                .post()
-                .uri(
-                        uriBuilder ->
-                                uriBuilder
-                                        .path("/stipends/weekly")
-                                        .queryParam("weekNumber", weekNumber)
-                                        .build())
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(request)
-                .retrieve()
-                .body(StipendResultResponse.class);
-    }
+  public StipendResultResponse issueWeeklyStipends(
+      Long leagueId, BigDecimal amount, int weekNumber) {
+    IssueStipendRequest request = new IssueStipendRequest(leagueId, amount, null);
+    return restClient
+        .post()
+        .uri(
+            uriBuilder ->
+                uriBuilder.path("/stipends/weekly").queryParam("weekNumber", weekNumber).build())
+        .contentType(MediaType.APPLICATION_JSON)
+        .body(request)
+        .retrieve()
+        .body(StipendResultResponse.class);
+  }
 
-    public void liquidateAssets(Long leagueId, int weekNumber) {
-        restClient
-                .post()
-                .uri(
-                        uriBuilder ->
-                                uriBuilder
-                                        .path("/liquidate")
-                                        .queryParam("leagueId", leagueId)
-                                        .queryParam("weekNumber", weekNumber)
-                                        .build())
-                .retrieve()
-                .toBodilessEntity();
-        log.info("Liquidated assets for league {} week {}", leagueId, weekNumber);
-    }
+  public void liquidateAssets(Long leagueId, int weekNumber) {
+    restClient
+        .post()
+        .uri(
+            uriBuilder ->
+                uriBuilder
+                    .path("/liquidate")
+                    .queryParam("leagueId", leagueId)
+                    .queryParam("weekNumber", weekNumber)
+                    .build())
+        .retrieve()
+        .toBodilessEntity();
+    log.info("Liquidated assets for league {} week {}", leagueId, weekNumber);
+  }
 
-    public StipendResultResponse issueInitialStipends(
-            Long leagueId, BigDecimal amount, List<Long> userIds) {
-        IssueStipendRequest request = new IssueStipendRequest(leagueId, amount, userIds);
-        return restClient
-                .post()
-                .uri("/stipends/initial")
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(request)
-                .retrieve()
-                .body(StipendResultResponse.class);
-    }
+  public StipendResultResponse issueInitialStipends(
+      Long leagueId, BigDecimal amount, List<Long> userIds) {
+    IssueStipendRequest request = new IssueStipendRequest(leagueId, amount, userIds);
+    return restClient
+        .post()
+        .uri("/stipends/initial")
+        .contentType(MediaType.APPLICATION_JSON)
+        .body(request)
+        .retrieve()
+        .body(StipendResultResponse.class);
+  }
 }

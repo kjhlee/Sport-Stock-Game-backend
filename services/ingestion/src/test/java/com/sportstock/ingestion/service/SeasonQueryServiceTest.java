@@ -50,9 +50,8 @@ class SeasonQueryServiceTest {
 
     when(seasonWeekRepository.findCurrentWeek(any(Instant.class), eq(List.of("2", "3"))))
         .thenReturn(Optional.of(currentWeek));
-    when(
-            seasonWeekRepository.findPriorWeek(
-                eq(Instant.parse("2026-01-10T00:00:00Z")), eq(List.of("2", "3"))))
+    when(seasonWeekRepository.findPriorWeek(
+            eq(Instant.parse("2026-01-10T00:00:00Z")), eq(List.of("2", "3"))))
         .thenReturn(Optional.of(priorWeek));
 
     Optional<CurrentWeekResponse> result = service.getPriorWeek();
@@ -75,9 +74,8 @@ class SeasonQueryServiceTest {
 
     when(seasonWeekRepository.findCurrentWeek(any(Instant.class), eq(List.of("2", "3"))))
         .thenReturn(Optional.of(currentWeek));
-    when(
-            seasonWeekRepository.findPriorWeek(
-                eq(Instant.parse("2026-09-01T00:00:00Z")), eq(List.of("2", "3"))))
+    when(seasonWeekRepository.findPriorWeek(
+            eq(Instant.parse("2026-09-01T00:00:00Z")), eq(List.of("2", "3"))))
         .thenReturn(Optional.empty());
 
     Optional<CurrentWeekResponse> result = service.getPriorWeek();
@@ -104,9 +102,8 @@ class SeasonQueryServiceTest {
 
     when(seasonWeekRepository.findCurrentWeek(any(Instant.class), eq(List.of("2", "3"))))
         .thenReturn(Optional.of(currentWeek));
-    when(
-            seasonWeekRepository.findPriorWeek(
-                eq(Instant.parse("2026-01-15T00:00:00Z")), eq(List.of("2", "3"))))
+    when(seasonWeekRepository.findPriorWeek(
+            eq(Instant.parse("2026-01-15T00:00:00Z")), eq(List.of("2", "3"))))
         .thenReturn(Optional.of(priorWeek));
 
     Optional<CurrentWeekResponse> result = service.getPriorWeek();

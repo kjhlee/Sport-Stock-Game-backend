@@ -535,8 +535,7 @@ public class WalletService {
     boolean isMember =
         leagueServiceClient.getMemberUserIdsInternal(leagueId).stream().anyMatch(userId::equals);
     if (!isMember) {
-      throw new TransactionAccessDeniedException(
-          "User is not a member of league " + leagueId);
+      throw new TransactionAccessDeniedException("User is not a member of league " + leagueId);
     }
   }
 }

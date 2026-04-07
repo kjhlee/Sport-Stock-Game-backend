@@ -79,24 +79,24 @@ class WalletServiceComprehensiveTest {
     void createWallet_success() {
       when(leagueServiceClient.getMemberUserIdsInternal(LEAGUE_ID))
           .thenReturn(Arrays.asList(USER_ID));
-      when(walletRepository.existsByUserIdAndLeagueId(USER_ID, LEAGUE_ID))
-          .thenReturn(false);
+      when(walletRepository.existsByUserIdAndLeagueId(USER_ID, LEAGUE_ID)).thenReturn(false);
       when(walletRepository.save(any(Wallet.class)))
-          .thenAnswer(invocation -> {
-            Wallet wallet = invocation.getArgument(0);
-            wallet.setId(100L);
-            return wallet;
-          });
+          .thenAnswer(
+              invocation -> {
+                Wallet wallet = invocation.getArgument(0);
+                wallet.setId(100L);
+                return wallet;
+              });
 
       WalletResponse response = service.createWallet(USER_ID, LEAGUE_ID);
 
       assertNotNull(response);
       assertEquals(USER_ID, response.userId());
       assertEquals(LEAGUE_ID, response.leagueId());
-      
+
       ArgumentCaptor<Wallet> walletCaptor = ArgumentCaptor.forClass(Wallet.class);
       verify(walletRepository).save(walletCaptor.capture());
-      
+
       Wallet savedWallet = walletCaptor.getValue();
       assertEquals(USER_ID, savedWallet.getUserId());
       assertEquals(LEAGUE_ID, savedWallet.getLeagueId());
@@ -108,23 +108,21 @@ class WalletServiceComprehensiveTest {
     void createWallet_alreadyExists() {
       when(leagueServiceClient.getMemberUserIdsInternal(LEAGUE_ID))
           .thenReturn(Arrays.asList(USER_ID));
-      when(walletRepository.existsByUserIdAndLeagueId(USER_ID, LEAGUE_ID))
-          .thenReturn(true);
+      when(walletRepository.existsByUserIdAndLeagueId(USER_ID, LEAGUE_ID)).thenReturn(true);
 
-      assertThrows(WalletAlreadyExistsException.class, 
-          () -> service.createWallet(USER_ID, LEAGUE_ID));
-      
+      assertThrows(
+          WalletAlreadyExistsException.class, () -> service.createWallet(USER_ID, LEAGUE_ID));
+
       verify(walletRepository, never()).save(any(Wallet.class));
     }
 
     @Test
     @DisplayName("Should throw exception when user is not a league member")
     void createWallet_notMember() {
-      when(leagueServiceClient.getMemberUserIdsInternal(LEAGUE_ID))
-          .thenReturn(Arrays.asList(99L));
+      when(leagueServiceClient.getMemberUserIdsInternal(LEAGUE_ID)).thenReturn(Arrays.asList(99L));
 
-      assertThrows(TransactionAccessDeniedException.class, 
-          () -> service.createWallet(USER_ID, LEAGUE_ID));
+      assertThrows(
+          TransactionAccessDeniedException.class, () -> service.createWallet(USER_ID, LEAGUE_ID));
     }
   }
 
@@ -136,7 +134,7 @@ class WalletServiceComprehensiveTest {
     @DisplayName("Should get wallet for league member")
     void getWallet_success() {
       Wallet wallet = createWallet(USER_ID, LEAGUE_ID, "500.00");
-      
+
       when(leagueServiceClient.getMemberUserIdsInternal(LEAGUE_ID))
           .thenReturn(Arrays.asList(USER_ID));
       when(walletRepository.findByUserIdAndLeagueId(USER_ID, LEAGUE_ID))
@@ -158,8 +156,7 @@ class WalletServiceComprehensiveTest {
       when(walletRepository.findByUserIdAndLeagueId(USER_ID, LEAGUE_ID))
           .thenReturn(Optional.empty());
 
-      assertThrows(WalletNotFoundException.class, 
-          () -> service.getWallet(USER_ID, LEAGUE_ID));
+      assertThrows(WalletNotFoundException.class, () -> service.getWallet(USER_ID, LEAGUE_ID));
     }
   }
 
@@ -170,16 +167,15 @@ class WalletServiceComprehensiveTest {
     @Test
     @DisplayName("Should get all wallets for a league")
     void getLeagueWallets_success() {
-      List<Wallet> wallets = Arrays.asList(
-          createWallet(USER_ID, LEAGUE_ID, "500.00"),
-          createWallet(43L, LEAGUE_ID, "300.00"),
-          createWallet(44L, LEAGUE_ID, "700.00")
-      );
-      
+      List<Wallet> wallets =
+          Arrays.asList(
+              createWallet(USER_ID, LEAGUE_ID, "500.00"),
+              createWallet(43L, LEAGUE_ID, "300.00"),
+              createWallet(44L, LEAGUE_ID, "700.00"));
+
       when(leagueServiceClient.getMemberUserIdsInternal(LEAGUE_ID))
           .thenReturn(Arrays.asList(USER_ID));
-      when(walletRepository.findAllByLeagueId(LEAGUE_ID))
-          .thenReturn(wallets);
+      when(walletRepository.findAllByLeagueId(LEAGUE_ID)).thenReturn(wallets);
 
       List<WalletResponse> responses = service.getLeagueWallets(USER_ID, LEAGUE_ID);
 
@@ -197,23 +193,24 @@ class WalletServiceComprehensiveTest {
     void buyStock_withQuantity_success() {
       Wallet wallet = createWallet(USER_ID, LEAGUE_ID, "1000.00");
       StockResponse stock = createActiveStock("50.00");
-      
+
       setupMocksForTrade(wallet);
       when(stockMarketServiceClient.getStock(STOCK_ID)).thenReturn(stock);
 
-      TransactionResponse response = service.processStockBuy(
-          USER_ID, LEAGUE_ID,
-          new StockTransactionRequest(LEAGUE_ID, STOCK_ID, bd("5.0000"), null, null, "buy-1")
-      );
+      TransactionResponse response =
+          service.processStockBuy(
+              USER_ID,
+              LEAGUE_ID,
+              new StockTransactionRequest(LEAGUE_ID, STOCK_ID, bd("5.0000"), null, null, "buy-1"));
 
       assertEquals("STOCK_BUY", response.type());
       assertEquals(bd("250.0000"), response.amount()); // 5 * 50
       assertEquals(bd("1000.00"), response.balanceBefore());
-      assertEquals(0, bd("750.0000").compareTo(response.balanceAfter())); // Compare BigDecimals properly
+      assertEquals(
+          0, bd("750.0000").compareTo(response.balanceAfter())); // Compare BigDecimals properly
       assertEquals(0, bd("50.00").compareTo(response.pricePerShare()));
-      
-      verify(walletRepository).save(argThat(w -> 
-          w.getBalance().compareTo(bd("750.00")) == 0));
+
+      verify(walletRepository).save(argThat(w -> w.getBalance().compareTo(bd("750.00")) == 0));
     }
 
     @Test
@@ -221,14 +218,15 @@ class WalletServiceComprehensiveTest {
     void buyStock_withDollarAmount_success() {
       Wallet wallet = createWallet(USER_ID, LEAGUE_ID, "1000.00");
       StockResponse stock = createActiveStock("50.00");
-      
+
       setupMocksForTrade(wallet);
       when(stockMarketServiceClient.getStock(STOCK_ID)).thenReturn(stock);
 
-      TransactionResponse response = service.processStockBuy(
-          USER_ID, LEAGUE_ID,
-          new StockTransactionRequest(LEAGUE_ID, STOCK_ID, null, bd("200.00"), null, "buy-2")
-      );
+      TransactionResponse response =
+          service.processStockBuy(
+              USER_ID,
+              LEAGUE_ID,
+              new StockTransactionRequest(LEAGUE_ID, STOCK_ID, null, bd("200.00"), null, "buy-2"));
 
       assertEquals("STOCK_BUY", response.type());
       assertEquals(0, bd("200.00").compareTo(response.amount())); // Use compareTo for BigDecimal
@@ -241,21 +239,23 @@ class WalletServiceComprehensiveTest {
     void buyStock_insufficientFunds() {
       Wallet wallet = createWallet(USER_ID, LEAGUE_ID, "10.00");
       StockResponse stock = createActiveStock("50.00");
-      
+
       when(leagueServiceClient.getMemberUserIdsInternal(LEAGUE_ID))
           .thenReturn(Arrays.asList(USER_ID));
       when(stockMarketServiceClient.getStock(STOCK_ID)).thenReturn(stock);
-      when(transactionRepository.findByIdempotencyKey(anyString()))
-          .thenReturn(Optional.empty());
+      when(transactionRepository.findByIdempotencyKey(anyString())).thenReturn(Optional.empty());
       when(walletRepository.findByUserIdAndLeagueIdForUpdate(USER_ID, LEAGUE_ID))
           .thenReturn(Optional.of(wallet));
 
-      assertThrows(InsufficientFundsException.class, () -> 
-          service.processStockBuy(
-              USER_ID, LEAGUE_ID,
-              new StockTransactionRequest(LEAGUE_ID, STOCK_ID, bd("1.0000"), null, null, "buy-fail")
-          ));
-      
+      assertThrows(
+          InsufficientFundsException.class,
+          () ->
+              service.processStockBuy(
+                  USER_ID,
+                  LEAGUE_ID,
+                  new StockTransactionRequest(
+                      LEAGUE_ID, STOCK_ID, bd("1.0000"), null, null, "buy-fail")));
+
       assertEquals(bd("10.00"), wallet.getBalance()); // Balance unchanged
     }
 
@@ -264,16 +264,19 @@ class WalletServiceComprehensiveTest {
     void buyStock_stockNotActive() {
       Wallet wallet = createWallet(USER_ID, LEAGUE_ID, "1000.00");
       StockResponse stock = createInactiveStock();
-      
+
       when(leagueServiceClient.getMemberUserIdsInternal(LEAGUE_ID))
           .thenReturn(Arrays.asList(USER_ID));
       when(stockMarketServiceClient.getStock(STOCK_ID)).thenReturn(stock);
 
-      assertThrows(StockNotActiveException.class, () -> 
-          service.processStockBuy(
-              USER_ID, LEAGUE_ID,
-              new StockTransactionRequest(LEAGUE_ID, STOCK_ID, bd("1.0000"), null, null, "buy-inactive")
-          ));
+      assertThrows(
+          StockNotActiveException.class,
+          () ->
+              service.processStockBuy(
+                  USER_ID,
+                  LEAGUE_ID,
+                  new StockTransactionRequest(
+                      LEAGUE_ID, STOCK_ID, bd("1.0000"), null, null, "buy-inactive")));
     }
 
     @Test
@@ -281,16 +284,19 @@ class WalletServiceComprehensiveTest {
     void buyStock_gameLocked() {
       Wallet wallet = createWallet(USER_ID, LEAGUE_ID, "1000.00");
       StockResponse stock = createGameLockedStock();
-      
+
       when(leagueServiceClient.getMemberUserIdsInternal(LEAGUE_ID))
           .thenReturn(Arrays.asList(USER_ID));
       when(stockMarketServiceClient.getStock(STOCK_ID)).thenReturn(stock);
 
-      assertThrows(InvalidTradeRequestException.class, () -> 
-          service.processStockBuy(
-              USER_ID, LEAGUE_ID,
-              new StockTransactionRequest(LEAGUE_ID, STOCK_ID, bd("1.0000"), null, null, "buy-locked")
-          ));
+      assertThrows(
+          InvalidTradeRequestException.class,
+          () ->
+              service.processStockBuy(
+                  USER_ID,
+                  LEAGUE_ID,
+                  new StockTransactionRequest(
+                      LEAGUE_ID, STOCK_ID, bd("1.0000"), null, null, "buy-locked")));
     }
 
     @Test
@@ -298,16 +304,19 @@ class WalletServiceComprehensiveTest {
     void buyStock_injuryLocked() {
       Wallet wallet = createWallet(USER_ID, LEAGUE_ID, "1000.00");
       StockResponse stock = createInjuryLockedStock();
-      
+
       when(leagueServiceClient.getMemberUserIdsInternal(LEAGUE_ID))
           .thenReturn(Arrays.asList(USER_ID));
       when(stockMarketServiceClient.getStock(STOCK_ID)).thenReturn(stock);
 
-      assertThrows(InvalidTradeRequestException.class, () -> 
-          service.processStockBuy(
-              USER_ID, LEAGUE_ID,
-              new StockTransactionRequest(LEAGUE_ID, STOCK_ID, bd("1.0000"), null, null, "buy-inj")
-          ));
+      assertThrows(
+          InvalidTradeRequestException.class,
+          () ->
+              service.processStockBuy(
+                  USER_ID,
+                  LEAGUE_ID,
+                  new StockTransactionRequest(
+                      LEAGUE_ID, STOCK_ID, bd("1.0000"), null, null, "buy-inj")));
     }
 
     @Test
@@ -315,22 +324,24 @@ class WalletServiceComprehensiveTest {
     void buyStock_idempotent() {
       Wallet wallet = createWallet(USER_ID, LEAGUE_ID, "1000.00");
       Transaction existingTx = createBuyTransaction(wallet, "50.00", "250.00");
-      
+
       when(leagueServiceClient.getMemberUserIdsInternal(LEAGUE_ID))
           .thenReturn(Arrays.asList(USER_ID));
       when(stockMarketServiceClient.getStock(STOCK_ID))
-          .thenReturn(createActiveStock("50.00"));  // Add this mock
+          .thenReturn(createActiveStock("50.00")); // Add this mock
       when(transactionRepository.findByIdempotencyKey("buy-repeat"))
           .thenReturn(Optional.of(existingTx));
 
-      TransactionResponse response = service.processStockBuy(
-          USER_ID, LEAGUE_ID,
-          new StockTransactionRequest(LEAGUE_ID, STOCK_ID, bd("5.0000"), null, null, "buy-repeat")
-      );
+      TransactionResponse response =
+          service.processStockBuy(
+              USER_ID,
+              LEAGUE_ID,
+              new StockTransactionRequest(
+                  LEAGUE_ID, STOCK_ID, bd("5.0000"), null, null, "buy-repeat"));
 
       assertEquals("STOCK_BUY", response.type());
       assertEquals(bd("250.00"), response.amount());
-      
+
       // Should not create a new transaction
       verify(transactionRepository, never()).save(any(Transaction.class));
     }
@@ -340,12 +351,15 @@ class WalletServiceComprehensiveTest {
     void buyStock_zeroQuantity() {
       when(leagueServiceClient.getMemberUserIdsInternal(LEAGUE_ID))
           .thenReturn(Arrays.asList(USER_ID));
-      
-      assertThrows(InvalidTradeRequestException.class, () -> 
-          service.processStockBuy(
-              USER_ID, LEAGUE_ID,
-              new StockTransactionRequest(LEAGUE_ID, STOCK_ID, BigDecimal.ZERO, null, null, "buy-zero")
-          ));
+
+      assertThrows(
+          InvalidTradeRequestException.class,
+          () ->
+              service.processStockBuy(
+                  USER_ID,
+                  LEAGUE_ID,
+                  new StockTransactionRequest(
+                      LEAGUE_ID, STOCK_ID, BigDecimal.ZERO, null, null, "buy-zero")));
     }
 
     @Test
@@ -353,12 +367,15 @@ class WalletServiceComprehensiveTest {
     void buyStock_bothQuantityAndDollar() {
       when(leagueServiceClient.getMemberUserIdsInternal(LEAGUE_ID))
           .thenReturn(Arrays.asList(USER_ID));
-      
-      assertThrows(InvalidTradeRequestException.class, () -> 
-          service.processStockBuy(
-              USER_ID, LEAGUE_ID,
-              new StockTransactionRequest(LEAGUE_ID, STOCK_ID, bd("5.0"), bd("100.0"), null, "buy-both")
-          ));
+
+      assertThrows(
+          InvalidTradeRequestException.class,
+          () ->
+              service.processStockBuy(
+                  USER_ID,
+                  LEAGUE_ID,
+                  new StockTransactionRequest(
+                      LEAGUE_ID, STOCK_ID, bd("5.0"), bd("100.0"), null, "buy-both")));
     }
 
     @Test
@@ -366,12 +383,14 @@ class WalletServiceComprehensiveTest {
     void buyStock_noIdempotencyKey() {
       when(leagueServiceClient.getMemberUserIdsInternal(LEAGUE_ID))
           .thenReturn(Arrays.asList(USER_ID));
-      
-      assertThrows(InvalidTradeRequestException.class, () -> 
-          service.processStockBuy(
-              USER_ID, LEAGUE_ID,
-              new StockTransactionRequest(LEAGUE_ID, STOCK_ID, bd("5.0"), null, null, null)
-          ));
+
+      assertThrows(
+          InvalidTradeRequestException.class,
+          () ->
+              service.processStockBuy(
+                  USER_ID,
+                  LEAGUE_ID,
+                  new StockTransactionRequest(LEAGUE_ID, STOCK_ID, bd("5.0"), null, null, null)));
     }
   }
 
@@ -383,19 +402,21 @@ class WalletServiceComprehensiveTest {
     @DisplayName("Should sell stock at 90% of buy price")
     void sellStock_success() {
       Wallet wallet = createWallet(USER_ID, LEAGUE_ID, "500.00");
-      Transaction buyTransaction = createBuyTransaction(wallet, "50.00", "250.00"); // 5 shares @ $50
+      Transaction buyTransaction =
+          createBuyTransaction(wallet, "50.00", "250.00"); // 5 shares @ $50
       StockResponse stock = createActiveStock("60.00"); // Current price doesn't matter
-      
+
       setupMocksForTrade(wallet);
       when(stockMarketServiceClient.getStock(STOCK_ID)).thenReturn(stock);
       when(transactionRepository.findById(900L)).thenReturn(Optional.of(buyTransaction));
       when(transactionRepository.sumSoldQuantityByBuyTransactionId(900L))
           .thenReturn(BigDecimal.ZERO);
 
-      TransactionResponse response = service.processStockSell(
-          USER_ID, LEAGUE_ID,
-          new StockTransactionRequest(LEAGUE_ID, STOCK_ID, bd("3.0000"), null, 900L, "sell-1")
-      );
+      TransactionResponse response =
+          service.processStockSell(
+              USER_ID,
+              LEAGUE_ID,
+              new StockTransactionRequest(LEAGUE_ID, STOCK_ID, bd("3.0000"), null, 900L, "sell-1"));
 
       assertEquals("STOCK_SELL", response.type());
       // Sell price = 50 * 0.90 = 45 per share
@@ -404,9 +425,8 @@ class WalletServiceComprehensiveTest {
       assertEquals(0, bd("45.00").compareTo(response.pricePerShare()));
       assertEquals(bd("500.00"), response.balanceBefore());
       assertEquals(0, bd("635.00").compareTo(response.balanceAfter()));
-      
-      verify(walletRepository).save(argThat(w -> 
-          w.getBalance().compareTo(bd("635.00")) == 0));
+
+      verify(walletRepository).save(argThat(w -> w.getBalance().compareTo(bd("635.00")) == 0));
     }
 
     @Test
@@ -414,14 +434,16 @@ class WalletServiceComprehensiveTest {
     void sellStock_noBuyTransactionId() {
       when(leagueServiceClient.getMemberUserIdsInternal(LEAGUE_ID))
           .thenReturn(Arrays.asList(USER_ID));
-      when(stockMarketServiceClient.getStock(STOCK_ID))
-          .thenReturn(createActiveStock("50.00"));
+      when(stockMarketServiceClient.getStock(STOCK_ID)).thenReturn(createActiveStock("50.00"));
 
-      assertThrows(InvalidTradeRequestException.class, () -> 
-          service.processStockSell(
-              USER_ID, LEAGUE_ID,
-              new StockTransactionRequest(LEAGUE_ID, STOCK_ID, bd("1.0000"), null, null, "sell-no-buy")
-          ));
+      assertThrows(
+          InvalidTradeRequestException.class,
+          () ->
+              service.processStockSell(
+                  USER_ID,
+                  LEAGUE_ID,
+                  new StockTransactionRequest(
+                      LEAGUE_ID, STOCK_ID, bd("1.0000"), null, null, "sell-no-buy")));
     }
 
     @Test
@@ -429,15 +451,17 @@ class WalletServiceComprehensiveTest {
     void sellStock_buyTransactionNotFound() {
       when(leagueServiceClient.getMemberUserIdsInternal(LEAGUE_ID))
           .thenReturn(Arrays.asList(USER_ID));
-      when(stockMarketServiceClient.getStock(STOCK_ID))
-          .thenReturn(createActiveStock("50.00"));
+      when(stockMarketServiceClient.getStock(STOCK_ID)).thenReturn(createActiveStock("50.00"));
       when(transactionRepository.findById(999L)).thenReturn(Optional.empty());
 
-      assertThrows(InvalidTradeRequestException.class, () -> 
-          service.processStockSell(
-              USER_ID, LEAGUE_ID,
-              new StockTransactionRequest(LEAGUE_ID, STOCK_ID, bd("1.0000"), null, 999L, "sell-not-found")
-          ));
+      assertThrows(
+          InvalidTradeRequestException.class,
+          () ->
+              service.processStockSell(
+                  USER_ID,
+                  LEAGUE_ID,
+                  new StockTransactionRequest(
+                      LEAGUE_ID, STOCK_ID, bd("1.0000"), null, 999L, "sell-not-found")));
     }
 
     @Test
@@ -445,18 +469,20 @@ class WalletServiceComprehensiveTest {
     void sellStock_buyTransactionWrongType() {
       Wallet wallet = createWallet(USER_ID, LEAGUE_ID, "500.00");
       Transaction stipendTx = createStipendTransaction(wallet);
-      
+
       when(leagueServiceClient.getMemberUserIdsInternal(LEAGUE_ID))
           .thenReturn(Arrays.asList(USER_ID));
-      when(stockMarketServiceClient.getStock(STOCK_ID))
-          .thenReturn(createActiveStock("50.00"));
+      when(stockMarketServiceClient.getStock(STOCK_ID)).thenReturn(createActiveStock("50.00"));
       when(transactionRepository.findById(800L)).thenReturn(Optional.of(stipendTx));
 
-      assertThrows(InvalidTradeRequestException.class, () -> 
-          service.processStockSell(
-              USER_ID, LEAGUE_ID,
-              new StockTransactionRequest(LEAGUE_ID, STOCK_ID, bd("1.0000"), null, 800L, "sell-wrong-type")
-          ));
+      assertThrows(
+          InvalidTradeRequestException.class,
+          () ->
+              service.processStockSell(
+                  USER_ID,
+                  LEAGUE_ID,
+                  new StockTransactionRequest(
+                      LEAGUE_ID, STOCK_ID, bd("1.0000"), null, 800L, "sell-wrong-type")));
     }
 
     @Test
@@ -465,18 +491,21 @@ class WalletServiceComprehensiveTest {
       Wallet wallet = createWallet(USER_ID, LEAGUE_ID, "500.00");
       Transaction buyTransaction = createBuyTransaction(wallet, "50.00", "250.00");
       UUID differentStockId = UUID.fromString("22222222-2222-2222-2222-222222222222");
-      
+
       when(leagueServiceClient.getMemberUserIdsInternal(LEAGUE_ID))
           .thenReturn(Arrays.asList(USER_ID));
       when(stockMarketServiceClient.getStock(differentStockId))
           .thenReturn(createActiveStock("50.00", differentStockId));
       when(transactionRepository.findById(900L)).thenReturn(Optional.of(buyTransaction));
 
-      assertThrows(InvalidTradeRequestException.class, () -> 
-          service.processStockSell(
-              USER_ID, LEAGUE_ID,
-              new StockTransactionRequest(LEAGUE_ID, differentStockId, bd("1.0000"), null, 900L, "sell-wrong-stock")
-          ));
+      assertThrows(
+          InvalidTradeRequestException.class,
+          () ->
+              service.processStockSell(
+                  USER_ID,
+                  LEAGUE_ID,
+                  new StockTransactionRequest(
+                      LEAGUE_ID, differentStockId, bd("1.0000"), null, 900L, "sell-wrong-stock")));
     }
 
     @Test
@@ -484,18 +513,20 @@ class WalletServiceComprehensiveTest {
     void sellStock_wrongUser() {
       Wallet otherWallet = createWallet(99L, LEAGUE_ID, "500.00");
       Transaction buyTransaction = createBuyTransaction(otherWallet, "50.00", "250.00");
-      
+
       when(leagueServiceClient.getMemberUserIdsInternal(LEAGUE_ID))
           .thenReturn(Arrays.asList(USER_ID));
-      when(stockMarketServiceClient.getStock(STOCK_ID))
-          .thenReturn(createActiveStock("50.00"));
+      when(stockMarketServiceClient.getStock(STOCK_ID)).thenReturn(createActiveStock("50.00"));
       when(transactionRepository.findById(900L)).thenReturn(Optional.of(buyTransaction));
 
-      assertThrows(InvalidTradeRequestException.class, () -> 
-          service.processStockSell(
-              USER_ID, LEAGUE_ID,
-              new StockTransactionRequest(LEAGUE_ID, STOCK_ID, bd("1.0000"), null, 900L, "sell-wrong-user")
-          ));
+      assertThrows(
+          InvalidTradeRequestException.class,
+          () ->
+              service.processStockSell(
+                  USER_ID,
+                  LEAGUE_ID,
+                  new StockTransactionRequest(
+                      LEAGUE_ID, STOCK_ID, bd("1.0000"), null, 900L, "sell-wrong-user")));
     }
 
     @Test
@@ -503,7 +534,7 @@ class WalletServiceComprehensiveTest {
     void sellStock_exceedsRemaining() {
       Wallet wallet = createWallet(USER_ID, LEAGUE_ID, "500.00");
       Transaction buyTransaction = createBuyTransaction(wallet, "50.00", "250.00"); // 5 shares
-      
+
       when(leagueServiceClient.getMemberUserIdsInternal(LEAGUE_ID))
           .thenReturn(Arrays.asList(USER_ID));
       when(stockMarketServiceClient.getStock(STOCK_ID)).thenReturn(createActiveStock("50.00"));
@@ -511,47 +542,50 @@ class WalletServiceComprehensiveTest {
       when(transactionRepository.sumSoldQuantityByBuyTransactionId(900L))
           .thenReturn(bd("2.0000")); // Already sold 2 shares, 3 remaining
 
-      assertThrows(InvalidTradeRequestException.class, () -> 
-          service.processStockSell(
-              USER_ID, LEAGUE_ID,
-              new StockTransactionRequest(LEAGUE_ID, STOCK_ID, bd("4.0000"), null, 900L, "sell-too-many")
-          ));
+      assertThrows(
+          InvalidTradeRequestException.class,
+          () ->
+              service.processStockSell(
+                  USER_ID,
+                  LEAGUE_ID,
+                  new StockTransactionRequest(
+                      LEAGUE_ID, STOCK_ID, bd("4.0000"), null, 900L, "sell-too-many")));
     }
 
     @Test
     @DisplayName("Should allow partial sells from same buy transaction")
     void sellStock_partialSells() {
       Wallet wallet = createWallet(USER_ID, LEAGUE_ID, "500.00");
-      Transaction buyTransaction = createBuyTransaction(wallet, "50.00", "500.00"); // 10 shares @ $50
-      
+      Transaction buyTransaction =
+          createBuyTransaction(wallet, "50.00", "500.00"); // 10 shares @ $50
+
       setupMocksForTrade(wallet);
       when(stockMarketServiceClient.getStock(STOCK_ID)).thenReturn(createActiveStock("50.00"));
       when(transactionRepository.findById(900L)).thenReturn(Optional.of(buyTransaction));
-      
+
       // First sell: 3 shares
       when(transactionRepository.sumSoldQuantityByBuyTransactionId(900L))
           .thenReturn(BigDecimal.ZERO);
-      when(transactionRepository.findByIdempotencyKey("sell-1"))
-          .thenReturn(Optional.empty());
-      
-      TransactionResponse firstSell = service.processStockSell(
-          USER_ID, LEAGUE_ID,
-          new StockTransactionRequest(LEAGUE_ID, STOCK_ID, bd("3.0000"), null, 900L, "sell-1")
-      );
-      
+      when(transactionRepository.findByIdempotencyKey("sell-1")).thenReturn(Optional.empty());
+
+      TransactionResponse firstSell =
+          service.processStockSell(
+              USER_ID,
+              LEAGUE_ID,
+              new StockTransactionRequest(LEAGUE_ID, STOCK_ID, bd("3.0000"), null, 900L, "sell-1"));
+
       assertEquals(0, bd("135.00").compareTo(firstSell.amount())); // 3 * 45
-      
+
       // Second sell: 5 more shares (8 total sold, 2 remaining)
-      when(transactionRepository.sumSoldQuantityByBuyTransactionId(900L))
-          .thenReturn(bd("3.0000"));
-      when(transactionRepository.findByIdempotencyKey("sell-2"))
-          .thenReturn(Optional.empty());
-      
-      TransactionResponse secondSell = service.processStockSell(
-          USER_ID, LEAGUE_ID,
-          new StockTransactionRequest(LEAGUE_ID, STOCK_ID, bd("5.0000"), null, 900L, "sell-2")
-      );
-      
+      when(transactionRepository.sumSoldQuantityByBuyTransactionId(900L)).thenReturn(bd("3.0000"));
+      when(transactionRepository.findByIdempotencyKey("sell-2")).thenReturn(Optional.empty());
+
+      TransactionResponse secondSell =
+          service.processStockSell(
+              USER_ID,
+              LEAGUE_ID,
+              new StockTransactionRequest(LEAGUE_ID, STOCK_ID, bd("5.0000"), null, 900L, "sell-2"));
+
       assertEquals(0, bd("225.00").compareTo(secondSell.amount())); // 5 * 45
     }
 
@@ -560,14 +594,16 @@ class WalletServiceComprehensiveTest {
     void sellStock_gameLocked() {
       when(leagueServiceClient.getMemberUserIdsInternal(LEAGUE_ID))
           .thenReturn(Arrays.asList(USER_ID));
-      when(stockMarketServiceClient.getStock(STOCK_ID))
-          .thenReturn(createGameLockedStock());
+      when(stockMarketServiceClient.getStock(STOCK_ID)).thenReturn(createGameLockedStock());
 
-      assertThrows(InvalidTradeRequestException.class, () -> 
-          service.processStockSell(
-              USER_ID, LEAGUE_ID,
-              new StockTransactionRequest(LEAGUE_ID, STOCK_ID, bd("1.0000"), null, 900L, "sell-locked")
-          ));
+      assertThrows(
+          InvalidTradeRequestException.class,
+          () ->
+              service.processStockSell(
+                  USER_ID,
+                  LEAGUE_ID,
+                  new StockTransactionRequest(
+                      LEAGUE_ID, STOCK_ID, bd("1.0000"), null, 900L, "sell-locked")));
     }
   }
 
@@ -579,24 +615,22 @@ class WalletServiceComprehensiveTest {
     @DisplayName("Should issue initial stipends to all members")
     void issueInitialStipends_toAllMembers() {
       List<Long> userIds = Arrays.asList(USER_ID, 43L, 44L);
-      
-      when(leagueServiceClient.getMemberUserIdsInternal(LEAGUE_ID))
-          .thenReturn(userIds);
-      
+
+      when(leagueServiceClient.getMemberUserIdsInternal(LEAGUE_ID)).thenReturn(userIds);
+
       for (Long userId : userIds) {
-        when(walletRepository.existsByUserIdAndLeagueId(userId, LEAGUE_ID))
-            .thenReturn(false);
+        when(walletRepository.existsByUserIdAndLeagueId(userId, LEAGUE_ID)).thenReturn(false);
         when(walletRepository.findByUserIdAndLeagueIdForUpdate(userId, LEAGUE_ID))
             .thenReturn(Optional.of(createWallet(userId, LEAGUE_ID, "0.00")));
-        when(transactionRepository.existsByIdempotencyKey("INITIAL_STIPEND:" + LEAGUE_ID + ":" + userId))
+        when(transactionRepository.existsByIdempotencyKey(
+                "INITIAL_STIPEND:" + LEAGUE_ID + ":" + userId))
             .thenReturn(false);
       }
-      
+
       stubWalletSave();
       stubTransactionSave();
 
-      StipendResultResponse response = service.issueInitialStipends(
-          LEAGUE_ID, bd("1000.00"), null);
+      StipendResultResponse response = service.issueInitialStipends(LEAGUE_ID, bd("1000.00"), null);
 
       assertEquals(LEAGUE_ID, response.leagueId());
       assertEquals(3, response.walletsCreated());
@@ -608,21 +642,21 @@ class WalletServiceComprehensiveTest {
     @DisplayName("Should issue stipends to specific users")
     void issueInitialStipends_toSpecificUsers() {
       List<Long> specificUsers = Arrays.asList(USER_ID, 43L);
-      
+
       for (Long userId : specificUsers) {
-        when(walletRepository.existsByUserIdAndLeagueId(userId, LEAGUE_ID))
-            .thenReturn(false);
+        when(walletRepository.existsByUserIdAndLeagueId(userId, LEAGUE_ID)).thenReturn(false);
         when(walletRepository.findByUserIdAndLeagueIdForUpdate(userId, LEAGUE_ID))
             .thenReturn(Optional.of(createWallet(userId, LEAGUE_ID, "0.00")));
-        when(transactionRepository.existsByIdempotencyKey("INITIAL_STIPEND:" + LEAGUE_ID + ":" + userId))
+        when(transactionRepository.existsByIdempotencyKey(
+                "INITIAL_STIPEND:" + LEAGUE_ID + ":" + userId))
             .thenReturn(false);
       }
-      
+
       stubWalletSave();
       stubTransactionSave();
 
-      StipendResultResponse response = service.issueInitialStipends(
-          LEAGUE_ID, bd("1000.00"), specificUsers);
+      StipendResultResponse response =
+          service.issueInitialStipends(LEAGUE_ID, bd("1000.00"), specificUsers);
 
       assertEquals(2, response.walletsCreated());
       assertEquals(2, response.stipendsIssued());
@@ -631,13 +665,13 @@ class WalletServiceComprehensiveTest {
     @Test
     @DisplayName("Should be idempotent and not issue duplicate stipends")
     void issueInitialStipends_idempotent() {
-      when(walletRepository.existsByUserIdAndLeagueId(USER_ID, LEAGUE_ID))
-          .thenReturn(true);
-      when(transactionRepository.existsByIdempotencyKey("INITIAL_STIPEND:" + LEAGUE_ID + ":" + USER_ID))
+      when(walletRepository.existsByUserIdAndLeagueId(USER_ID, LEAGUE_ID)).thenReturn(true);
+      when(transactionRepository.existsByIdempotencyKey(
+              "INITIAL_STIPEND:" + LEAGUE_ID + ":" + USER_ID))
           .thenReturn(true);
 
-      StipendResultResponse response = service.issueInitialStipends(
-          LEAGUE_ID, bd("1000.00"), Arrays.asList(USER_ID));
+      StipendResultResponse response =
+          service.issueInitialStipends(LEAGUE_ID, bd("1000.00"), Arrays.asList(USER_ID));
 
       assertEquals(0, response.walletsCreated());
       assertEquals(0, response.stipendsIssued());
@@ -646,18 +680,18 @@ class WalletServiceComprehensiveTest {
     @Test
     @DisplayName("Should create wallet if it doesn't exist")
     void issueInitialStipends_createsWallet() {
-      when(walletRepository.existsByUserIdAndLeagueId(USER_ID, LEAGUE_ID))
-          .thenReturn(false);
+      when(walletRepository.existsByUserIdAndLeagueId(USER_ID, LEAGUE_ID)).thenReturn(false);
       when(walletRepository.findByUserIdAndLeagueIdForUpdate(USER_ID, LEAGUE_ID))
           .thenReturn(Optional.of(createWallet(USER_ID, LEAGUE_ID, "0.00")));
-      when(transactionRepository.existsByIdempotencyKey("INITIAL_STIPEND:" + LEAGUE_ID + ":" + USER_ID))
+      when(transactionRepository.existsByIdempotencyKey(
+              "INITIAL_STIPEND:" + LEAGUE_ID + ":" + USER_ID))
           .thenReturn(false);
-      
+
       stubWalletSave();
       stubTransactionSave();
 
-      StipendResultResponse response = service.issueInitialStipends(
-          LEAGUE_ID, bd("1000.00"), Arrays.asList(USER_ID));
+      StipendResultResponse response =
+          service.issueInitialStipends(LEAGUE_ID, bd("1000.00"), Arrays.asList(USER_ID));
 
       assertEquals(1, response.walletsCreated());
       assertEquals(1, response.stipendsIssued());
@@ -673,22 +707,21 @@ class WalletServiceComprehensiveTest {
     @DisplayName("Should issue weekly stipends to all members")
     void issueWeeklyStipends_success() {
       List<Long> userIds = Arrays.asList(USER_ID, 43L, 44L);
-      
-      when(leagueServiceClient.getMemberUserIdsInternal(LEAGUE_ID))
-          .thenReturn(userIds);
-      
+
+      when(leagueServiceClient.getMemberUserIdsInternal(LEAGUE_ID)).thenReturn(userIds);
+
       for (Long userId : userIds) {
         when(walletRepository.findByUserIdAndLeagueIdForUpdate(userId, LEAGUE_ID))
             .thenReturn(Optional.of(createWallet(userId, LEAGUE_ID, "500.00")));
-        when(transactionRepository.existsByIdempotencyKey("WEEKLY_STIPEND:" + LEAGUE_ID + ":" + userId + ":5"))
+        when(transactionRepository.existsByIdempotencyKey(
+                "WEEKLY_STIPEND:" + LEAGUE_ID + ":" + userId + ":5"))
             .thenReturn(false);
       }
-      
+
       stubWalletSave();
       stubTransactionSave();
 
-      StipendResultResponse response = service.issueWeeklyStipends(
-          LEAGUE_ID, bd("100.00"), 5);
+      StipendResultResponse response = service.issueWeeklyStipends(LEAGUE_ID, bd("100.00"), 5);
 
       assertEquals(LEAGUE_ID, response.leagueId());
       assertEquals(0, response.walletsCreated()); // Wallets already exist
@@ -701,11 +734,11 @@ class WalletServiceComprehensiveTest {
     void issueWeeklyStipends_idempotent() {
       when(leagueServiceClient.getMemberUserIdsInternal(LEAGUE_ID))
           .thenReturn(Arrays.asList(USER_ID));
-      when(transactionRepository.existsByIdempotencyKey("WEEKLY_STIPEND:" + LEAGUE_ID + ":" + USER_ID + ":3"))
+      when(transactionRepository.existsByIdempotencyKey(
+              "WEEKLY_STIPEND:" + LEAGUE_ID + ":" + USER_ID + ":3"))
           .thenReturn(true);
 
-      StipendResultResponse response = service.issueWeeklyStipends(
-          LEAGUE_ID, bd("100.00"), 3);
+      StipendResultResponse response = service.issueWeeklyStipends(LEAGUE_ID, bd("100.00"), 3);
 
       assertEquals(0, response.stipendsIssued());
       verify(walletRepository, never()).save(any(Wallet.class));
@@ -719,16 +752,15 @@ class WalletServiceComprehensiveTest {
           .thenReturn(Arrays.asList(USER_ID));
       when(walletRepository.findByUserIdAndLeagueIdForUpdate(USER_ID, LEAGUE_ID))
           .thenReturn(Optional.of(createWallet(USER_ID, LEAGUE_ID, "500.00")));
-      when(transactionRepository.existsByIdempotencyKey(anyString()))
-          .thenReturn(false);
-      
+      when(transactionRepository.existsByIdempotencyKey(anyString())).thenReturn(false);
+
       stubWalletSave();
       stubTransactionSave();
 
       // Week 3
       StipendResultResponse week3 = service.issueWeeklyStipends(LEAGUE_ID, bd("100.00"), 3);
       assertEquals(1, week3.stipendsIssued());
-      
+
       // Week 4 should also work
       StipendResultResponse week4 = service.issueWeeklyStipends(LEAGUE_ID, bd("100.00"), 4);
       assertEquals(1, week4.stipendsIssued());
@@ -743,20 +775,19 @@ class WalletServiceComprehensiveTest {
     @DisplayName("Should get paginated transaction history")
     void getTransactionHistory_success() {
       Wallet wallet = createWallet(USER_ID, LEAGUE_ID, "500.00");
-      List<Transaction> transactions = Arrays.asList(
-          createBuyTransaction(wallet, "50.00", "250.00"),
-          createStipendTransaction(wallet)
-      );
+      List<Transaction> transactions =
+          Arrays.asList(
+              createBuyTransaction(wallet, "50.00", "250.00"), createStipendTransaction(wallet));
       Page<Transaction> page = new PageImpl<>(transactions);
-      
+
       when(leagueServiceClient.getMemberUserIdsInternal(LEAGUE_ID))
           .thenReturn(Arrays.asList(USER_ID));
       when(transactionRepository.findByUserIdAndLeagueIdOrderByCreatedAtDesc(
-          eq(USER_ID), eq(LEAGUE_ID), any(PageRequest.class)))
+              eq(USER_ID), eq(LEAGUE_ID), any(PageRequest.class)))
           .thenReturn(page);
 
-      Page<TransactionResponse> result = service.getTransactionHistory(
-          USER_ID, LEAGUE_ID, PageRequest.of(0, 10));
+      Page<TransactionResponse> result =
+          service.getTransactionHistory(USER_ID, LEAGUE_ID, PageRequest.of(0, 10));
 
       assertEquals(2, result.getContent().size());
     }
@@ -766,8 +797,7 @@ class WalletServiceComprehensiveTest {
   private void setupMocksForTrade(Wallet wallet) {
     when(leagueServiceClient.getMemberUserIdsInternal(LEAGUE_ID))
         .thenReturn(Arrays.asList(USER_ID));
-    when(transactionRepository.findByIdempotencyKey(anyString()))
-        .thenReturn(Optional.empty());
+    when(transactionRepository.findByIdempotencyKey(anyString())).thenReturn(Optional.empty());
     when(walletRepository.findByUserIdAndLeagueIdForUpdate(USER_ID, LEAGUE_ID))
         .thenReturn(Optional.of(wallet));
     stubWalletSave();
@@ -776,31 +806,33 @@ class WalletServiceComprehensiveTest {
 
   private void stubWalletSave() {
     when(walletRepository.save(any(Wallet.class)))
-        .thenAnswer(invocation -> {
-          Wallet wallet = invocation.getArgument(0);
-          if (wallet.getId() == null) {
-            wallet.setId(100L);
-          }
-          if (wallet.getCreatedAt() == null) {
-            wallet.setCreatedAt(OffsetDateTime.now());
-          }
-          wallet.setUpdatedAt(OffsetDateTime.now());
-          return wallet;
-        });
+        .thenAnswer(
+            invocation -> {
+              Wallet wallet = invocation.getArgument(0);
+              if (wallet.getId() == null) {
+                wallet.setId(100L);
+              }
+              if (wallet.getCreatedAt() == null) {
+                wallet.setCreatedAt(OffsetDateTime.now());
+              }
+              wallet.setUpdatedAt(OffsetDateTime.now());
+              return wallet;
+            });
   }
 
   private void stubTransactionSave() {
     when(transactionRepository.save(any(Transaction.class)))
-        .thenAnswer(invocation -> {
-          Transaction transaction = invocation.getArgument(0);
-          if (transaction.getId() == null) {
-            transaction.setId(200L);
-          }
-          if (transaction.getCreatedAt() == null) {
-            transaction.setCreatedAt(OffsetDateTime.now());
-          }
-          return transaction;
-        });
+        .thenAnswer(
+            invocation -> {
+              Transaction transaction = invocation.getArgument(0);
+              if (transaction.getId() == null) {
+                transaction.setId(200L);
+              }
+              if (transaction.getCreatedAt() == null) {
+                transaction.setCreatedAt(OffsetDateTime.now());
+              }
+              return transaction;
+            });
   }
 
   private Wallet createWallet(Long userId, Long leagueId, String balance) {
@@ -861,8 +893,7 @@ class WalletServiceComprehensiveTest {
         "ACTIVE",
         false,
         false,
-        Instant.now()
-    );
+        Instant.now());
   }
 
   private StockResponse createInactiveStock() {
@@ -877,8 +908,7 @@ class WalletServiceComprehensiveTest {
         "INACTIVE",
         false,
         false,
-        Instant.now()
-    );
+        Instant.now());
   }
 
   private StockResponse createGameLockedStock() {
@@ -891,10 +921,9 @@ class WalletServiceComprehensiveTest {
         "12",
         bd("50.00"),
         "ACTIVE",
-        true,  // game locked
+        true, // game locked
         false,
-        Instant.now()
-    );
+        Instant.now());
   }
 
   private StockResponse createInjuryLockedStock() {
@@ -908,9 +937,8 @@ class WalletServiceComprehensiveTest {
         bd("50.00"),
         "ACTIVE",
         false,
-        true,  // injury locked
-        Instant.now()
-    );
+        true, // injury locked
+        Instant.now());
   }
 
   private static BigDecimal bd(String value) {

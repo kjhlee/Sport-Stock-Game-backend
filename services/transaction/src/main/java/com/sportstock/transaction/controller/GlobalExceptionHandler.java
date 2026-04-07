@@ -2,9 +2,9 @@ package com.sportstock.transaction.controller;
 
 import com.sportstock.common.exceptions.MissingAuthenticationException;
 import com.sportstock.transaction.exception.InsufficientFundsException;
-import com.sportstock.transaction.exception.TransactionAccessDeniedException;
 import com.sportstock.transaction.exception.InvalidTradeRequestException;
 import com.sportstock.transaction.exception.StockNotActiveException;
+import com.sportstock.transaction.exception.TransactionAccessDeniedException;
 import com.sportstock.transaction.exception.TransactionException;
 import com.sportstock.transaction.exception.TransactionStateException;
 import com.sportstock.transaction.exception.WalletAlreadyExistsException;
