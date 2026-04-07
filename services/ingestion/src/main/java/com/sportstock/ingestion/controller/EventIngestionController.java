@@ -118,10 +118,7 @@ public class EventIngestionController {
         eventRepository
             .findByEspnId(espnId)
             .orElseThrow(() -> new IllegalArgumentException("Event not found: " + espnId));
-    return teamRosterEntryRepository
-        .findByTeamEspnIdAndSeasonYear(teamEspnId, event.getSeasonYear())
-        .stream()
-        .map(entry -> entry.getAthlete().getEspnId())
-        .toList();
+    return teamRosterEntryRepository.findAthleteEspnIdsByTeamEspnIdAndSeasonYear(
+        teamEspnId, event.getSeasonYear());
   }
 }

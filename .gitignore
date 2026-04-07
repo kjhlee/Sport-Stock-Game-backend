@@ -33,3 +33,9 @@ application-dev.yml
 **/tmp/
 
 postman/
+
+# ======================
+# Git worktrees
+# ======================
+.worktrees/
+.worktrees/
