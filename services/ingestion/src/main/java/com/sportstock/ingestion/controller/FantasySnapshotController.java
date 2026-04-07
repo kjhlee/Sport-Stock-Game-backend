@@ -46,10 +46,14 @@ public class FantasySnapshotController {
     var fantasyResult = fantasySnapshotIngestionService.ingestActualFantasyPoints(eventEspnId);
     return ResponseEntity.ok(
         Map.of(
-            "eventEspnId", eventEspnId,
-            "summaryIngested", true,
-            "actualFantasyUpdated", fantasyResult.updated(),
-            "actualFantasySkipped", fantasyResult.skipped()));
+            "eventEspnId",
+            eventEspnId,
+            "summaryIngested",
+            true,
+            "actualFantasyUpdated",
+            fantasyResult.updated(),
+            "actualFantasySkipped",
+            fantasyResult.skipped()));
   }
 
   @PostMapping("/sync/mark-event-completed")
@@ -73,13 +77,11 @@ public class FantasySnapshotController {
       @RequestParam int seasonType,
       @RequestParam int weekNumber) {
     return fantasySnapshotRepository
-        .findByEspnIdAndSubjectTypeAndWeek(
-            espnId, subjectType, seasonYear, seasonType, weekNumber)
+        .findByEspnIdAndSubjectTypeAndWeek(espnId, subjectType, seasonYear, seasonType, weekNumber)
         .map(this::toResponse)
         .map(ResponseEntity::ok)
         .orElse(ResponseEntity.notFound().build());
   }
-
 
   private FantasySnapshotResponse toResponse(FantasySnapshot fs) {
     return new FantasySnapshotResponse(

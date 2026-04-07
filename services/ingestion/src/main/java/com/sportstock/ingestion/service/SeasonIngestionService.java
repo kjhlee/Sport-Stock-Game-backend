@@ -47,7 +47,9 @@ public class SeasonIngestionService {
         Season season =
             seasonsByType.computeIfAbsent(
                 calendarTypeValue,
-                seasonTypeValue -> upsertSeasonForType(seasonYear, seasonNode, typeNode, requestedSeasonTypeId, seasonTypeValue));
+                seasonTypeValue ->
+                    upsertSeasonForType(
+                        seasonYear, seasonNode, typeNode, requestedSeasonTypeId, seasonTypeValue));
 
         JsonNode entries = calendarEntry.path("entries");
         if (!entries.isArray()) {

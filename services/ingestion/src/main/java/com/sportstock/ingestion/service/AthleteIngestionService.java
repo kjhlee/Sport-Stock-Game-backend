@@ -145,7 +145,8 @@ public class AthleteIngestionService {
     List<Athlete> athletes;
     if (includeStubs) {
       if (positionAbbreviation != null && !positionAbbreviation.isBlank()) {
-        athletes = athleteRepository.findByPositionAbbreviationOrderByFullNameAsc(positionAbbreviation);
+        athletes =
+            athleteRepository.findByPositionAbbreviationOrderByFullNameAsc(positionAbbreviation);
       } else {
         athletes = athleteRepository.findAllByOrderByFullNameAsc();
       }

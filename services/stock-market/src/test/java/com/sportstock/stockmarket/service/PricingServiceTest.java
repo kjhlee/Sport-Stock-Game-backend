@@ -45,7 +45,9 @@ class PricingServiceTest {
     pricingConfig.setPriceFloor(bd("1.00"));
     pricingConfig.setMultipliers(Map.of("QB", bd("0.5"), "DST", bd("1.0")));
 
-    service = new PricingService(ingestionApiClient, stockRepository, priceHistoryRepository, pricingConfig);
+    service =
+        new PricingService(
+            ingestionApiClient, stockRepository, priceHistoryRepository, pricingConfig);
 
     when(stockRepository.save(any(Stock.class)))
         .thenAnswer(
@@ -70,11 +72,21 @@ class PricingServiceTest {
     stock.setPosition("QB");
     stock.setStatus(StockStatus.ACTIVE);
 
-    when(stockRepository.findByStatusAndGameLockedFalse(StockStatus.ACTIVE)).thenReturn(List.of(stock));
+    when(stockRepository.findByStatusAndGameLockedFalse(StockStatus.ACTIVE))
+        .thenReturn(List.of(stock));
     when(ingestionApiClient.getFantasySnapshot("3139477", "PLAYER", 2026, 2, 5))
         .thenReturn(
             new FantasySnapshotResponse(
-                null, null, "PLAYER", "3139477", "Patrick Mahomes", null, bd("1.50"), null, false, null));
+                null,
+                null,
+                "PLAYER",
+                "3139477",
+                "Patrick Mahomes",
+                null,
+                bd("1.50"),
+                null,
+                false,
+                null));
     when(priceHistoryRepository.findByStockIdAndSeasonYearAndSeasonTypeAndWeekAndPriceType(
             stock.getId(), 2026, 2, 5, PriceType.BASE))
         .thenReturn(Optional.empty());
@@ -97,10 +109,20 @@ class PricingServiceTest {
         .thenReturn(
             List.of(
                 new FantasySnapshotResponse(
-                    null, "401", "TEAM_DEFENSE", "12", "Chiefs D/ST", null, null, bd("9.00"), true, null)));
+                    null,
+                    "401",
+                    "TEAM_DEFENSE",
+                    "12",
+                    "Chiefs D/ST",
+                    null,
+                    null,
+                    bd("9.00"),
+                    true,
+                    null)));
     when(ingestionApiClient.getEvent("401"))
         .thenReturn(new IngestionEventDto("401", 2026, 2, 5, true, "post"));
-    when(stockRepository.findByEspnIdAndType("12", StockType.TEAM_DEFENSE)).thenReturn(Optional.empty());
+    when(stockRepository.findByEspnIdAndType("12", StockType.TEAM_DEFENSE))
+        .thenReturn(Optional.empty());
     when(priceHistoryRepository.findByStockIdAndSeasonYearAndSeasonTypeAndWeekAndPriceType(
             any(), any(Integer.class), any(Integer.class), any(Integer.class), any()))
         .thenReturn(Optional.empty());

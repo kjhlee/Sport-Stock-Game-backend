@@ -185,7 +185,10 @@ public class IngestionApiClient {
             .get()
             .uri(
                 uriBuilder ->
-                    uriBuilder.path("/rosters/injuries").queryParam("seasonYear", seasonYear).build())
+                    uriBuilder
+                        .path("/rosters/injuries")
+                        .queryParam("seasonYear", seasonYear)
+                        .build())
             .retrieve()
             .body(INJURY_STATUS_LIST);
     return body != null ? body : List.of();

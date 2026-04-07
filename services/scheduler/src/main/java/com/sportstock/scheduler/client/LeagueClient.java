@@ -13,46 +13,46 @@ import org.springframework.web.client.RestClient;
 @RequiredArgsConstructor
 public class LeagueClient {
 
-    private final RestClient restClient;
+  private final RestClient restClient;
 
-    public List<LeagueResponse> getActiveLeagues() {
-        List<LeagueResponse> body =
-                restClient
-                        .get()
-                        .uri("/active")
-                        .retrieve()
-                        .body(new ParameterizedTypeReference<List<LeagueResponse>>() {});
-        return body != null ? body : List.of();
-    }
-
-    public List<LeagueResponse> getPendingInitialStipendLeagues() {
-        List<LeagueResponse> body =
-                restClient
-                        .get()
-                        .uri("/pending-initial-stipend")
-                        .retrieve()
-                        .body(new ParameterizedTypeReference<List<LeagueResponse>>() {});
-        return body != null ? body : List.of();
-    }
-
-    public void updateInitialStipendStatus(Long leagueId, String status) {
+  public List<LeagueResponse> getActiveLeagues() {
+    List<LeagueResponse> body =
         restClient
-                .put()
-                .uri("/{leagueId}/initial-stipend-status", leagueId)
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(new UpdateInitialStipendStatusRequest(status))
-                .retrieve()
-                .toBodilessEntity();
-        log.info("Updated initial stipend status for league {} to {}", leagueId, status);
-    }
+            .get()
+            .uri("/active")
+            .retrieve()
+            .body(new ParameterizedTypeReference<List<LeagueResponse>>() {});
+    return body != null ? body : List.of();
+  }
 
-    public List<Long> getMemberUserIds(Long leagueId) {
-        List<Long> body =
-                restClient
-                        .get()
-                        .uri("/{leagueId}/member-ids", leagueId)
-                        .retrieve()
-                        .body(new ParameterizedTypeReference<List<Long>>() {});
-        return body != null ? body : List.of();
-    }
+  public List<LeagueResponse> getPendingInitialStipendLeagues() {
+    List<LeagueResponse> body =
+        restClient
+            .get()
+            .uri("/pending-initial-stipend")
+            .retrieve()
+            .body(new ParameterizedTypeReference<List<LeagueResponse>>() {});
+    return body != null ? body : List.of();
+  }
+
+  public void updateInitialStipendStatus(Long leagueId, String status) {
+    restClient
+        .put()
+        .uri("/{leagueId}/initial-stipend-status", leagueId)
+        .contentType(MediaType.APPLICATION_JSON)
+        .body(new UpdateInitialStipendStatusRequest(status))
+        .retrieve()
+        .toBodilessEntity();
+    log.info("Updated initial stipend status for league {} to {}", leagueId, status);
+  }
+
+  public List<Long> getMemberUserIds(Long leagueId) {
+    List<Long> body =
+        restClient
+            .get()
+            .uri("/{leagueId}/member-ids", leagueId)
+            .retrieve()
+            .body(new ParameterizedTypeReference<List<Long>>() {});
+    return body != null ? body : List.of();
+  }
 }

@@ -2,10 +2,7 @@ package com.sportstock.ingestion.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.sportstock.ingestion.client.EspnFantasyClient;
-import com.sportstock.ingestion.entity.Event;
-import com.sportstock.ingestion.entity.EventCompetitor;
-import com.sportstock.ingestion.entity.FantasySnapshot;
-import com.sportstock.ingestion.entity.TeamRosterEntry;
+import com.sportstock.ingestion.entity.*;
 import com.sportstock.ingestion.mapper.FantasySnapshotMapper;
 import com.sportstock.ingestion.mapper.PlayerGameStatsFantasyPointCalculator;
 import com.sportstock.ingestion.repo.EventCompetitorRepository;
@@ -124,9 +121,7 @@ public class FantasySnapshotIngestionService {
           updated++;
         } catch (Exception e) {
           log.error(
-              "Failed to process player node for event {}: {}",
-              event.getEspnId(),
-              e.getMessage());
+              "Failed to process player node for event {}: {}", event.getEspnId(), e.getMessage());
           skipped++;
         }
       }
@@ -213,8 +208,7 @@ public class FantasySnapshotIngestionService {
         retainedKeys.add(subject.key());
         updated++;
       } catch (Exception e) {
-        log.error(
-            "Failed to process player node for event {}: {}", eventEspnId, e.getMessage());
+        log.error("Failed to process player node for event {}: {}", eventEspnId, e.getMessage());
         skipped++;
       }
     }
@@ -222,10 +216,7 @@ public class FantasySnapshotIngestionService {
     fantasySnapshotRepository.saveAll(toSave);
     pruneSnapshots(event.getId(), retainedKeys);
     log.info(
-        "Projection ingestion for event {}: {} updated, {} skipped",
-        eventEspnId,
-        updated,
-        skipped);
+        "Projection ingestion for event {}: {} updated, {} skipped", eventEspnId, updated, skipped);
     return new IngestResult(updated, skipped, 0);
   }
 
@@ -241,12 +232,10 @@ public class FantasySnapshotIngestionService {
     List<EventCompetitor> competitors =
         eventCompetitorRepository.findByEventEspnIdWithTeam(eventEspnId);
     List<Integer> teamIds =
-        competitors.stream()
-            .map(ec -> Integer.parseInt(ec.getTeam().getEspnId()))
-            .toList();
+        competitors.stream().map(ec -> Integer.parseInt(ec.getTeam().getEspnId())).toList();
     Set<String> athleteIds =
         playerGameStatRepository.findByEventId(event.getId()).stream()
-            .map(pgs -> pgs.getAthleteEspnId())
+            .map(PlayerGameStat::getAthleteEspnId)
             .collect(Collectors.toSet());
 
     JsonNode root =
@@ -293,7 +282,8 @@ public class FantasySnapshotIngestionService {
             playerGameStatsFantasyPointCalculator.computePlayerFantasyPoints(
                 event.getId(), subject.espnId());
         if (actualFp == null) {
-          actualFp = FantasySnapshotMapper.extractActualFantasyPoints(playerNode, event.getWeekNumber());
+          actualFp =
+              FantasySnapshotMapper.extractActualFantasyPoints(playerNode, event.getWeekNumber());
         }
         if (!hasProjectedStats(snapshot) && actualFp == null) {
           skipped++;
@@ -305,9 +295,7 @@ public class FantasySnapshotIngestionService {
         updated++;
       } catch (Exception e) {
         log.error(
-            "Failed to process actual fantasy node for event {}: {}",
-            eventEspnId,
-            e.getMessage());
+            "Failed to process actual fantasy node for event {}: {}", eventEspnId, e.getMessage());
         skipped++;
       }
     }
@@ -341,9 +329,7 @@ public class FantasySnapshotIngestionService {
     List<EventCompetitor> competitors =
         eventCompetitorRepository.findByEventEspnIdWithTeam(eventEspnId);
     List<Integer> teamIds =
-        competitors.stream()
-            .map(ec -> Integer.parseInt(ec.getTeam().getEspnId()))
-            .toList();
+        competitors.stream().map(ec -> Integer.parseInt(ec.getTeam().getEspnId())).toList();
     Set<String> athleteIds =
         playerGameStatRepository.findByEventId(event.getId()).stream()
             .map(pgs -> pgs.getAthleteEspnId())
@@ -377,7 +363,8 @@ public class FantasySnapshotIngestionService {
               .map(
                   snapshot -> {
                     Map<String, Object> storedSnapshot = new LinkedHashMap<>();
-                    storedSnapshot.put("projectedFantasyPoints", snapshot.getProjectedFantasyPoints());
+                    storedSnapshot.put(
+                        "projectedFantasyPoints", snapshot.getProjectedFantasyPoints());
                     storedSnapshot.put("actualFantasyPoints", snapshot.getActualFantasyPoints());
                     storedSnapshot.put("completed", snapshot.isCompleted());
                     return storedSnapshot;
@@ -387,7 +374,8 @@ public class FantasySnapshotIngestionService {
           "projected",
           FantasySnapshotMapper.explainFantasyPoints(playerNode, 1, event.getWeekNumber()));
       response.put(
-          "actual", FantasySnapshotMapper.explainFantasyPoints(playerNode, 0, event.getWeekNumber()));
+          "actual",
+          FantasySnapshotMapper.explainFantasyPoints(playerNode, 0, event.getWeekNumber()));
       return response;
     }
 
@@ -410,9 +398,7 @@ public class FantasySnapshotIngestionService {
     List<EventCompetitor> competitors =
         eventCompetitorRepository.findByEventEspnIdWithTeam(eventEspnId);
     List<Integer> teamIds =
-        competitors.stream()
-            .map(ec -> Integer.parseInt(ec.getTeam().getEspnId()))
-            .toList();
+        competitors.stream().map(ec -> Integer.parseInt(ec.getTeam().getEspnId())).toList();
     Set<String> teamAthleteIds =
         playerGameStatRepository.findByEventId(event.getId()).stream()
             .filter(pgs -> teamEspnId.equals(pgs.getTeam().getEspnId()))
@@ -450,7 +436,8 @@ public class FantasySnapshotIngestionService {
               .map(
                   snapshot -> {
                     Map<String, Object> storedSnapshot = new LinkedHashMap<>();
-                    storedSnapshot.put("projectedFantasyPoints", snapshot.getProjectedFantasyPoints());
+                    storedSnapshot.put(
+                        "projectedFantasyPoints", snapshot.getProjectedFantasyPoints());
                     storedSnapshot.put("actualFantasyPoints", snapshot.getActualFantasyPoints());
                     storedSnapshot.put("completed", snapshot.isCompleted());
                     return storedSnapshot;
@@ -460,7 +447,8 @@ public class FantasySnapshotIngestionService {
           "projected",
           FantasySnapshotMapper.explainFantasyPoints(playerNode, 1, event.getWeekNumber()));
       response.put(
-          "actual", FantasySnapshotMapper.explainFantasyPoints(playerNode, 0, event.getWeekNumber()));
+          "actual",
+          FantasySnapshotMapper.explainFantasyPoints(playerNode, 0, event.getWeekNumber()));
       results.add(response);
     }
 
@@ -652,8 +640,7 @@ public class FantasySnapshotIngestionService {
     return value.toLowerCase().replaceAll("[^a-z0-9]", "");
   }
 
-  private String resolveDefenseDisplayName(
-      String defenseId, List<EventCompetitor> competitors) {
+  private String resolveDefenseDisplayName(String defenseId, List<EventCompetitor> competitors) {
     return competitors.stream()
         .map(EventCompetitor::getTeam)
         .filter(team -> defenseId.equals(team.getEspnId()))

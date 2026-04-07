@@ -48,7 +48,8 @@ public final class FantasySnapshotMapper {
   }
 
   public static String extractProjectedStatsJson(JsonNode playerNode, int scoringPeriodId) {
-    Map<String, BigDecimal> projectedStats = extractDisplayableStats(playerNode, 1, scoringPeriodId);
+    Map<String, BigDecimal> projectedStats =
+        extractDisplayableStats(playerNode, 1, scoringPeriodId);
     if (projectedStats.isEmpty()) {
       return null;
     }
@@ -107,12 +108,18 @@ public final class FantasySnapshotMapper {
 
     if (isTeamDefense(playerNode)) {
       return Map.of(
-          "available", false,
-          "unsupported", true,
-          "reason", "TEAM_DEFENSE fantasy point computation is disabled",
-          "statSourceId", statSourceId,
-          "scoringPeriodId", scoringPeriodId,
-          "normalizedStats", displayableStats);
+          "available",
+          false,
+          "unsupported",
+          true,
+          "reason",
+          "TEAM_DEFENSE fantasy point computation is disabled",
+          "statSourceId",
+          statSourceId,
+          "scoringPeriodId",
+          scoringPeriodId,
+          "normalizedStats",
+          displayableStats);
     }
 
     boolean usedAppliedTotal = !appliedTotalNode.isMissingNode() && !appliedTotalNode.isNull();
@@ -161,7 +168,8 @@ public final class FantasySnapshotMapper {
     while (fields.hasNext()) {
       Map.Entry<String, JsonNode> field = fields.next();
       try {
-        stats.put(Integer.parseInt(field.getKey()), BigDecimal.valueOf(field.getValue().asDouble()));
+        stats.put(
+            Integer.parseInt(field.getKey()), BigDecimal.valueOf(field.getValue().asDouble()));
       } catch (NumberFormatException e) {
         log.debug("Skipping non-numeric fantasy stat key: {}", field.getKey());
       }
@@ -175,8 +183,7 @@ public final class FantasySnapshotMapper {
     addContribution(breakdown, "passingYards", stat(stats, 3), new BigDecimal("0.04"));
     addContribution(breakdown, "passingTouchdowns", stat(stats, 4), new BigDecimal("4"));
     addContribution(breakdown, "passing2PtConversions", stat(stats, 19), new BigDecimal("2"));
-    addContribution(
-        breakdown, "passingInterceptions", stat(stats, 20), new BigDecimal("-2"));
+    addContribution(breakdown, "passingInterceptions", stat(stats, 20), new BigDecimal("-2"));
     addContribution(breakdown, "rushingYards", stat(stats, 24), new BigDecimal("0.1"));
     addContribution(breakdown, "rushingTouchdowns", stat(stats, 25), new BigDecimal("6"));
     addContribution(breakdown, "rushing2PtConversions", stat(stats, 26), new BigDecimal("2"));
@@ -188,10 +195,8 @@ public final class FantasySnapshotMapper {
         offenseReceivingYards(stats, statSourceId),
         new BigDecimal("0.1"));
     addContribution(breakdown, "receivingTouchdowns", stat(stats, 43), new BigDecimal("6"));
-    addContribution(
-        breakdown, "receiving2PtConversions", stat(stats, 44), new BigDecimal("2"));
-    addContribution(
-        breakdown, "fumbleRecoveredForTD", stat(stats, 63), new BigDecimal("6"));
+    addContribution(breakdown, "receiving2PtConversions", stat(stats, 44), new BigDecimal("2"));
+    addContribution(breakdown, "fumbleRecoveredForTD", stat(stats, 63), new BigDecimal("6"));
     addContribution(breakdown, "lostFumbles", stat(stats, 72), new BigDecimal("-2"));
     return new FantasyComputation(sumBreakdown(breakdown), breakdown);
   }
@@ -269,30 +274,24 @@ public final class FantasySnapshotMapper {
     putIfPresent(offenseStats, "rushingTouchdowns", firstPresentNullableStat(stats, 25));
     putIfPresent(offenseStats, "rushing2PtConversions", firstPresentNullableStat(stats, 26));
     putIfPresent(offenseStats, "receptions", offenseReceptions(stats, statSourceId));
-    putIfPresent(
-        offenseStats, "receivingYards", offenseReceivingYards(stats, statSourceId));
+    putIfPresent(offenseStats, "receivingYards", offenseReceivingYards(stats, statSourceId));
     putIfPresent(offenseStats, "receivingTouchdowns", firstPresentNullableStat(stats, 43));
     putIfPresent(offenseStats, "receiving2PtConversions", firstPresentNullableStat(stats, 44));
-    putIfPresent(
-        offenseStats, "receivingTargets", offenseReceivingTargets(stats, statSourceId));
+    putIfPresent(offenseStats, "receivingTargets", offenseReceivingTargets(stats, statSourceId));
     putIfPresent(offenseStats, "fumbleRecoveredForTD", firstPresentNullableStat(stats, 63));
     putIfPresent(offenseStats, "fumbles", firstPresentNullableStat(stats, 68));
     putIfPresent(offenseStats, "lostFumbles", firstPresentNullableStat(stats, 72));
     return offenseStats;
   }
 
-  private static void putIfPresent(
-      Map<String, BigDecimal> result, String name, BigDecimal value) {
+  private static void putIfPresent(Map<String, BigDecimal> result, String name, BigDecimal value) {
     if (value != null) {
       result.put(name, value);
     }
   }
 
   private static void addContribution(
-      Map<String, BigDecimal> breakdown,
-      String label,
-      BigDecimal value,
-      BigDecimal multiplier) {
+      Map<String, BigDecimal> breakdown, String label, BigDecimal value, BigDecimal multiplier) {
     breakdown.put(label, value.multiply(multiplier).setScale(2, RoundingMode.HALF_UP));
   }
 

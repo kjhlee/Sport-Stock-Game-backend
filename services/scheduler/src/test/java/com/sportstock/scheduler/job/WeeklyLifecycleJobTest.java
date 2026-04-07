@@ -112,7 +112,8 @@ class WeeklyLifecycleJobTest {
     when(ingestionClient.isSeasonActive()).thenReturn(true);
     when(ingestionClient.getCurrentWeek()).thenReturn(currentWeek);
     when(ingestionClient.getPriorWeek()).thenReturn(priorWeek);
-    when(ingestionClient.getEvents(2026, 2, 18)).thenReturn(List.of(completedEvent, unfinishedEvent));
+    when(ingestionClient.getEvents(2026, 2, 18))
+        .thenReturn(List.of(completedEvent, unfinishedEvent));
     when(leagueClient.getActiveLeagues()).thenReturn(List.of(league));
     when(stockMarketClient.unlockAll()).thenReturn(8);
     when(stockMarketClient.relistProjectedStocks(2026, 3, 1)).thenReturn(2);
@@ -128,8 +129,7 @@ class WeeklyLifecycleJobTest {
     verify(gameDayPollingJob).closeEvent("evt-complete");
     verify(gameDayPollingJob, never()).closeEvent("evt-live");
     verify(transactionClient).liquidateAssets(42L, 18);
-    verify(transactionClient)
-        .issueWeeklyStipends(42L, new BigDecimal("25.00"), 1);
+    verify(transactionClient).issueWeeklyStipends(42L, new BigDecimal("25.00"), 1);
     verify(ingestionClient).syncScoreboard(2026, 3, 1);
     verify(stockMarketClient).unlockAll();
     verify(ingestionClient).syncStaleRosters(2026, 6);
@@ -167,12 +167,12 @@ class WeeklyLifecycleJobTest {
 
     verify(gameDayPollingJob, never()).closeEvent(any());
     verify(transactionClient, never()).liquidateAssets(any(), any(int.class));
-    verify(transactionClient)
-        .issueWeeklyStipends(7L, new BigDecimal("25.00"), 6);
+    verify(transactionClient).issueWeeklyStipends(7L, new BigDecimal("25.00"), 6);
     verify(ingestionClient).syncScoreboard(2026, 2, 6);
     verify(stockMarketClient).relistProjectedStocks(2026, 2, 6);
     verify(stockMarketClient).updateProjectedPrices(2026, 2, 6);
-    verify(stockMarketClient, never()).delistUnprojectedStocks(any(int.class), any(int.class), any(int.class));
+    verify(stockMarketClient, never())
+        .delistUnprojectedStocks(any(int.class), any(int.class), any(int.class));
     verify(eventStateRepository, never()).deleteAll(any());
   }
 

@@ -110,8 +110,7 @@ public class LeagueController {
   @PutMapping("/internal/leagues/{leagueId}/initial-stipend-status")
   @ResponseStatus(HttpStatus.NO_CONTENT)
   public void updateInitialStipendStatus(
-      @PathVariable Long leagueId,
-      @Valid @RequestBody UpdateInitialStipendStatusRequest request) {
+      @PathVariable Long leagueId, @Valid @RequestBody UpdateInitialStipendStatusRequest request) {
     leagueService.updateInitialStipendStatus(leagueId, request.status());
   }
 

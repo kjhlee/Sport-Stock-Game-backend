@@ -60,11 +60,13 @@ class FantasySnapshotIngestionServiceTest {
             teamRosterEntryRepository);
 
     when(fantasySnapshotRepository.findByEventId(10L)).thenReturn(List.of());
-    when(fantasySnapshotRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
+    when(fantasySnapshotRepository.saveAll(any()))
+        .thenAnswer(invocation -> invocation.getArgument(0));
   }
 
   @Test
-  void ingestActualFantasyPoints_prefersCalculatorOverFantasyPayloadAppliedTotal() throws Exception {
+  void ingestActualFantasyPoints_prefersCalculatorOverFantasyPayloadAppliedTotal()
+      throws Exception {
     Event event = event();
 
     when(eventRepository.findByEspnId("401")).thenReturn(Optional.of(event));
@@ -93,7 +95,8 @@ class FantasySnapshotIngestionServiceTest {
   }
 
   @Test
-  void ingestActualFantasyPoints_fallsBackToPayloadAndSkipsUnsupportedDefenseNodes() throws Exception {
+  void ingestActualFantasyPoints_fallsBackToPayloadAndSkipsUnsupportedDefenseNodes()
+      throws Exception {
     Event event = event();
 
     when(eventRepository.findByEspnId("401")).thenReturn(Optional.of(event));

@@ -113,7 +113,8 @@ class LeagueServiceTest {
     invite.setExpiresAt(OffsetDateTime.now().plusDays(1));
 
     when(leagueRepository.findByIdForUpdate(55L)).thenReturn(Optional.of(league));
-    when(leagueInviteRepository.findByCodeAndRevokedAtIsNull("ABC123")).thenReturn(Optional.of(invite));
+    when(leagueInviteRepository.findByCodeAndRevokedAtIsNull("ABC123"))
+        .thenReturn(Optional.of(invite));
     when(leagueMemberRepository.countByLeagueId(55L)).thenReturn(1);
     when(leagueMemberRepository.findByLeagueIdAndUserId(55L, 42L)).thenReturn(Optional.empty());
     when(leagueInviteRepository.incrementUsesCount(88L)).thenReturn(1);

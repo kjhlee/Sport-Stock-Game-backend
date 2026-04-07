@@ -160,7 +160,8 @@ public class StockSyncService {
     }
 
     if ("DST".equals(normalized)) {
-      throw new IllegalArgumentException("Use /api/internal/stocks/sync-team-defense for DST stocks");
+      throw new IllegalArgumentException(
+          "Use /api/internal/stocks/sync-team-defense for DST stocks");
     }
 
     return normalized;
