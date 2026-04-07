@@ -80,24 +80,6 @@ public class FantasySnapshotController {
         .orElse(ResponseEntity.notFound().build());
   }
 
-  @GetMapping("/debug/events/{eventEspnId}/fantasy/{subjectType}/{espnId}")
-  public ResponseEntity<Map<String, Object>> debugFantasyForEvent(
-      @PathVariable String eventEspnId,
-      @PathVariable String subjectType,
-      @PathVariable String espnId) {
-    return ResponseEntity.ok(
-        fantasySnapshotIngestionService.debugFantasyForEvent(eventEspnId, subjectType, espnId));
-  }
-
-  @GetMapping("/debug/events/{eventEspnId}/fantasy/team/{teamEspnId}")
-  public ResponseEntity<Map<String, Object>> debugFantasyForTeam(
-      @PathVariable String eventEspnId,
-      @PathVariable String teamEspnId,
-      @RequestParam(required = false) String subjectType) {
-    return ResponseEntity.ok(
-        fantasySnapshotIngestionService.debugFantasyForTeam(
-            eventEspnId, teamEspnId, subjectType));
-  }
 
   private FantasySnapshotResponse toResponse(FantasySnapshot fs) {
     return new FantasySnapshotResponse(
