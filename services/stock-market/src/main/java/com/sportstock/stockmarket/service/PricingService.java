@@ -116,6 +116,73 @@ public class PricingService {
     return new PriceUpdateResult(updated, skipped);
   }
 
+  @Transactional
+  public DelistResult delistUnprojectedStocks(int seasonYear, int seasonType, int weekNumber) {
+    log.info(
+        "Delisting unprojected stocks for season {} type {} week {}",
+        seasonYear,
+        seasonType,
+        weekNumber);
+
+    List<Stock> activeStocks = stockRepository.findByStatus(StockStatus.ACTIVE);
+    int delisted = 0;
+    int kept = 0;
+
+    for (Stock stock : activeStocks) {
+      FantasySnapshotResponse snapshot =
+          ingestionApiClient.getFantasySnapshot(
+              stock.getEspnId(), stock.getType().name(), seasonYear, seasonType, weekNumber);
+
+      if (snapshot == null || snapshot.projectedFantasyPoints() == null) {
+        stock.setStatus(StockStatus.DELISTED);
+        stockRepository.save(stock);
+        delisted++;
+      } else {
+        kept++;
+      }
+    }
+
+    log.info("Delisted {} stocks, kept {} active", delisted, kept);
+    return new DelistResult(delisted, kept);
+  }
+
+  @Transactional
+  public RelistResult relistProjectedStocks(int seasonYear, int seasonType, int weekNumber) {
+    log.info(
+        "Relisting projected stocks for season {} type {} week {}",
+        seasonYear,
+        seasonType,
+        weekNumber);
+
+    List<Stock> delistedStocks = stockRepository.findByStatus(StockStatus.DELISTED);
+    int relisted = 0;
+    int kept = 0;
+
+    for (Stock stock : delistedStocks) {
+      FantasySnapshotResponse snapshot =
+          ingestionApiClient.getFantasySnapshot(
+              stock.getEspnId(), stock.getType().name(), seasonYear, seasonType, weekNumber);
+
+      if (snapshot != null && snapshot.projectedFantasyPoints() != null) {
+        stock.setStatus(StockStatus.ACTIVE);
+
+        BigDecimal multiplier = getMultiplier(stock.getPosition());
+        BigDecimal newPrice = computePrice(snapshot.projectedFantasyPoints(), multiplier);
+        stock.setCurrentPrice(newPrice);
+        stock.setPriceUpdatedAt(Instant.now());
+        stockRepository.save(stock);
+
+        upsertPriceHistory(stock, seasonYear, seasonType, weekNumber, newPrice, PriceType.BASE);
+        relisted++;
+      } else {
+        kept++;
+      }
+    }
+
+    log.info("Relisted {} stocks, kept {} delisted", relisted, kept);
+    return new RelistResult(relisted, kept);
+  }
+
   private BigDecimal computePrice(BigDecimal fantasyPoints, BigDecimal multiplier) {
     BigDecimal price = fantasyPoints.multiply(multiplier).setScale(2, RoundingMode.HALF_UP);
     BigDecimal floor = pricingConfig.getPriceFloor();
@@ -212,4 +279,8 @@ public class PricingService {
   }
 
   public record PriceUpdateResult(int updated, int skipped) {}
+
+  public record DelistResult(int delisted, int kept) {}
+
+  public record RelistResult(int relisted, int kept) {}
 }

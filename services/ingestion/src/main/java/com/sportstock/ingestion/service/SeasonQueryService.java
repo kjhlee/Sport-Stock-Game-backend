@@ -75,6 +75,29 @@ public class SeasonQueryService {
     }
   }
 
+  @Transactional
+  public Optional<CurrentWeekResponse> getPriorWeek() {
+    Instant now = Instant.now();
+    Optional<SeasonWeek> currentWeekOpt = seasonWeekRepository.findCurrentWeek(now, SEASON_TYPES);
+    if (currentWeekOpt.isEmpty()) {
+      return Optional.empty();
+    }
+
+    SeasonWeek currentWeek = currentWeekOpt.get();
+    return seasonWeekRepository
+        .findPriorWeek(currentWeek.getStartDate(), SEASON_TYPES)
+        .map(
+            sw ->
+                new CurrentWeekResponse(
+                    sw.getSeason().getYear(),
+                    sw.getSeasonTypeValue(),
+                    sw.getSeason().getSeasonTypeName(),
+                    Integer.parseInt(sw.getWeekValue()),
+                    sw.getLabel(),
+                    sw.getStartDate(),
+                    sw.getEndDate()));
+  }
+
   public Optional<CurrentWeekResponse> getCurrentWeekIncludingPreseasonOptional() {
     Instant now = Instant.now();
     return seasonWeekRepository

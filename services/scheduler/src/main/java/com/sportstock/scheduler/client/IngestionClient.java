@@ -24,6 +24,19 @@ public class IngestionClient {
                 .body(CurrentWeekResponse.class);
     }
 
+    public CurrentWeekResponse getPriorWeek() {
+        try {
+            return restClient
+                    .get()
+                    .uri("/seasons/prior-week")
+                    .retrieve()
+                    .body(CurrentWeekResponse.class);
+        } catch (Exception e) {
+            log.debug("No prior week available: {}", e.getMessage());
+            return null;
+        }
+    }
+
     public List<EventResponse> getEvents(int seasonYear, int seasonType, int weekNumber) {
         List<EventResponse> body =
                 restClient

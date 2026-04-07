@@ -97,6 +97,40 @@ public class StockMarketClient {
                 .body(SyncAthletesResponse.class);
     }
 
+    public int delistUnprojectedStocks(int seasonYear, int seasonType, int weekNumber) {
+        Map<String, Integer> body =
+                restClient
+                        .post()
+                        .uri(
+                                uriBuilder ->
+                                        uriBuilder
+                                                .path("/delist-unprojected")
+                                                .queryParam("seasonYear", seasonYear)
+                                                .queryParam("seasonType", seasonType)
+                                                .queryParam("weekNumber", weekNumber)
+                                                .build())
+                        .retrieve()
+                        .body(new ParameterizedTypeReference<Map<String, Integer>>() {});
+        return body != null ? body.getOrDefault("delisted", 0) : 0;
+    }
+
+    public int relistProjectedStocks(int seasonYear, int seasonType, int weekNumber) {
+        Map<String, Integer> body =
+                restClient
+                        .post()
+                        .uri(
+                                uriBuilder ->
+                                        uriBuilder
+                                                .path("/relist-projected")
+                                                .queryParam("seasonYear", seasonYear)
+                                                .queryParam("seasonType", seasonType)
+                                                .queryParam("weekNumber", weekNumber)
+                                                .build())
+                        .retrieve()
+                        .body(new ParameterizedTypeReference<Map<String, Integer>>() {});
+        return body != null ? body.getOrDefault("relisted", 0) : 0;
+    }
+
     public SyncAthletesResponse syncTeamDefenseStocks() {
         return restClient
                 .post()

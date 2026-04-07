@@ -39,6 +39,19 @@ public interface SeasonWeekRepository extends JpaRepository<SeasonWeek, Long> {
 
   @Query(
       """
+    SELECT sw FROM SeasonWeek sw
+    JOIN FETCH sw.season s
+    WHERE sw.endDate < :currentWeekStart
+      AND sw.seasonTypeValue IN :seasonTypes
+    ORDER BY sw.endDate DESC
+    LIMIT 1
+    """)
+  Optional<SeasonWeek> findPriorWeek(
+      @Param("currentWeekStart") Instant currentWeekStart,
+      @Param("seasonTypes") List<String> seasonTypes);
+
+  @Query(
+      """
     SELECT MAX(CAST(sw.weekValue AS int)) FROM SeasonWeek sw
     JOIN sw.season s
     WHERE s.year = :seasonYear

@@ -66,6 +66,13 @@ public class ProjectionSyncJob {
 
             if (projectionsSynced) {
                 try {
+                    stockMarketClient.relistProjectedStocks(seasonYear, seasonType, weekNumber);
+                    log.info("Relisted projected stocks");
+                } catch (Exception e) {
+                    log.error("Failed to relist projected stocks: {}", e.getMessage());
+                }
+
+                try {
                     stockMarketClient.updateProjectedPrices(seasonYear, seasonType, weekNumber);
                     log.info("Updated projected prices");
                 } catch (Exception e) {
