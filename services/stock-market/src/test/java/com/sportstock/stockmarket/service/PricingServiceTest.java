@@ -49,7 +49,8 @@ class PricingServiceTest {
         new PricingService(
             ingestionApiClient, stockRepository, priceHistoryRepository, pricingConfig);
 
-    when(stockRepository.save(any(Stock.class)))
+    lenient()
+        .when(stockRepository.save(any(Stock.class)))
         .thenAnswer(
             invocation -> {
               Stock stock = invocation.getArgument(0);
@@ -158,7 +159,7 @@ class PricingServiceTest {
     withoutProjection.setPosition("RB");
     withoutProjection.setStatus(StockStatus.ACTIVE);
 
-    when(stockRepository.findByStatus(StockStatus.ACTIVE))
+    when(stockRepository.findByStatusAndGameLockedFalse(StockStatus.ACTIVE))
         .thenReturn(List.of(withProjection, withoutProjection));
     when(ingestionApiClient.getFantasySnapshot("100", "PLAYER", 2026, 2, 6))
         .thenReturn(
@@ -183,7 +184,8 @@ class PricingServiceTest {
     stock.setPosition("WR");
     stock.setStatus(StockStatus.ACTIVE);
 
-    when(stockRepository.findByStatus(StockStatus.ACTIVE)).thenReturn(List.of(stock));
+    when(stockRepository.findByStatusAndGameLockedFalse(StockStatus.ACTIVE))
+        .thenReturn(List.of(stock));
     when(ingestionApiClient.getFantasySnapshot("300", "PLAYER", 2026, 2, 6))
         .thenReturn(
             new FantasySnapshotResponse(
@@ -194,6 +196,16 @@ class PricingServiceTest {
     assertEquals(1, result.delisted());
     assertEquals(0, result.kept());
     assertEquals(StockStatus.DELISTED, stock.getStatus());
+  }
+
+  @Test
+  void delistUnprojectedStocks_skipsGameLockedStocks() {
+    when(stockRepository.findByStatusAndGameLockedFalse(StockStatus.ACTIVE)).thenReturn(List.of());
+
+    var result = service.delistUnprojectedStocks(2025, 2, 5);
+
+    assertEquals(0, result.delisted());
+    assertEquals(0, result.kept());
   }
 
   @Test

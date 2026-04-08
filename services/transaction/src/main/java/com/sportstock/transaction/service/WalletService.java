@@ -14,7 +14,6 @@ import com.sportstock.transaction.exception.InsufficientFundsException;
 import com.sportstock.transaction.exception.InvalidTradeRequestException;
 import com.sportstock.transaction.exception.StockNotActiveException;
 import com.sportstock.transaction.exception.TransactionAccessDeniedException;
-import com.sportstock.transaction.exception.WalletAlreadyExistsException;
 import com.sportstock.transaction.exception.WalletNotFoundException;
 import com.sportstock.transaction.mapper.DtoMapper;
 import com.sportstock.transaction.repo.TransactionRepository;
@@ -54,23 +53,6 @@ public class WalletService {
     this.transactionTemplate = new TransactionTemplate(txManager);
     this.leagueServiceClient = leagueServiceClient;
     this.stockMarketServiceClient = stockMarketServiceClient;
-  }
-
-  @Transactional
-  public WalletResponse createWallet(Long userId, Long leagueId) {
-    verifyLeagueMembership(userId, leagueId);
-    if (walletRepository.existsByUserIdAndLeagueId(userId, leagueId)) {
-      throw new WalletAlreadyExistsException(userId, leagueId);
-    }
-    Wallet wallet = new Wallet();
-    wallet.setUserId(userId);
-    wallet.setLeagueId(leagueId);
-    try {
-      walletRepository.save(wallet);
-    } catch (DataIntegrityViolationException e) {
-      throw new WalletAlreadyExistsException(userId, leagueId);
-    }
-    return DtoMapper.toWalletResponse(wallet);
   }
 
   public StipendResultResponse issueInitialStipends(
@@ -273,6 +255,9 @@ public class WalletService {
         buyTransaction.getAmount().divide(buyTransaction.getPricePerShare(), 4, RoundingMode.DOWN);
     BigDecimal soldQuantity =
         transactionRepository.sumSoldQuantityByBuyTransactionId(buyTransaction.getId());
+    if (soldQuantity == null) {
+      soldQuantity = BigDecimal.ZERO;
+    }
     BigDecimal remainingQuantity =
         purchasedQuantity.subtract(soldQuantity).setScale(4, RoundingMode.DOWN);
 
@@ -532,9 +517,7 @@ public class WalletService {
   }
 
   private void verifyLeagueMembership(Long userId, Long leagueId) {
-    boolean isMember =
-        leagueServiceClient.getMemberUserIdsInternal(leagueId).stream().anyMatch(userId::equals);
-    if (!isMember) {
+    if (!walletRepository.existsByUserIdAndLeagueId(userId, leagueId)) {
       throw new TransactionAccessDeniedException("User is not a member of league " + leagueId);
     }
   }

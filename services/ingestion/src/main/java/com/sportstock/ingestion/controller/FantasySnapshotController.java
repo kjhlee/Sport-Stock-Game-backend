@@ -28,12 +28,6 @@ public class FantasySnapshotController {
     return ResponseEntity.ok(result);
   }
 
-  @PostMapping("/test/sync/projections/event")
-  public ResponseEntity<?> testSyncProjectionsForEvent(@RequestParam String eventEspnId) {
-    var result = fantasySnapshotIngestionService.ingestProjectionsForEvent(eventEspnId);
-    return ResponseEntity.ok(result);
-  }
-
   @PostMapping("/sync/actual-fantasy-points")
   public ResponseEntity<?> syncActualFantasyPoints(@RequestParam String eventEspnId) {
     var result = fantasySnapshotIngestionService.ingestActualFantasyPoints(eventEspnId);

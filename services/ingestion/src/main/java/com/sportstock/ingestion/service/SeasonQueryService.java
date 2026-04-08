@@ -4,13 +4,14 @@ import com.sportstock.common.dto.ingestion.CurrentWeekResponse;
 import com.sportstock.ingestion.entity.SeasonWeek;
 import com.sportstock.ingestion.exception.EntityNotFoundException;
 import com.sportstock.ingestion.repo.SeasonWeekRepository;
-import jakarta.transaction.Transactional;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Slf4j
@@ -62,8 +63,14 @@ public class SeasonQueryService {
     try {
       getCurrentWeek();
       return true;
-    } catch (Exception e) {
+    } catch (EntityNotFoundException e) {
       return false;
+    } catch (DataAccessException e) {
+      log.error("Database error checking season active status: {}", e.getMessage(), e);
+      throw e;
+    } catch (Exception e) {
+      log.error("Unexpected error checking season active status: {}", e.getMessage(), e);
+      throw e;
     }
   }
 

@@ -1,6 +1,5 @@
 package com.sportstock.transaction.controller;
 
-import com.sportstock.common.dto.transaction.CreateWalletRequest;
 import com.sportstock.common.dto.transaction.IssueStipendRequest;
 import com.sportstock.common.dto.transaction.StipendResultResponse;
 import com.sportstock.common.dto.transaction.StockTransactionRequest;
@@ -35,13 +34,6 @@ public class WalletController {
 
   private final WalletService walletService;
   private final CurrentUserProvider currentUserProvider;
-
-  @PostMapping("/v1/wallets")
-  @ResponseStatus(HttpStatus.CREATED)
-  public WalletResponse createWallet(@Valid @RequestBody CreateWalletRequest request) {
-    Long userId = currentUserProvider.getCurrentUserId();
-    return walletService.createWallet(userId, request.leagueId());
-  }
 
   @GetMapping("/v1/wallets")
   @ResponseStatus(HttpStatus.OK)

@@ -228,6 +228,9 @@ public class LeagueService {
         leagueMemberRepository
             .findByLeagueIdAndUserId(leagueId, userId)
             .orElseThrow(() -> new LeagueNotFoundException("User is not a member of the league"));
+    if (league.getStatus() == LeagueStatus.ARCHIVED) {
+      throw new LeagueStateException("Cannot leave an archived league");
+    }
     if (league.getStartedAt() != null || league.getStatus() != LeagueStatus.INACTIVE) {
       throw new LeagueStateException("Cannot leave a league that has already started");
     }

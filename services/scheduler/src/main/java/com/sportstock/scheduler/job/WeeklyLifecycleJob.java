@@ -8,6 +8,7 @@ import com.sportstock.scheduler.client.IngestionClient;
 import com.sportstock.scheduler.client.LeagueClient;
 import com.sportstock.scheduler.client.StockMarketClient;
 import com.sportstock.scheduler.client.TransactionClient;
+import com.sportstock.scheduler.config.ProjectionSyncLock;
 import com.sportstock.scheduler.entity.EventState;
 import com.sportstock.scheduler.repo.EventStateRepository;
 import java.util.List;
@@ -33,9 +34,16 @@ public class WeeklyLifecycleJob {
   private final StockMarketClient stockMarketClient;
   private final EventStateRepository eventStateRepository;
   private final GameDayPollingJob gameDayPollingJob;
+  private final ProjectionSyncLock projectionSyncLock;
 
   @Scheduled(cron = "${scheduler.weekly-lifecycle.cron}")
   public void run() {
+    if (!projectionSyncLock.tryAcquire()) {
+      log.warn(
+          "WeeklyLifecycleJob skipped because another projection sync chain is already running");
+      return;
+    }
+
     log.info("WeeklyLifecycleJob started");
 
     try {
@@ -109,6 +117,8 @@ public class WeeklyLifecycleJob {
     } catch (Exception e) {
       log.warn(
           "Skipping weekly lifecycle because dependencies are unavailable: {}", e.getMessage());
+    } finally {
+      projectionSyncLock.release();
     }
   }
 

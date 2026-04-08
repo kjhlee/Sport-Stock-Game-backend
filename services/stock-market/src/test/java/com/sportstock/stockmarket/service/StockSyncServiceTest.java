@@ -80,6 +80,63 @@ class StockSyncServiceTest {
     assertEquals(bd("5.00"), stockCaptor.getValue().getCurrentPrice());
   }
 
+  @Test
+  void syncAthletes_treatsNullStatusAsActive() throws Exception {
+    IngestionAthleteDto athlete =
+        athlete(
+            """
+            {"espnId":"1","fullName":"Player One","positionAbbreviation":"QB","teamEspnId":"12"}
+            """);
+
+    when(ingestionApiClient.getAthletes(null)).thenReturn(List.of(athlete));
+    when(stockRepository.findByEspnIdAndType("1", StockType.PLAYER)).thenReturn(Optional.empty());
+
+    service.syncAthletes(null);
+
+    ArgumentCaptor<Stock> stockCaptor = ArgumentCaptor.forClass(Stock.class);
+    verify(stockRepository).save(stockCaptor.capture());
+    assertEquals(com.sportstock.common.enums.stock_market.StockStatus.ACTIVE,
+        stockCaptor.getValue().getStatus());
+  }
+
+  @Test
+  void syncAthletes_treatsBlankStatusAsActive() throws Exception {
+    IngestionAthleteDto athlete =
+        athlete(
+            """
+            {"espnId":"2","fullName":"Player Two","positionAbbreviation":"QB","statusType":"   ","teamEspnId":"12"}
+            """);
+
+    when(ingestionApiClient.getAthletes(null)).thenReturn(List.of(athlete));
+    when(stockRepository.findByEspnIdAndType("2", StockType.PLAYER)).thenReturn(Optional.empty());
+
+    service.syncAthletes(null);
+
+    ArgumentCaptor<Stock> stockCaptor = ArgumentCaptor.forClass(Stock.class);
+    verify(stockRepository).save(stockCaptor.capture());
+    assertEquals(com.sportstock.common.enums.stock_market.StockStatus.ACTIVE,
+        stockCaptor.getValue().getStatus());
+  }
+
+  @Test
+  void syncAthletes_treatsInjuredReserveAsDelisted() throws Exception {
+    IngestionAthleteDto athlete =
+        athlete(
+            """
+            {"espnId":"3","fullName":"Player Three","positionAbbreviation":"QB","statusType":"INJURED_RESERVE","teamEspnId":"12"}
+            """);
+
+    when(ingestionApiClient.getAthletes(null)).thenReturn(List.of(athlete));
+    when(stockRepository.findByEspnIdAndType("3", StockType.PLAYER)).thenReturn(Optional.empty());
+
+    service.syncAthletes(null);
+
+    ArgumentCaptor<Stock> stockCaptor = ArgumentCaptor.forClass(Stock.class);
+    verify(stockRepository).save(stockCaptor.capture());
+    assertEquals(com.sportstock.common.enums.stock_market.StockStatus.DELISTED,
+        stockCaptor.getValue().getStatus());
+  }
+
   private static IngestionAthleteDto athlete(String json) throws Exception {
     return OBJECT_MAPPER.readValue(json, IngestionAthleteDto.class);
   }

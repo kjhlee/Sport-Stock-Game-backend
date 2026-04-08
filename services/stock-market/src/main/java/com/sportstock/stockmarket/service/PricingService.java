@@ -120,7 +120,7 @@ public class PricingService {
         seasonType,
         weekNumber);
 
-    List<Stock> activeStocks = stockRepository.findByStatus(StockStatus.ACTIVE);
+    List<Stock> activeStocks = stockRepository.findByStatusAndGameLockedFalse(StockStatus.ACTIVE);
     int delisted = 0;
     int kept = 0;
 

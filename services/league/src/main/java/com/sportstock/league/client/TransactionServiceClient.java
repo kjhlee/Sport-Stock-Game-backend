@@ -1,13 +1,11 @@
 package com.sportstock.league.client;
 
-import com.sportstock.common.dto.transaction.CreateWalletRequest;
 import com.sportstock.common.dto.transaction.IssueStipendRequest;
 import com.sportstock.common.dto.transaction.StipendResultResponse;
 import com.sportstock.common.dto.transaction.WalletResponse;
 import com.sportstock.common.security.RequestContextAuthorizationHeaderResolver;
 import com.sportstock.league.entity.LeagueMember;
 import com.sportstock.league.repo.LeagueMemberRepository;
-import com.sportstock.league.repo.LeagueRepository;
 import java.math.BigDecimal;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -22,25 +20,7 @@ import org.springframework.web.client.RestClientResponseException;
 public class TransactionServiceClient {
 
   private final RestClient transactionRestClient;
-  private final LeagueRepository leagueRepository;
   private final LeagueMemberRepository leagueMemberRepository;
-
-  public WalletResponse createWallet(Long leagueId) {
-    try {
-      return transactionRestClient
-          .post()
-          .uri("/api/v1/wallets")
-          .header(
-              "Authorization",
-              RequestContextAuthorizationHeaderResolver.resolveBearerAuthorizationHeader())
-          .body(new CreateWalletRequest(leagueId))
-          .retrieve()
-          .body(WalletResponse.class);
-    } catch (RestClientResponseException e) {
-      log.error("Failed to create wallet for league {}: {}", leagueId, e.getMessage());
-      throw new RuntimeException("Transaction service unavailable", e);
-    }
-  }
 
   public StipendResultResponse issueInitialStipends(Long leagueId, BigDecimal amount) {
     try {

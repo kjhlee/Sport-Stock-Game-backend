@@ -15,6 +15,7 @@ import com.sportstock.transaction.entity.Transaction;
 import com.sportstock.transaction.entity.Wallet;
 import com.sportstock.transaction.enums.TransactionType;
 import com.sportstock.transaction.exception.InsufficientFundsException;
+import com.sportstock.transaction.exception.TransactionAccessDeniedException;
 import com.sportstock.transaction.repo.TransactionRepository;
 import com.sportstock.transaction.repo.WalletRepository;
 import java.math.BigDecimal;
@@ -63,7 +64,7 @@ class WalletServiceTest {
     Wallet wallet = wallet(USER_ID, LEAGUE_ID, "100.0000");
     StockResponse stock = activeStock("12.5000");
 
-    when(leagueServiceClient.getMemberUserIdsInternal(LEAGUE_ID)).thenReturn(List.of(USER_ID));
+    when(walletRepository.existsByUserIdAndLeagueId(USER_ID, LEAGUE_ID)).thenReturn(true);
     stubWalletSave();
     stubTransactionSave();
     when(stockMarketServiceClient.getStock(STOCK_ID)).thenReturn(stock);
@@ -92,13 +93,14 @@ class WalletServiceTest {
     assertEquals("buy-1", saved.getIdempotencyKey());
     assertEquals(bd("25.0000"), saved.getAmount());
     assertEquals(bd("12.5000"), saved.getPricePerShare());
+    verify(leagueServiceClient, never()).getMemberUserIdsInternal(any());
   }
 
   @Test
   void processStockBuy_rejectsWhenFundsAreInsufficient() {
     Wallet wallet = wallet(USER_ID, LEAGUE_ID, "10.0000");
 
-    when(leagueServiceClient.getMemberUserIdsInternal(LEAGUE_ID)).thenReturn(List.of(USER_ID));
+    when(walletRepository.existsByUserIdAndLeagueId(USER_ID, LEAGUE_ID)).thenReturn(true);
     when(stockMarketServiceClient.getStock(STOCK_ID)).thenReturn(activeStock("12.5000"));
     when(transactionRepository.findByIdempotencyKey("buy-2")).thenReturn(Optional.empty());
     when(walletRepository.findByUserIdAndLeagueIdForUpdate(USER_ID, LEAGUE_ID))
@@ -115,6 +117,24 @@ class WalletServiceTest {
 
     assertEquals(bd("10.0000"), wallet.getBalance());
     verify(transactionRepository, never()).save(any(Transaction.class));
+    verify(leagueServiceClient, never()).getMemberUserIdsInternal(any());
+  }
+
+  @Test
+  void processStockBuy_throwsAccessDeniedWhenWalletNotFound() {
+    when(walletRepository.existsByUserIdAndLeagueId(USER_ID, LEAGUE_ID)).thenReturn(false);
+
+    assertThrows(
+        TransactionAccessDeniedException.class,
+        () ->
+            service.processStockBuy(
+                USER_ID,
+                LEAGUE_ID,
+                new StockTransactionRequest(
+                    LEAGUE_ID, STOCK_ID, bd("1.0000"), null, null, "buy-no-wallet")));
+
+    verify(leagueServiceClient, never()).getMemberUserIdsInternal(any());
+    verify(stockMarketServiceClient, never()).getStock(any());
   }
 
   @Test
@@ -122,7 +142,7 @@ class WalletServiceTest {
     Wallet wallet = wallet(USER_ID, LEAGUE_ID, "50.0000");
     Transaction buyTransaction = buyTransaction(wallet, "10.0000", "20.0000");
 
-    when(leagueServiceClient.getMemberUserIdsInternal(LEAGUE_ID)).thenReturn(List.of(USER_ID));
+    when(walletRepository.existsByUserIdAndLeagueId(USER_ID, LEAGUE_ID)).thenReturn(true);
     stubWalletSave();
     stubTransactionSave();
     when(stockMarketServiceClient.getStock(STOCK_ID)).thenReturn(activeStock("99.0000"));
@@ -150,6 +170,33 @@ class WalletServiceTest {
     assertEquals(TransactionType.STOCK_SELL, saved.getType());
     assertEquals(900L, saved.getBuyTransactionId());
     assertEquals(bd("9.0000"), saved.getPricePerShare());
+    verify(leagueServiceClient, never()).getMemberUserIdsInternal(any());
+  }
+
+  @Test
+  void processStockSell_handlesNullSoldQuantityFromRepo() {
+    Wallet wallet = wallet(USER_ID, LEAGUE_ID, "50.0000");
+    Transaction buyTransaction = buyTransaction(wallet, "10.0000", "20.0000");
+
+    when(walletRepository.existsByUserIdAndLeagueId(USER_ID, LEAGUE_ID)).thenReturn(true);
+    stubWalletSave();
+    stubTransactionSave();
+    when(stockMarketServiceClient.getStock(STOCK_ID)).thenReturn(activeStock("99.0000"));
+    when(transactionRepository.findById(900L)).thenReturn(Optional.of(buyTransaction));
+    when(transactionRepository.sumSoldQuantityByBuyTransactionId(900L)).thenReturn(null);
+    when(transactionRepository.findByIdempotencyKey("sell-null")).thenReturn(Optional.empty());
+    when(walletRepository.findByUserIdAndLeagueIdForUpdate(USER_ID, LEAGUE_ID))
+        .thenReturn(Optional.of(wallet));
+
+    var response =
+        service.processStockSell(
+            USER_ID,
+            LEAGUE_ID,
+            new StockTransactionRequest(
+                LEAGUE_ID, STOCK_ID, bd("1.0000"), null, 900L, "sell-null"));
+
+    assertEquals("STOCK_SELL", response.type());
+    assertEquals(bd("9.0000"), response.amount());
   }
 
   @Test

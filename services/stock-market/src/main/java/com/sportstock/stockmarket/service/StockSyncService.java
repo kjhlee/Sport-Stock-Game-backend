@@ -207,15 +207,27 @@ public class StockSyncService {
     String statusType = athlete.getStatusType();
 
     if (statusType == null || statusType.isBlank()) {
-      return StockStatus.DELISTED;
+      return StockStatus.ACTIVE;
     }
 
     String normalized = statusType.trim().toUpperCase();
 
     return switch (normalized) {
       case "ACTIVE" -> StockStatus.ACTIVE;
-      case "DELISTED" -> StockStatus.DELISTED;
-      default -> StockStatus.ACTIVE;
+      case "INACTIVE",
+          "DELISTED",
+          "INJURED_RESERVE",
+          "PHYSICALLY_UNABLE_TO_PERFORM",
+          "SUSPENDED",
+          "NON_FOOTBALL_INJURY",
+          "PRACTICE_SQUAD" -> StockStatus.DELISTED;
+      default -> {
+        log.warn(
+            "Unknown ESPN statusType '{}' for athlete {}, defaulting to ACTIVE",
+            statusType,
+            athlete.getEspnId());
+        yield StockStatus.ACTIVE;
+      }
     };
   }
 

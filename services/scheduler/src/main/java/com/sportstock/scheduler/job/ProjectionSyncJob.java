@@ -3,6 +3,7 @@ package com.sportstock.scheduler.job;
 import com.sportstock.common.dto.ingestion.CurrentWeekResponse;
 import com.sportstock.scheduler.client.IngestionClient;
 import com.sportstock.scheduler.client.StockMarketClient;
+import com.sportstock.scheduler.config.ProjectionSyncLock;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -17,9 +18,15 @@ public class ProjectionSyncJob {
 
   private final IngestionClient ingestionClient;
   private final StockMarketClient stockMarketClient;
+  private final ProjectionSyncLock projectionSyncLock;
 
   @Scheduled(cron = "${scheduler.projection-sync.cron}")
   public void run() {
+    if (!projectionSyncLock.tryAcquire()) {
+      log.warn("ProjectionSyncJob skipped because another projection sync chain is already running");
+      return;
+    }
+
     log.info("ProjectionSyncJob started");
 
     try {
@@ -85,6 +92,8 @@ public class ProjectionSyncJob {
       log.info("ProjectionSyncJob completed");
     } catch (Exception e) {
       log.warn("Skipping projection sync because dependencies are unavailable: {}", e.getMessage());
+    } finally {
+      projectionSyncLock.release();
     }
   }
 }

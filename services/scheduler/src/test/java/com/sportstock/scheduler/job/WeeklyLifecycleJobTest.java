@@ -14,6 +14,7 @@ import com.sportstock.scheduler.client.IngestionClient;
 import com.sportstock.scheduler.client.LeagueClient;
 import com.sportstock.scheduler.client.StockMarketClient;
 import com.sportstock.scheduler.client.TransactionClient;
+import com.sportstock.scheduler.config.ProjectionSyncLock;
 import com.sportstock.scheduler.entity.EventState;
 import com.sportstock.scheduler.repo.EventStateRepository;
 import java.math.BigDecimal;
@@ -37,10 +38,12 @@ class WeeklyLifecycleJobTest {
   @Mock private EventStateRepository eventStateRepository;
   @Mock private GameDayPollingJob gameDayPollingJob;
 
+  private ProjectionSyncLock projectionSyncLock;
   private WeeklyLifecycleJob job;
 
   @BeforeEach
   void setUp() {
+    projectionSyncLock = new ProjectionSyncLock();
     job =
         new WeeklyLifecycleJob(
             ingestionClient,
@@ -48,7 +51,8 @@ class WeeklyLifecycleJobTest {
             transactionClient,
             stockMarketClient,
             eventStateRepository,
-            gameDayPollingJob);
+            gameDayPollingJob,
+            projectionSyncLock);
   }
 
   @Test
@@ -174,6 +178,15 @@ class WeeklyLifecycleJobTest {
     verify(stockMarketClient, never())
         .delistUnprojectedStocks(any(int.class), any(int.class), any(int.class));
     verify(eventStateRepository, never()).deleteAll(any());
+  }
+
+  @Test
+  void run_skipsWhenAlreadyRunning() {
+    projectionSyncLock.tryAcquire();
+
+    job.run();
+
+    verify(ingestionClient, never()).isSeasonActive();
   }
 
   private static CurrentWeekResponse week(int seasonYear, String seasonType, int week) {

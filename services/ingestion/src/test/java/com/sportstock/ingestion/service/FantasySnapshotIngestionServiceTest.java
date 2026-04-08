@@ -206,6 +206,46 @@ class FantasySnapshotIngestionServiceTest {
     verify(fantasySnapshotRepository, never()).deleteAll(any());
   }
 
+  @Test
+  void ingestProjections_doesNotPruneWhenEspnResponseIsTooSmall() throws Exception {
+    Event event = event();
+    event.setStatusState("pre");
+
+    FantasySnapshot existing = new FantasySnapshot();
+    existing.setSubjectType("PLAYER");
+    existing.setEspnId("999");
+
+    when(eventRepository.findBySeasonYearAndSeasonTypeAndWeekNumberOrderByDateAsc(2026, 2, 1))
+        .thenReturn(List.of(event));
+    when(eventCompetitorRepository.findByEventEspnIdWithTeam("401")).thenReturn(competitors());
+    when(fantasySnapshotRepository.findByEventId(10L)).thenReturn(List.of(existing));
+    when(espnFantasyClient.fetchPlayersByTeams(2026, 1, 2, List.of(1, 2)))
+        .thenReturn(
+            json(
+                """
+                [
+                  {
+                    "id": 3139477,
+                    "fullName": "Patrick Mahomes",
+                    "defaultPositionId": 1,
+                    "proTeamId": 12,
+                    "stats": [
+                      {
+                        "statSourceId": 1,
+                        "scoringPeriodId": 1,
+                        "stats": {"3": 267.0, "4": 2.0}
+                      }
+                    ]
+                  }
+                ]
+                """));
+
+    var result = service.ingestProjections(2026, 2, 1);
+
+    assertEquals(1, result.updated());
+    verify(fantasySnapshotRepository, never()).deleteAll(any());
+  }
+
   private static Event event() {
     Event event = new Event();
     event.setId(10L);

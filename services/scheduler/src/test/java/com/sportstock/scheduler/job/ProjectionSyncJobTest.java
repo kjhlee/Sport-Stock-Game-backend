@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 import com.sportstock.common.dto.ingestion.CurrentWeekResponse;
 import com.sportstock.scheduler.client.IngestionClient;
 import com.sportstock.scheduler.client.StockMarketClient;
+import com.sportstock.scheduler.config.ProjectionSyncLock;
 import java.time.Instant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,11 +23,13 @@ class ProjectionSyncJobTest {
   @Mock private IngestionClient ingestionClient;
   @Mock private StockMarketClient stockMarketClient;
 
+  private ProjectionSyncLock projectionSyncLock;
   private ProjectionSyncJob job;
 
   @BeforeEach
   void setUp() {
-    job = new ProjectionSyncJob(ingestionClient, stockMarketClient);
+    projectionSyncLock = new ProjectionSyncLock();
+    job = new ProjectionSyncJob(ingestionClient, stockMarketClient, projectionSyncLock);
   }
 
   @Test
@@ -62,6 +65,15 @@ class ProjectionSyncJobTest {
     verify(ingestionClient).syncProjections(2026, 3, 1);
     verify(stockMarketClient, never()).relistProjectedStocks(2026, 3, 1);
     verify(stockMarketClient, never()).updateProjectedPrices(2026, 3, 1);
+  }
+
+  @Test
+  void run_skipsWhenAlreadyRunning() {
+    projectionSyncLock.tryAcquire();
+
+    job.run();
+
+    verify(ingestionClient, never()).isSeasonActive();
   }
 
   private static CurrentWeekResponse week(int seasonYear, String seasonType, int week) {

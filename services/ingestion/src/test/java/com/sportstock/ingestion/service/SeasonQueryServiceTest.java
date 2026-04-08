@@ -1,6 +1,8 @@
 package com.sportstock.ingestion.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -18,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataAccessResourceFailureException;
 
 @ExtendWith(MockitoExtension.class)
 class SeasonQueryServiceTest {
@@ -121,6 +124,22 @@ class SeasonQueryServiceTest {
     Optional<CurrentWeekResponse> result = service.getPriorWeek();
 
     assertTrue(result.isEmpty());
+  }
+
+  @Test
+  void isSeasonActive_returnsFalseWhenNoActiveWeek() {
+    when(seasonWeekRepository.findCurrentWeek(any(Instant.class), eq(List.of("2", "3"))))
+        .thenReturn(Optional.empty());
+
+    assertFalse(service.isSeasonActive());
+  }
+
+  @Test
+  void isSeasonActive_rethrowsDataAccessException() {
+    when(seasonWeekRepository.findCurrentWeek(any(Instant.class), eq(List.of("2", "3"))))
+        .thenThrow(new DataAccessResourceFailureException("db down"));
+
+    assertThrows(DataAccessResourceFailureException.class, () -> service.isSeasonActive());
   }
 
   private SeasonWeek buildSeasonWeek(

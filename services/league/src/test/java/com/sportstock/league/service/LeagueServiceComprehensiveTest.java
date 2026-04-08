@@ -577,6 +577,22 @@ class LeagueServiceComprehensiveTest {
 
       assertThrows(LeagueStateException.class, () -> service.leaveLeague(20L, 1L));
     }
+
+    @Test
+    @DisplayName("Should throw archived-specific exception when league is archived")
+    void leaveLeague_archivedLeague() {
+      League league = createTestLeague(1L, 10L);
+      league.setStatus(LeagueStatus.ARCHIVED);
+      LeagueMember member = createMember(20L, league, "MEMBER");
+
+      when(leagueRepository.findById(1L)).thenReturn(Optional.of(league));
+      when(leagueMemberRepository.findByLeagueIdAndUserId(1L, 20L)).thenReturn(Optional.of(member));
+
+      LeagueStateException ex =
+          assertThrows(LeagueStateException.class, () -> service.leaveLeague(20L, 1L));
+
+      assertEquals("Cannot leave an archived league", ex.getMessage());
+    }
   }
 
   @Nested

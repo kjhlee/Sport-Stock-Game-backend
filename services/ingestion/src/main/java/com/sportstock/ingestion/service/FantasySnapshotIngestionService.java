@@ -10,7 +10,7 @@ import com.sportstock.ingestion.repo.EventRepository;
 import com.sportstock.ingestion.repo.FantasySnapshotRepository;
 import com.sportstock.ingestion.repo.PlayerGameStatRepository;
 import com.sportstock.ingestion.repo.TeamRosterEntryRepository;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -32,6 +32,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class FantasySnapshotIngestionService {
   private static final Set<Integer> SUPPORTED_POSITION_IDS = Set.of(1, 2, 3, 4);
+  private static final int MINIMUM_ESPN_RESPONSE_SIZE = 5;
 
   private final EspnFantasyClient espnFantasyClient;
   private final FantasySnapshotRepository fantasySnapshotRepository;
@@ -127,7 +128,7 @@ public class FantasySnapshotIngestionService {
       }
 
       fantasySnapshotRepository.saveAll(toSave);
-      pruneSnapshots(event.getId(), retainedKeys);
+      maybePruneSnapshots(root.size(), event.getId(), event.getEspnId(), retainedKeys);
       log.info(
           "Projection ingestion for event {}: {} updated, {} skipped",
           event.getEspnId(),
@@ -214,7 +215,7 @@ public class FantasySnapshotIngestionService {
     }
 
     fantasySnapshotRepository.saveAll(toSave);
-    pruneSnapshots(event.getId(), retainedKeys);
+    maybePruneSnapshots(root.size(), event.getId(), eventEspnId, retainedKeys);
     log.info(
         "Projection ingestion for event {}: {} updated, {} skipped", eventEspnId, updated, skipped);
     return new IngestResult(updated, skipped, 0);
@@ -253,8 +254,6 @@ public class FantasySnapshotIngestionService {
     int updated = 0;
     int skipped = 0;
     List<FantasySnapshot> toSave = new ArrayList<>();
-    Set<String> retainedKeys = new HashSet<>();
-
     for (JsonNode playerNode : root) {
       try {
         ResolvedSubject subject = resolveSubject(playerNode, athleteIds);
@@ -291,7 +290,6 @@ public class FantasySnapshotIngestionService {
         }
         snapshot.setActualFantasyPoints(actualFp);
         toSave.add(snapshot);
-        retainedKeys.add(subject.key());
         updated++;
       } catch (Exception e) {
         log.error(
@@ -301,7 +299,6 @@ public class FantasySnapshotIngestionService {
     }
 
     fantasySnapshotRepository.saveAll(toSave);
-    pruneSnapshots(event.getId(), retainedKeys);
 
     log.info(
         "Final actual fantasy ingestion for event {} refreshed {} subjects ({} without actual points)",
@@ -657,6 +654,19 @@ public class FantasySnapshotIngestionService {
     if (!toDelete.isEmpty()) {
       fantasySnapshotRepository.deleteAll(toDelete);
     }
+  }
+
+  private void maybePruneSnapshots(
+      int espnResponseSize, Long eventId, String eventEspnId, Set<String> retainedKeys) {
+    if (espnResponseSize >= MINIMUM_ESPN_RESPONSE_SIZE) {
+      pruneSnapshots(eventId, retainedKeys);
+      return;
+    }
+
+    log.warn(
+        "ESPN returned only {} players for event {}, skipping pruneSnapshots to avoid data loss",
+        espnResponseSize,
+        eventEspnId);
   }
 
   private record ResolvedSubject(String subjectType, String espnId, String fullName) {

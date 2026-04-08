@@ -124,7 +124,6 @@ class LeagueServiceTest {
     assertEquals(42L, response.userId());
     assertEquals("MEMBER", response.role());
     verify(leagueMemberRepository).save(any(LeagueMember.class));
-    verify(transactionServiceClient, never()).createWallet(any());
   }
 
   private static League inactiveLeague(Long leagueId, Long ownerUserId) {
