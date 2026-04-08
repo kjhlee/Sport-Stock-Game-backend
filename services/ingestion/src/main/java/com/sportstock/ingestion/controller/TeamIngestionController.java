@@ -2,6 +2,7 @@ package com.sportstock.ingestion.controller;
 
 import com.sportstock.common.dto.ingestion.TeamRecordResponse;
 import com.sportstock.common.dto.ingestion.TeamResponse;
+import com.sportstock.common.dto.stock_market.IngestionInjuryStatusDto;
 import com.sportstock.ingestion.service.RosterIngestionService;
 import com.sportstock.ingestion.service.TeamIngestionService;
 import jakarta.validation.constraints.Max;
@@ -89,6 +90,12 @@ public class TeamIngestionController {
       @PathVariable @NotBlank String recordType,
       @RequestParam @Min(2000) @Max(2100) Integer seasonYear) {
     return ResponseEntity.ok(teamIngestionService.getRecord(teamEspnId, seasonYear, recordType));
+  }
+
+  @GetMapping("/rosters/injuries")
+  public ResponseEntity<List<IngestionInjuryStatusDto>> listInjuredAthletes(
+      @RequestParam @Min(2000) @Max(2100) Integer seasonYear) {
+    return ResponseEntity.ok(rosterIngestionService.listInjuredAthletes(seasonYear));
   }
 
   private Map<String, Object> accepted(String jobName) {

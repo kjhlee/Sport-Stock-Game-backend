@@ -18,7 +18,9 @@ import com.sportstock.transaction.client.StockMarketServiceClient;
 import com.sportstock.transaction.entity.Transaction;
 import com.sportstock.transaction.entity.Wallet;
 import com.sportstock.transaction.enums.TransactionType;
+import com.sportstock.transaction.exception.InsufficientFundsException;
 import com.sportstock.transaction.exception.InvalidTradeRequestException;
+import com.sportstock.transaction.exception.StockNotActiveException;
 import com.sportstock.transaction.exception.WalletAlreadyExistsException;
 import com.sportstock.transaction.exception.WalletNotFoundException;
 import com.sportstock.transaction.repo.TransactionRepository;
@@ -376,7 +378,7 @@ class WalletServiceTest {
       when(transactionRepository.existsByIdempotencyKey(any())).thenReturn(false);
 
       // When
-      StipendResultResponse response = walletService.issueInitialStipends(TEST_LEAGUE_ID, amount);
+      StipendResultResponse response = walletService.issueInitialStipends(TEST_LEAGUE_ID, amount, null);
 
       // Then
       assertThat(response).isNotNull();
@@ -392,7 +394,7 @@ class WalletServiceTest {
       when(leagueServiceClient.getMemberUserIdsInternal(TEST_LEAGUE_ID)).thenReturn(List.of());
 
       // When
-      StipendResultResponse response = walletService.issueInitialStipends(TEST_LEAGUE_ID, amount);
+      StipendResultResponse response = walletService.issueInitialStipends(TEST_LEAGUE_ID, amount, null);
 
       // Then
       assertThat(response).isNotNull();
@@ -505,12 +507,12 @@ class WalletServiceTest {
               TEST_USER_ID,
               TEST_LEAGUE_ID,
               new StockTransactionRequest(
-                  TEST_LEAGUE_ID, UUID.randomUUID(), new BigDecimal("10"), null, "idem-buy-1"));
+                  TEST_LEAGUE_ID, UUID.randomUUID(), new BigDecimal("10"), null, null, "idem-buy-1"));
 
       assertThat(response).isNotNull();
       assertThat(response.type()).isEqualTo("STOCK_BUY");
-      assertThat(response.quantity()).isEqualByComparingTo(new BigDecimal("10"));
-      assertThat(response.totalAmount()).isEqualByComparingTo(new BigDecimal("250.0000"));
+      assertThat(response.pricePerShare()).isEqualByComparingTo(new BigDecimal("25.00"));
+      assertThat(response.amount()).isEqualByComparingTo(new BigDecimal("250.0000"));
     }
 
     @Test
@@ -522,7 +524,7 @@ class WalletServiceTest {
                   walletService.processStockBuy(
                       1001L,
                       1L,
-                      new StockTransactionRequest(1L, UUID.randomUUID(), null, null, "idem-buy-2")))
+                      new StockTransactionRequest(1L, UUID.randomUUID(), null, null, null, "idem-buy-2")))
           .isInstanceOf(InvalidTradeRequestException.class);
     }
   }
@@ -534,11 +536,25 @@ class WalletServiceTest {
     @Test
     @DisplayName("Should process stock sell request")
     void shouldProcessStockSell() {
+      UUID stockId = UUID.randomUUID();
       when(stockMarketServiceClient.getStock(any())).thenReturn(createActiveStockResponse());
       Wallet wallet = createMockWallet(2L, 1002L, 2L, new BigDecimal("1000.00"));
       when(walletRepository.findByUserIdAndLeagueIdForUpdate(1002L, 2L))
           .thenReturn(Optional.of(wallet));
       when(transactionRepository.existsByIdempotencyKey("idem-sell-1")).thenReturn(false);
+      
+      // Mock the buy transaction lookup
+      Transaction buyTransaction = createMockTransaction(
+          1001L, wallet, TransactionType.STOCK_BUY, 
+          new BigDecimal("250.00"), BigDecimal.ZERO, new BigDecimal("250.00"));
+      buyTransaction.setReferenceId("stock:" + stockId.toString());
+      buyTransaction.setPricePerShare(new BigDecimal("25.00"));
+      when(transactionRepository.findById(1001L)).thenReturn(Optional.of(buyTransaction));
+      
+      // Mock sold quantity calculation
+      when(transactionRepository.sumSoldQuantityByBuyTransactionId(1001L))
+          .thenReturn(BigDecimal.ZERO);
+      
       when(transactionRepository.save(any(Transaction.class)))
           .thenAnswer(
               invocation -> {
@@ -553,12 +569,12 @@ class WalletServiceTest {
               1002L,
               2L,
               new StockTransactionRequest(
-                  2L, UUID.randomUUID(), new BigDecimal("10"), null, "idem-sell-1"));
+                  2L, stockId, new BigDecimal("10"), null, 1001L, "idem-sell-1"));
 
       assertThat(response).isNotNull();
       assertThat(response.type()).isEqualTo("STOCK_SELL");
-      assertThat(response.quantity()).isEqualByComparingTo(new BigDecimal("10"));
-      assertThat(response.totalAmount()).isEqualByComparingTo(new BigDecimal("250.0000"));
+      assertThat(response.pricePerShare()).isEqualByComparingTo(new BigDecimal("22.5000"));
+      assertThat(response.amount()).isEqualByComparingTo(new BigDecimal("225.0000"));
     }
 
     @Test
@@ -571,7 +587,7 @@ class WalletServiceTest {
                       1002L,
                       2L,
                       new StockTransactionRequest(
-                          2L, UUID.randomUUID(), null, null, "idem-sell-2")))
+                          2L, UUID.randomUUID(), null, null, null, "idem-sell-2")))
           .isInstanceOf(InvalidTradeRequestException.class);
     }
   }
@@ -638,6 +654,447 @@ class WalletServiceTest {
     }
   }
 
+  @Nested
+  @DisplayName("Additional Edge Case Tests")
+  class AdditionalEdgeCaseTests {
+
+    @Test
+    @DisplayName("Should handle idempotent stock buy requests")
+    void shouldHandleIdempotentBuyRequests() {
+      // Given
+      when(stockMarketServiceClient.getStock(any())).thenReturn(createActiveStockResponse());
+      when(transactionRepository.existsByIdempotencyKey("idem-duplicate")).thenReturn(true);
+
+      Transaction existingTx =
+          createMockTransaction(
+              1001L,
+              createMockWallet(1L, TEST_USER_ID, TEST_LEAGUE_ID, new BigDecimal("1000.00")),
+              TransactionType.STOCK_BUY,
+              new BigDecimal("100.00"),
+              new BigDecimal("1000.00"),
+              new BigDecimal("900.00"));
+      when(transactionRepository.findByIdempotencyKey("idem-duplicate"))
+          .thenReturn(Optional.of(existingTx));
+
+      // When
+      var response =
+          walletService.processStockBuy(
+              TEST_USER_ID,
+              TEST_LEAGUE_ID,
+              new StockTransactionRequest(
+                  TEST_LEAGUE_ID,
+                  UUID.randomUUID(),
+                  new BigDecimal("5"),
+                  null,
+                  null,
+                  "idem-duplicate"));
+
+      // Then
+      assertThat(response).isNotNull();
+      assertThat(response.id()).isEqualTo(1001L);
+      verify(transactionRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Should reject locked stock for buy")
+    void shouldRejectLockedStockForBuy() {
+      // Given
+      StockResponse lockedStock =
+          new StockResponse(
+              UUID.randomUUID(),
+              "espn-123",
+              "Locked Player",
+              "QB",
+              "ATHLETE",
+              "team-1",
+              new BigDecimal("25.00"),
+              "ACTIVE",
+              true, // game locked
+              false,
+              Instant.now());
+
+      when(stockMarketServiceClient.getStock(any())).thenReturn(lockedStock);
+
+      // When/Then
+      assertThatThrownBy(
+              () ->
+                  walletService.processStockBuy(
+                      TEST_USER_ID,
+                      TEST_LEAGUE_ID,
+                      new StockTransactionRequest(
+                          TEST_LEAGUE_ID,
+                          lockedStock.id(),
+                          new BigDecimal("1"),
+                          null,
+                          null,
+                          "idem-locked")))
+          .isInstanceOf(InvalidTradeRequestException.class)
+          .hasMessageContaining("game-locked");
+    }
+
+    @Test
+    @DisplayName("Should reject inactive stock for buy")
+    void shouldRejectInactiveStockForBuy() {
+      // Given
+      StockResponse inactiveStock =
+          new StockResponse(
+              UUID.randomUUID(),
+              "espn-456",
+              "Inactive Player",
+              "QB",
+              "ATHLETE",
+              "team-1",
+              new BigDecimal("25.00"),
+              "INACTIVE",
+              false,
+              false,
+              Instant.now());
+
+      when(stockMarketServiceClient.getStock(any())).thenReturn(inactiveStock);
+
+      // When/Then
+      assertThatThrownBy(
+              () ->
+                  walletService.processStockBuy(
+                      TEST_USER_ID,
+                      TEST_LEAGUE_ID,
+                      new StockTransactionRequest(
+                          TEST_LEAGUE_ID,
+                          inactiveStock.id(),
+                          new BigDecimal("1"),
+                          null,
+                          null,
+                          "idem-inactive")))
+          .isInstanceOf(StockNotActiveException.class)
+          .hasMessageContaining("not active");
+    }
+
+    @Test
+    @DisplayName("Should handle fractional quantity buys")
+    void shouldHandleFractionalQuantityBuys() {
+      // Given
+      when(stockMarketServiceClient.getStock(any())).thenReturn(createActiveStockResponse());
+      Wallet wallet = createMockWallet(1L, TEST_USER_ID, TEST_LEAGUE_ID, new BigDecimal("1000.00"));
+      when(walletRepository.findByUserIdAndLeagueIdForUpdate(TEST_USER_ID, TEST_LEAGUE_ID))
+          .thenReturn(Optional.of(wallet));
+      when(transactionRepository.existsByIdempotencyKey(any())).thenReturn(false);
+      when(transactionRepository.save(any(Transaction.class)))
+          .thenAnswer(
+              invocation -> {
+                Transaction tx = invocation.getArgument(0);
+                tx.setId(1001L);
+                tx.setCreatedAt(OffsetDateTime.now());
+                return tx;
+              });
+
+      // When - buy 0.5 shares
+      var response =
+          walletService.processStockBuy(
+              TEST_USER_ID,
+              TEST_LEAGUE_ID,
+              new StockTransactionRequest(
+                  TEST_LEAGUE_ID,
+                  UUID.randomUUID(),
+                  new BigDecimal("0.5"),
+                  null,
+                  null,
+                  "idem-fractional"));
+
+      // Then
+      assertThat(response).isNotNull();
+      assertThat(response.amount()).isEqualByComparingTo(new BigDecimal("12.5000"));
+    }
+
+    @Test
+    @DisplayName("Should handle dollar amount buy")
+    void shouldHandleDollarAmountBuy() {
+      // Given
+      when(stockMarketServiceClient.getStock(any())).thenReturn(createActiveStockResponse());
+      Wallet wallet = createMockWallet(1L, TEST_USER_ID, TEST_LEAGUE_ID, new BigDecimal("1000.00"));
+      when(walletRepository.findByUserIdAndLeagueIdForUpdate(TEST_USER_ID, TEST_LEAGUE_ID))
+          .thenReturn(Optional.of(wallet));
+      when(transactionRepository.existsByIdempotencyKey(any())).thenReturn(false);
+      when(transactionRepository.save(any(Transaction.class)))
+          .thenAnswer(
+              invocation -> {
+                Transaction tx = invocation.getArgument(0);
+                tx.setId(1001L);
+                tx.setCreatedAt(OffsetDateTime.now());
+                return tx;
+              });
+
+      // When - buy with $100
+      var response =
+          walletService.processStockBuy(
+              TEST_USER_ID,
+              TEST_LEAGUE_ID,
+              new StockTransactionRequest(
+                  TEST_LEAGUE_ID,
+                  UUID.randomUUID(),
+                  null,
+                  new BigDecimal("100.00"),
+                  null,
+                  "idem-dollar"));
+
+      // Then
+      assertThat(response).isNotNull();
+      assertThat(response.amount()).isEqualByComparingTo(new BigDecimal("100.0000"));
+    }
+
+    @Test
+    @DisplayName("Should reject insufficient funds for buy")
+    void shouldRejectInsufficientFunds() {
+      // Given
+      when(stockMarketServiceClient.getStock(any())).thenReturn(createActiveStockResponse());
+      Wallet wallet =
+          createMockWallet(1L, TEST_USER_ID, TEST_LEAGUE_ID, new BigDecimal("10.00")); // Low balance
+      when(walletRepository.findByUserIdAndLeagueIdForUpdate(TEST_USER_ID, TEST_LEAGUE_ID))
+          .thenReturn(Optional.of(wallet));
+      when(transactionRepository.existsByIdempotencyKey(any())).thenReturn(false);
+
+      // When/Then - trying to buy 10 shares at $25 each = $250
+      assertThatThrownBy(
+              () ->
+                  walletService.processStockBuy(
+                      TEST_USER_ID,
+                      TEST_LEAGUE_ID,
+                      new StockTransactionRequest(
+                          TEST_LEAGUE_ID,
+                          UUID.randomUUID(),
+                          new BigDecimal("10"),
+                          null,
+                          null,
+                          "idem-insufficient")))
+          .isInstanceOf(InsufficientFundsException.class)
+          .hasMessageContaining("Insufficient");
+    }
+
+    @Test
+    @DisplayName("Should reject sell with invalid buy transaction")
+    void shouldRejectSellWithInvalidBuyTransaction() {
+      // Given
+      when(stockMarketServiceClient.getStock(any())).thenReturn(createActiveStockResponse());
+      when(transactionRepository.findById(999L)).thenReturn(Optional.empty());
+
+      // When/Then
+      assertThatThrownBy(
+              () ->
+                  walletService.processStockSell(
+                      TEST_USER_ID,
+                      TEST_LEAGUE_ID,
+                      new StockTransactionRequest(
+                          TEST_LEAGUE_ID,
+                          UUID.randomUUID(),
+                          new BigDecimal("1"),
+                          null,
+                          999L,
+                          "idem-invalid-buy")))
+          .isInstanceOf(InvalidTradeRequestException.class)
+          .hasMessageContaining("not found");
+    }
+
+    @Test
+    @DisplayName("Should reject sell with non-buy transaction type")
+    void shouldRejectSellWithNonBuyTransactionType() {
+      // Given
+      when(stockMarketServiceClient.getStock(any())).thenReturn(createActiveStockResponse());
+      
+      Transaction nonBuyTx =
+          createMockTransaction(
+              1001L,
+              createMockWallet(1L, TEST_USER_ID, TEST_LEAGUE_ID, new BigDecimal("1000.00")),
+              TransactionType.INITIAL_STIPEND,
+              new BigDecimal("100.00"),
+              BigDecimal.ZERO,
+              new BigDecimal("100.00"));
+
+      when(transactionRepository.findById(1001L)).thenReturn(Optional.of(nonBuyTx));
+
+      // When/Then
+      assertThatThrownBy(
+              () ->
+                  walletService.processStockSell(
+                      TEST_USER_ID,
+                      TEST_LEAGUE_ID,
+                      new StockTransactionRequest(
+                          TEST_LEAGUE_ID,
+                          UUID.randomUUID(),
+                          new BigDecimal("1"),
+                          null,
+                          1001L,
+                          "idem-non-buy")))
+          .isInstanceOf(InvalidTradeRequestException.class)
+          .hasMessageContaining("must reference a stock buy");
+    }
+
+    @Test
+    @DisplayName("Should reject sell of more shares than purchased")
+    void shouldRejectSellExceedingPurchasedQuantity() {
+      // Given
+      UUID stockId = UUID.randomUUID();
+      when(stockMarketServiceClient.getStock(any())).thenReturn(createActiveStockResponse());
+
+      Wallet wallet = createMockWallet(2L, TEST_USER_ID, TEST_LEAGUE_ID, new BigDecimal("1000.00"));
+
+      Transaction buyTransaction =
+          createMockTransaction(
+              1001L,
+              wallet,
+              TransactionType.STOCK_BUY,
+              new BigDecimal("125.00"), // Bought 5 shares at $25 each
+              BigDecimal.ZERO,
+              new BigDecimal("125.00"));
+      buyTransaction.setReferenceId("stock:" + stockId.toString());
+      buyTransaction.setPricePerShare(new BigDecimal("25.00"));
+      when(transactionRepository.findById(1001L)).thenReturn(Optional.of(buyTransaction));
+
+      when(transactionRepository.sumSoldQuantityByBuyTransactionId(1001L))
+          .thenReturn(BigDecimal.ZERO);
+
+      // When/Then - trying to sell 10 shares when only 5 were bought
+      assertThatThrownBy(
+              () ->
+                  walletService.processStockSell(
+                      TEST_USER_ID,
+                      TEST_LEAGUE_ID,
+                      new StockTransactionRequest(
+                          TEST_LEAGUE_ID,
+                          stockId,
+                          new BigDecimal("10"),
+                          null,
+                          1001L,
+                          "idem-exceed")))
+          .isInstanceOf(InvalidTradeRequestException.class)
+          .hasMessageContaining("exceeds remaining");
+    }
+
+    @Test
+    @DisplayName("Should handle partial sells correctly")
+    void shouldHandlePartialSells() {
+      // Given
+      UUID stockId = UUID.randomUUID();
+      when(stockMarketServiceClient.getStock(any())).thenReturn(createActiveStockResponse());
+
+      Wallet wallet = createMockWallet(2L, TEST_USER_ID, TEST_LEAGUE_ID, new BigDecimal("1000.00"));
+      when(walletRepository.findByUserIdAndLeagueIdForUpdate(TEST_USER_ID, TEST_LEAGUE_ID))
+          .thenReturn(Optional.of(wallet));
+
+      Transaction buyTransaction =
+          createMockTransaction(
+              1001L,
+              wallet,
+              TransactionType.STOCK_BUY,
+              new BigDecimal("250.00"), // Bought 10 shares at $25 each
+              BigDecimal.ZERO,
+              new BigDecimal("250.00"));
+      buyTransaction.setReferenceId("stock:" + stockId.toString());
+      buyTransaction.setPricePerShare(new BigDecimal("25.00"));
+      when(transactionRepository.findById(1001L)).thenReturn(Optional.of(buyTransaction));
+
+      // Already sold 3 shares
+      when(transactionRepository.sumSoldQuantityByBuyTransactionId(1001L))
+          .thenReturn(new BigDecimal("3"));
+      when(transactionRepository.existsByIdempotencyKey(any())).thenReturn(false);
+      when(transactionRepository.save(any(Transaction.class)))
+          .thenAnswer(
+              invocation -> {
+                Transaction tx = invocation.getArgument(0);
+                tx.setId(2001L);
+                tx.setCreatedAt(OffsetDateTime.now());
+                return tx;
+              });
+
+      // When - sell 5 more shares (should have 7 remaining, so this is valid)
+      var response =
+          walletService.processStockSell(
+              TEST_USER_ID,
+              TEST_LEAGUE_ID,
+              new StockTransactionRequest(
+                  TEST_LEAGUE_ID, stockId, new BigDecimal("5"), null, 1001L, "idem-partial"));
+
+      // Then - 5 shares at 90% of $25 = $22.50 each = $112.50 total
+      assertThat(response).isNotNull();
+      assertThat(response.pricePerShare()).isEqualByComparingTo(new BigDecimal("22.5000"));
+      assertThat(response.amount()).isEqualByComparingTo(new BigDecimal("112.5000"));
+    }
+
+    @Test
+    @DisplayName("Should reject sell for wrong stock")
+    void shouldRejectSellForWrongStock() {
+      // Given
+      UUID buyStockId = UUID.randomUUID();
+      UUID sellStockId = UUID.randomUUID(); // Different stock
+
+      when(stockMarketServiceClient.getStock(any())).thenReturn(createActiveStockResponse());
+
+      Wallet wallet = createMockWallet(2L, TEST_USER_ID, TEST_LEAGUE_ID, new BigDecimal("1000.00"));
+
+      Transaction buyTransaction =
+          createMockTransaction(
+              1001L, wallet, TransactionType.STOCK_BUY, new BigDecimal("250.00"), BigDecimal.ZERO, new BigDecimal("250.00"));
+      buyTransaction.setReferenceId("stock:" + buyStockId.toString());
+      buyTransaction.setPricePerShare(new BigDecimal("25.00"));
+      when(transactionRepository.findById(1001L)).thenReturn(Optional.of(buyTransaction));
+
+      // When/Then
+      assertThatThrownBy(
+              () ->
+                  walletService.processStockSell(
+                      TEST_USER_ID,
+                      TEST_LEAGUE_ID,
+                      new StockTransactionRequest(
+                          TEST_LEAGUE_ID,
+                          sellStockId,
+                          new BigDecimal("1"),
+                          null,
+                          1001L,
+                          "idem-wrong-stock")))
+          .isInstanceOf(InvalidTradeRequestException.class)
+          .hasMessageContaining("does not belong to the requested stock");
+    }
+
+    @Test
+    @DisplayName("Should reject sell for different user's buy transaction")
+    void shouldRejectSellForDifferentUser() {
+      // Given
+      UUID stockId = UUID.randomUUID();
+      Long otherUserId = 9999L;
+
+      when(stockMarketServiceClient.getStock(any())).thenReturn(createActiveStockResponse());
+
+      Wallet otherWallet =
+          createMockWallet(10L, otherUserId, TEST_LEAGUE_ID, new BigDecimal("1000.00"));
+
+      Transaction buyTransaction =
+          createMockTransaction(
+              1001L,
+              otherWallet,
+              TransactionType.STOCK_BUY,
+              new BigDecimal("250.00"),
+              BigDecimal.ZERO,
+              new BigDecimal("250.00"));
+      buyTransaction.setReferenceId("stock:" + stockId.toString());
+      buyTransaction.setPricePerShare(new BigDecimal("25.00"));
+      when(transactionRepository.findById(1001L)).thenReturn(Optional.of(buyTransaction));
+
+      // When/Then
+      assertThatThrownBy(
+              () ->
+                  walletService.processStockSell(
+                      TEST_USER_ID, // Different user
+                      TEST_LEAGUE_ID,
+                      new StockTransactionRequest(
+                          TEST_LEAGUE_ID,
+                          stockId,
+                          new BigDecimal("1"),
+                          null,
+                          1001L,
+                          "idem-other-user")))
+          .isInstanceOf(InvalidTradeRequestException.class)
+          .hasMessageContaining("does not belong to this user and league");
+    }
+  }
+
   // Helper methods
 
   private Wallet createMockWallet(Long id, Long userId, Long leagueId, BigDecimal balance) {
@@ -677,9 +1134,12 @@ class WalletServiceTest {
         "espn-athlete-1",
         "Test Player",
         "QB",
+        "ATHLETE",
         "team-1",
         new BigDecimal("25.00"),
         "ACTIVE",
+        false,
+        false,
         Instant.now());
   }
 }

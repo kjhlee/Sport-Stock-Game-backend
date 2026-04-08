@@ -20,9 +20,10 @@
     <module>ingestion</module>
     <module>league</module>
     <module>transaction</module>
-    <module>user-authentication</module> 
+    <module>user-authentication</module>
     <module>stock-market</module>
-    <module>portfolio</module> 
+    <module>scheduler</module>
+    <module>portfolio</module>
   </modules>
 
   <properties>

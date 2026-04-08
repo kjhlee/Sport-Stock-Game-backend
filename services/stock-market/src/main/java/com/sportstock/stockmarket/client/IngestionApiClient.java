@@ -3,6 +3,7 @@ package com.sportstock.stockmarket.client;
 import com.sportstock.common.dto.ingestion.FantasySnapshotResponse;
 import com.sportstock.common.dto.stock_market.IngestionAthleteDto;
 import com.sportstock.common.dto.stock_market.IngestionEventDto;
+import com.sportstock.common.dto.stock_market.IngestionInjuryStatusDto;
 import com.sportstock.common.dto.stock_market.IngestionPlayerGameStatsDto;
 import com.sportstock.common.dto.stock_market.IngestionTeamDto;
 import java.util.List;
@@ -25,6 +26,8 @@ public class IngestionApiClient {
       PLAYER_STATS_LIST = new ParameterizedTypeReference<>() {};
   private static final ParameterizedTypeReference<List<FantasySnapshotResponse>>
       FANTASY_SNAPSHOT_LIST = new ParameterizedTypeReference<>() {};
+  private static final ParameterizedTypeReference<List<IngestionInjuryStatusDto>>
+      INJURY_STATUS_LIST = new ParameterizedTypeReference<>() {};
 
   private final RestClient restClient;
 
@@ -103,7 +106,7 @@ public class IngestionApiClient {
   }
 
   public FantasySnapshotResponse getFantasySnapshot(
-      String espnId, int seasonYear, int seasonType, int weekNumber) {
+      String espnId, String subjectType, int seasonYear, int seasonType, int weekNumber) {
     return restClient
         .get()
         .uri(
@@ -111,6 +114,7 @@ public class IngestionApiClient {
                 uriBuilder
                     .path("/fantasy-snapshots/by-espn-id")
                     .queryParam("espnId", espnId)
+                    .queryParam("subjectType", subjectType)
                     .queryParam("seasonYear", seasonYear)
                     .queryParam("seasonType", seasonType)
                     .queryParam("weekNumber", weekNumber)
@@ -161,5 +165,17 @@ public class IngestionApiClient {
         .uri("/events/{espnId}", eventEspnId)
         .retrieve()
         .body(IngestionEventDto.class);
+  }
+
+  public List<IngestionInjuryStatusDto> getInjuredAthletes(int seasonYear) {
+    List<IngestionInjuryStatusDto> body =
+        restClient
+            .get()
+            .uri(
+                uriBuilder ->
+                    uriBuilder.path("/rosters/injuries").queryParam("seasonYear", seasonYear).build())
+            .retrieve()
+            .body(INJURY_STATUS_LIST);
+    return body != null ? body : List.of();
   }
 }

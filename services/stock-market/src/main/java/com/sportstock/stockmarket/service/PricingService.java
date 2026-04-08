@@ -45,7 +45,11 @@ public class PricingService {
     for (Stock stock : activeStocks) {
       FantasySnapshotResponse snapshot =
           ingestionApiClient.getFantasySnapshot(
-              stock.getEspnId(), seasonYear, seasonType, weekNumber);
+              stock.getEspnId(),
+              stock.getType().name(),
+              seasonYear,
+              seasonType,
+              weekNumber);
 
       if (snapshot == null || snapshot.projectedFantasyPoints() == null) {
         skipped++;

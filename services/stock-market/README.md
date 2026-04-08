@@ -138,10 +138,13 @@ mvn -f services/stock-market/pom.xml spring-boot:run
 
 ### Step 2 — Populate the ingestion database
 
-Pull athletes and game stats for NFL 2024 regular season week 1:
+Pull teams, rosters, and the NFL 2024 regular season week 1 schedule:
 
 ```bash
-curl -X POST "http://localhost:8090/api/v1/ingestion/sync/full?seasonYear=2024&seasonType=2&week=1&rosterLimit=500&athletePageSize=250&athletePageCount=10"
+curl -X POST "http://localhost:8090/api/v1/ingestion/sync/teams"
+curl -X POST "http://localhost:8090/api/v1/ingestion/sync/teams/details?seasonYear=2024"
+curl -X POST "http://localhost:8090/api/v1/ingestion/sync/rosters?seasonYear=2024&rosterLimit=500"
+curl -X POST "http://localhost:8090/api/v1/ingestion/sync/scoreboard?seasonYear=2024&seasonType=2&week=1"
 ```
 
 ### Step 3 — Sync player stocks

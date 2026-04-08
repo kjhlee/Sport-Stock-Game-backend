@@ -1,0 +1,156 @@
+package sportstock.scheduler.client;
+
+import com.sportstock.common.dto.ingestion.CurrentWeekResponse;
+import com.sportstock.common.dto.ingestion.EventResponse;
+import java.util.List;
+import java.util.Map;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.web.client.RestClient;
+
+@Slf4j
+@RequiredArgsConstructor
+public class IngestionClient {
+
+    private final RestClient restClient;
+
+    public CurrentWeekResponse getCurrentWeek() {
+        return restClient
+                .get()
+                .uri("/seasons/current-week")
+                .retrieve()
+                .body(CurrentWeekResponse.class);
+    }
+
+    public List<EventResponse> getEvents(int seasonYear, int seasonType, int weekNumber) {
+        List<EventResponse> body =
+                restClient
+                        .get()
+                        .uri(
+                                uriBuilder ->
+                                        uriBuilder
+                                                .path("/events")
+                                                .queryParam("seasonYear", seasonYear)
+                                                .queryParam("seasonType", seasonType)
+                                                .queryParam("weekNumber", weekNumber)
+                                                .build())
+                        .retrieve()
+                        .body(new ParameterizedTypeReference<List<EventResponse>>() {});
+        return body != null ? body : List.of();
+    }
+
+    public void syncProjections(int seasonYear, int seasonType, int weekNumber) {
+        restClient
+                .post()
+                .uri(
+                        uriBuilder ->
+                                uriBuilder
+                                        .path("/sync/projections")
+                                        .queryParam("seasonYear", seasonYear)
+                                        .queryParam("seasonType", seasonType)
+                                        .queryParam("weekNumber", weekNumber)
+                                        .build())
+                .retrieve()
+                .toBodilessEntity();
+        log.info("Synced projections for {}/{} week {}", seasonYear, seasonType, weekNumber);
+    }
+
+    public void syncTeams() {
+        restClient.post().uri("/sync/teams").retrieve().toBodilessEntity();
+        log.info("Synced teams");
+    }
+
+    public void syncAllTeamDetails(int seasonYear) {
+        restClient
+                .post()
+                .uri(
+                        uriBuilder ->
+                                uriBuilder
+                                        .path("/sync/teams/details")
+                                        .queryParam("seasonYear", seasonYear)
+                                        .build())
+                .retrieve()
+                .toBodilessEntity();
+        log.info("Synced all team details for season {}", seasonYear);
+    }
+
+    public void syncRosters(int seasonYear, int rosterLimit) {
+        restClient
+                .post()
+                .uri(
+                        uriBuilder ->
+                                uriBuilder
+                                        .path("/sync/rosters")
+                                        .queryParam("seasonYear", seasonYear)
+                                        .queryParam("rosterLimit", rosterLimit)
+                                        .build())
+                .retrieve()
+                .toBodilessEntity();
+        log.info("Synced rosters for season {} with rosterLimit {}", seasonYear, rosterLimit);
+    }
+
+    public void syncEventSummary(String eventEspnId) {
+        restClient
+                .post()
+                .uri("/sync/events/{eventEspnId}/summary", eventEspnId)
+                .retrieve()
+                .toBodilessEntity();
+        log.info("Synced event summary for event {}", eventEspnId);
+    }
+
+    public void syncActualFantasyPoints(String eventEspnId) {
+        restClient
+                .post()
+                .uri(
+                        uriBuilder ->
+                                uriBuilder
+                                        .path("/sync/actual-fantasy-points")
+                                        .queryParam("eventEspnId", eventEspnId)
+                                        .build())
+                .retrieve()
+                .toBodilessEntity();
+        log.info("Synced actual fantasy points for event {}", eventEspnId);
+    }
+
+    public void markEventCompleted(String eventEspnId) {
+        restClient
+                .post()
+                .uri(
+                        uriBuilder ->
+                                uriBuilder
+                                        .path("/sync/mark-event-completed")
+                                        .queryParam("eventEspnId", eventEspnId)
+                                        .build())
+                .retrieve()
+                .toBodilessEntity();
+        log.info("Marked event {} completed", eventEspnId);
+    }
+
+    public void syncScoreboard(int seasonYear, int seasonType, int week) {
+        restClient
+                .post()
+                .uri(
+                        uriBuilder ->
+                                uriBuilder
+                                        .path("/sync/scoreboard")
+                                        .queryParam("seasonYear", seasonYear)
+                                        .queryParam("seasonType", seasonType)
+                                        .queryParam("week", week)
+                                        .build())
+                .retrieve()
+                .toBodilessEntity();
+        log.info("Synced scoreboard for {}/{} week {}", seasonYear, seasonType, week);
+    }
+
+    @SuppressWarnings("unchecked")
+    public boolean isSeasonActive() {
+        Map<String, Object> body =
+                restClient
+                        .get()
+                        .uri("/seasons/season-active")
+                        .retrieve()
+                        .body(new ParameterizedTypeReference<Map<String, Object>>() {});
+        return body != null && Boolean.TRUE.equals(body.get("active"));
+    }
+}

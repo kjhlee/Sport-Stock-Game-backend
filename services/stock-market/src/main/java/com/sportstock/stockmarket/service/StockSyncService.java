@@ -19,7 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class StockSyncService {
 
-  private static final Set<String> SUPPORTED_POSITIONS = Set.of("QB", "RB", "WR", "TE", "K", "DST");
+  private static final Set<String> SUPPORTED_POSITIONS = Set.of("QB", "RB", "WR", "TE", "K");
 
   private final IngestionApiClient ingestionApiClient;
   private final StockRepository stockRepository;
@@ -156,6 +156,10 @@ public class StockSyncService {
 
     if ("K".equals(normalized)) {
       return "PK";
+    }
+
+    if ("DST".equals(normalized)) {
+      throw new IllegalArgumentException("Use /api/v1/stocks/sync-team-defense for DST stocks");
     }
 
     return normalized;

@@ -47,11 +47,13 @@ public class FantasySnapshotController {
   @GetMapping("/fantasy-snapshots/by-espn-id")
   public ResponseEntity<FantasySnapshotResponse> getByEspnId(
       @RequestParam String espnId,
+      @RequestParam String subjectType,
       @RequestParam int seasonYear,
       @RequestParam int seasonType,
       @RequestParam int weekNumber) {
     return fantasySnapshotRepository
-        .findByEspnIdAndWeek(espnId, seasonYear, seasonType, weekNumber)
+        .findByEspnIdAndSubjectTypeAndWeek(
+            espnId, subjectType, seasonYear, seasonType, weekNumber)
         .map(this::toResponse)
         .map(ResponseEntity::ok)
         .orElse(ResponseEntity.notFound().build());
