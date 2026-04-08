@@ -8,36 +8,23 @@ import org.springframework.stereotype.Component;
 @Component
 public class CurrentUserProvider {
 
-  public Long getCurrentUserId() {
+  private JwtUserPrincipal getPrincipal() {
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-    if (authentication == null || authentication.getPrincipal() == null) {
+    if (authentication == null || !(authentication.getPrincipal() instanceof JwtUserPrincipal)) {
       throw new MissingAuthenticationException("No authenticated user found in security context");
     }
-
-    AuthenticatedUser user = (AuthenticatedUser) authentication.getPrincipal();
-    Long userId = user.userId();
-
-    if (userId == null) {
-      throw new MissingAuthenticationException("No user id found in security context");
-    }
-
-    return userId;
+    return (JwtUserPrincipal) authentication.getPrincipal();
   }
 
-  public String getCurrentUserEmail() {
-    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-    if (authentication == null || authentication.getPrincipal() == null) {
-      throw new MissingAuthenticationException("No authenticated user found in security context");
-    }
+  public Long getCurrentUserId() {
+    return getPrincipal().userId();
+  }
 
-    AuthenticatedUser user = (AuthenticatedUser) authentication.getPrincipal();
+  public String getCurrentEmail() {
+    return getPrincipal().email();
+  }
 
-    String email = user.email();
-
-    if (email == null || email.isBlank()) {
-      throw new MissingAuthenticationException("No user email found in security context");
-    }
-
-    return email;
+  public String getCurrentUsername() {
+    return getPrincipal().username();
   }
 }

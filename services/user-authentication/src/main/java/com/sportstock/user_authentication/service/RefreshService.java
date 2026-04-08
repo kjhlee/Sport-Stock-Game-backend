@@ -14,7 +14,8 @@ public class RefreshService {
     try {
       Claims claims = jwtService.validateRefreshToken(token);
       Long userId = claims.get("userId", Long.class);
-      return jwtService.generateAccessToken(claims.getSubject(), userId);
+      String username = claims.get("username", String.class);
+      return jwtService.generateAccessToken(claims.getSubject(), userId, username);
     } catch (RefreshTokenExpiredException e) {
       throw new Exception(e.getMessage());
     }
