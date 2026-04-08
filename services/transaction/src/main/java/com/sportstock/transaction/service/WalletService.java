@@ -8,6 +8,7 @@ import com.sportstock.common.dto.transaction.TransactionResponse;
 import com.sportstock.common.dto.transaction.WalletResponse;
 import com.sportstock.transaction.client.LeagueServiceClient;
 import com.sportstock.transaction.client.StockMarketServiceClient;
+import com.sportstock.transaction.client.PortfolioServiceClient;
 import com.sportstock.transaction.entity.Transaction;
 import com.sportstock.transaction.entity.Wallet;
 import com.sportstock.transaction.enums.TransactionType;
@@ -32,6 +33,8 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.util.UUID;
+
 @Service
 public class WalletService {
 
@@ -40,18 +43,21 @@ public class WalletService {
   private final TransactionTemplate transactionTemplate;
   private final LeagueServiceClient leagueServiceClient;
   private final StockMarketServiceClient stockMarketServiceClient;
+  private final PortfolioServiceClient portfolioServiceClient;
 
   public WalletService(
       WalletRepository walletRepository,
       TransactionRepository transactionRepository,
       PlatformTransactionManager txManager,
       LeagueServiceClient leagueServiceClient,
-      StockMarketServiceClient stockMarketServiceClient) {
+      StockMarketServiceClient stockMarketServiceClient,
+      PortfolioServiceClient portfolioServiceClient) {
     this.walletRepository = walletRepository;
     this.transactionRepository = transactionRepository;
     this.transactionTemplate = new TransactionTemplate(txManager);
     this.leagueServiceClient = leagueServiceClient;
     this.stockMarketServiceClient = stockMarketServiceClient;
+    this.portfolioServiceClient = portfolioServiceClient;
   }
 
   @Transactional
@@ -186,6 +192,7 @@ public class WalletService {
         });
 
     Transaction transaction = result.get();
+    portfolioServiceClient.processBuy(leagueId, request.stockId(), quantity.intValue(), pricePerShare);
     return new StockTransactionResponse(
         transaction.getId(),
         request.stockId(),
@@ -246,6 +253,7 @@ public class WalletService {
           }
         });
     Transaction transaction = result.get();
+    portfolioServiceClient.processSell(leagueId, request.stockId(), quantity);
     return new StockTransactionResponse(
         transaction.getId(),
         request.stockId(),

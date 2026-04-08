@@ -14,6 +14,7 @@ import com.sportstock.common.dto.transaction.StockTransactionRequest;
 import com.sportstock.common.dto.transaction.TransactionResponse;
 import com.sportstock.common.dto.transaction.WalletResponse;
 import com.sportstock.transaction.client.LeagueServiceClient;
+import com.sportstock.transaction.client.PortfolioServiceClient;
 import com.sportstock.transaction.client.StockMarketServiceClient;
 import com.sportstock.transaction.entity.Transaction;
 import com.sportstock.transaction.entity.Wallet;
@@ -58,6 +59,7 @@ class WalletServiceTest {
 
   @Mock private LeagueServiceClient leagueServiceClient;
   @Mock private StockMarketServiceClient stockMarketServiceClient;
+  @Mock private PortfolioServiceClient portfolioServiceClient;
 
   private WalletService walletService;
 
@@ -75,7 +77,8 @@ class WalletServiceTest {
             transactionRepository,
             txManager,
             leagueServiceClient,
-            stockMarketServiceClient);
+            stockMarketServiceClient,
+            portfolioServiceClient);
   }
 
   @Nested
