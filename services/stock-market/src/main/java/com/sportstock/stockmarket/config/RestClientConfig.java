@@ -9,8 +9,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
 
 @Configuration
 public class RestClientConfig {
@@ -26,18 +24,6 @@ public class RestClientConfig {
         .requestFactory(requestFactory)
         .baseUrl(ingestionBaseUrl)
         .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
-        .requestInterceptor(
-            (request, body, execution) -> {
-              ServletRequestAttributes attrs =
-                  (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
-              if (attrs != null) {
-                String auth = attrs.getRequest().getHeader(HttpHeaders.AUTHORIZATION);
-                if (auth != null) {
-                  request.getHeaders().set(HttpHeaders.AUTHORIZATION, auth);
-                }
-              }
-              return execution.execute(request, body);
-            })
         .build();
   }
 }

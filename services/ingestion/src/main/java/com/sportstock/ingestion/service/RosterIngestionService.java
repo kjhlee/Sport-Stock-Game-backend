@@ -15,6 +15,7 @@ import com.sportstock.ingestion.repo.CoachRepository;
 import com.sportstock.ingestion.repo.TeamRepository;
 import com.sportstock.ingestion.repo.TeamRosterEntryRepository;
 import jakarta.persistence.EntityManager;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -123,6 +124,9 @@ public class RosterIngestionService {
 
     log.info(
         "Ingested {} roster entries for team {} ({})", count, team.getDisplayName(), teamEspnId);
+
+    team.setRosterSyncedAt(Instant.now());
+    teamRepository.save(team);
   }
 
   private Athlete upsertAthlete(JsonNode athleteNode) {
@@ -181,5 +185,30 @@ public class RosterIngestionService {
         success,
         failed,
         failedIds.isEmpty() ? "" : ", IDs: " + failedIds);
+  }
+
+  public void ingestRostersNeedingSync(Integer seasonYear, Instant cutoff) {
+    List<Team> teams = teamRepository.findTeamsNeedingRosterSync(cutoff);
+    if (teams.isEmpty()) {
+      log.info("No teams need roster sync");
+      return;
+    }
+
+    log.info("Syncing rosters for {} teams not synced since {}", teams.size(), cutoff);
+
+    int success = 0;
+    int failed = 0;
+
+    for (Team team : teams) {
+      try {
+        transactionTemplate.executeWithoutResult(
+            status -> ingestTeamRosterInternal(team.getEspnId(), seasonYear, null));
+        success++;
+      } catch (Exception e) {
+        failed++;
+        log.error("Failed to ingest roster for team {}: {}", team.getEspnId(), e.getMessage());
+      }
+    }
+    log.info("Ingested rosters for {} teams ({} failed)", success, failed);
   }
 }

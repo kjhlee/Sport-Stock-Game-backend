@@ -31,6 +31,41 @@
       "key": "stockMarketPort",
       "value": "8130",
       "enabled": true
+    },
+    {
+      "key": "seasonYear",
+      "value": "2024",
+      "enabled": true
+    },
+    {
+      "key": "seasonType",
+      "value": "2",
+      "enabled": true
+    },
+    {
+      "key": "weekNumber",
+      "value": "1",
+      "enabled": true
+    },
+    {
+      "key": "recordType",
+      "value": "total",
+      "enabled": true
+    },
+    {
+      "key": "payoutDay",
+      "value": "0",
+      "enabled": true
+    },
+    {
+      "key": "initialStipendAmount",
+      "value": "5000",
+      "enabled": true
+    },
+    {
+      "key": "weeklyStipendAmount",
+      "value": "100",
+      "enabled": true
     }
   ],
   "_postman_variable_scope": "environment",

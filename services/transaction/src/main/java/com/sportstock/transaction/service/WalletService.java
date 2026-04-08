@@ -77,7 +77,7 @@ public class WalletService {
   }
 
   public StipendResultResponse issueInitialStipends(Long leagueId, BigDecimal amount) {
-    List<Long> userIds = leagueServiceClient.getMemberUserIds(leagueId);
+    List<Long> userIds = leagueServiceClient.getMemberUserIdsInternal(leagueId);
     AtomicInteger walletsCreated = new AtomicInteger(0);
     AtomicInteger stipendsIssued = new AtomicInteger(0);
 
@@ -113,7 +113,7 @@ public class WalletService {
 
   public StipendResultResponse issueWeeklyStipends(
       Long leagueId, BigDecimal amount, Integer weekNumber) {
-    List<Long> userIds = leagueServiceClient.getMemberUserIds(leagueId);
+    List<Long> userIds = leagueServiceClient.getMemberUserIdsInternal(leagueId);
     AtomicInteger stipendsIssued = new AtomicInteger(0);
 
     for (Long userId : userIds) {
@@ -152,7 +152,7 @@ public class WalletService {
 
     BigDecimal pricePerShare = stock.currentPrice();
     BigDecimal quantity = resolveQuantity(request, pricePerShare);
-    BigDecimal totalCost = quantity.multiply(pricePerShare).setScale(4, RoundingMode.DOWN);
+    BigDecimal totalAmount = quantity.multiply(pricePerShare).setScale(4, RoundingMode.DOWN);
 
     AtomicReference<Transaction> result = new AtomicReference<>();
     transactionTemplate.executeWithoutResult(
@@ -178,7 +178,7 @@ public class WalletService {
             result.set(
                 debitWallet(
                     wallet,
-                    totalCost,
+                    totalAmount,
                     TransactionType.STOCK_BUY,
                     "stock:" + request.stockId(),
                     description,
@@ -199,7 +199,7 @@ public class WalletService {
         stock.fullName(),
         pricePerShare,
         quantity,
-        totalCost,
+        totalAmount,
         transaction.getBalanceBefore(),
         transaction.getBalanceAfter(),
         TransactionType.STOCK_BUY.name(),
@@ -307,6 +307,12 @@ public class WalletService {
   }
 
   private void validateTradeRequest(StockTransactionRequest request) {
+    if (request.stockId() == null) {
+      throw new InvalidTradeRequestException("stockId is required");
+    }
+    if (request.idempotencyKey() == null || request.idempotencyKey().isBlank()) {
+      throw new InvalidTradeRequestException("idempotencyKey is required");
+    }
     boolean hasQuantity = request.quantity() != null;
     boolean hasDollarAmount = request.dollarAmount() != null;
     if (hasQuantity == hasDollarAmount) {
@@ -330,6 +336,9 @@ public class WalletService {
   private BigDecimal resolveQuantity(StockTransactionRequest request, BigDecimal pricePerShare) {
     if (request.quantity() != null) {
       return request.quantity().setScale(4, RoundingMode.DOWN);
+    }
+    if (pricePerShare == null || pricePerShare.compareTo(BigDecimal.ZERO) <= 0) {
+      throw new InvalidTradeRequestException("Stock price is unavailable or invalid");
     }
     BigDecimal quantity = request.dollarAmount().divide(pricePerShare, 4, RoundingMode.DOWN);
     if (quantity.compareTo(BigDecimal.ZERO) <= 0) {
@@ -363,6 +372,7 @@ public class WalletService {
 
     transactionRepository.save(transaction);
     wallet.setBalance(balanceAfter);
+    walletRepository.save(wallet);
     return transaction;
   }
 
@@ -394,6 +404,7 @@ public class WalletService {
 
     transactionRepository.save(transaction);
     wallet.setBalance(balanceAfter);
+    walletRepository.save(wallet);
     return transaction;
   }
 }

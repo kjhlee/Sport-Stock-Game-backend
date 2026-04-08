@@ -1,7 +1,13 @@
 package com.sportstock.transaction.service;
 
+import com.sportstock.common.dto.ingestion.CurrentWeekResponse;
+import com.sportstock.common.dto.league.StipendEligibleLeagueResponse;
+import com.sportstock.transaction.client.IngestionServiceClient;
+import com.sportstock.transaction.client.LeagueServiceClient;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -13,28 +19,63 @@ import org.springframework.stereotype.Service;
 public class StipendScheduler {
 
   private final WalletService walletService;
+  private final IngestionServiceClient ingestionServiceClient;
+  private final LeagueServiceClient leagueServiceClient;
 
   @Scheduled(cron = "0 0 0 * * *")
   public void processWeeklyStipends() {
-    // TODO: Implement weekly stipend scheduler
-    // - Get current day of week (0=Sunday, 6=Saturday)
-    // - Call league service internal endpoint to get active leagues matching this payout day
-    //   GET /api/v1/leagues/internal/active-for-payout?dayOfWeek={0-6}
-    // - For each league returned:
-    //   - Extract leagueId, stipendAmount, current week number
-    //   - Call walletService.issueWeeklyStipends(leagueId, amount, weekNumber)
-    //     (member IDs are fetched automatically from league service)
-    // - Log results for each league
-    // NOTE: This cron job has no incoming HTTP request, so RequestContextHolder will be null.
-    //   A service-to-service auth mechanism will be needed when this is implemented.
     log.info("Weekly stipend scheduler triggered for {}", LocalDate.now().getDayOfWeek());
-    throw new UnsupportedOperationException("TODO: Implement processWeeklyStipends");
-  }
+    CurrentWeekResponse currentWeek;
+    try {
+      currentWeek = ingestionServiceClient.getCurrentWeek();
+    } catch (Exception e) {
+      log.error("Failed to fetch current week: {}", e.getMessage());
+      return;
+    }
+    DayOfWeek day = LocalDate.now(ZoneOffset.UTC).getDayOfWeek();
+    short payoutDay = (short) (day.getValue() % 7);
 
-  private int getDayOfWeekValue(DayOfWeek dayOfWeek) {
-    // TODO: Helper to convert DayOfWeek to 0-6 (Sunday=0)
-    // Java DayOfWeek: MONDAY=1, SUNDAY=7
-    // Need to convert to: SUNDAY=0, MONDAY=1, ..., SATURDAY=6
-    throw new UnsupportedOperationException("TODO: Implement getDayOfWeekValue");
+    List<StipendEligibleLeagueResponse> leagues;
+
+    try {
+      leagues = leagueServiceClient.getStipendEligibleLeagues(payoutDay);
+    } catch (Exception e) {
+      log.error("Failed to fetch stipend-eligible leagues: {}", e.getMessage());
+      return;
+    }
+    if (leagues.isEmpty()) {
+      log.info("No leagues with payout day {} ({})", payoutDay, day);
+      return;
+    }
+
+    log.info("Found {} leagues eligible for stipends today", leagues.size());
+
+    int success = 0;
+    int failed = 0;
+    int skipped = 0;
+
+    for (StipendEligibleLeagueResponse league : leagues) {
+      if (league.initialStipendIssuedAt() == null) {
+        log.warn("League {} has no initial stipend issued, skipping weekly", league.leagueId());
+        skipped++;
+        continue;
+      }
+
+      try {
+        walletService.issueWeeklyStipends(
+            league.leagueId(), league.weeklyStipendAmount(), currentWeek.week());
+        success++;
+      } catch (Exception e) {
+        log.error(
+            "Failed to issue weekly stipends for league {}: {}", league.leagueId(), e.getMessage());
+        failed++;
+      }
+    }
+
+    log.info(
+        "Successfully issued stipends for {} leagues, failed for {} leagues, skipped {} leagues",
+        success,
+        failed,
+        skipped);
   }
 }
