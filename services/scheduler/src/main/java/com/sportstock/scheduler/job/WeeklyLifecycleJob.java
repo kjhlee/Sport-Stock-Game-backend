@@ -81,7 +81,7 @@ public class WeeklyLifecycleJob {
       log.info("Processing {} active leagues", activeLeagues.size());
 
       for (LeagueResponse league : activeLeagues) {
-        processLeague(league, currentWeekNum, priorWeek);
+        processLeague(league, currentWeekNum, currentWeek.seasonType(), priorWeek);
       }
 
       try {
@@ -179,12 +179,16 @@ public class WeeklyLifecycleJob {
   }
 
   private void processLeague(
-      LeagueResponse league, int currentWeekNum, CurrentWeekResponse priorWeek) {
+      LeagueResponse league,
+      int currentWeekNum,
+      String currentSeasonType,
+      CurrentWeekResponse priorWeek) {
     Long leagueId = league.id();
 
     if (priorWeek != null) {
       try {
-        transactionClient.liquidateAssets(leagueId, priorWeek.week());
+        transactionClient.liquidateAssets(
+            leagueId, priorWeek.week(), priorWeek.seasonType());
         log.info("Liquidated assets for league {} week {}", leagueId, priorWeek.week());
       } catch (Exception e) {
         log.warn(
@@ -201,6 +205,17 @@ public class WeeklyLifecycleJob {
     } catch (Exception e) {
       log.error(
           "Failed to issue weekly stipend for league {} week {}: {}",
+          leagueId,
+          currentWeekNum,
+          e.getMessage());
+    }
+
+    try {
+      transactionClient.initializePortfolioHistory(leagueId, currentWeekNum, currentSeasonType);
+      log.info("Initialized portfolio history for league {} week {}", leagueId, currentWeekNum);
+    } catch (Exception e) {
+      log.error(
+          "Failed to initialize portfolio history for league {} week {}: {}",
           leagueId,
           currentWeekNum,
           e.getMessage());

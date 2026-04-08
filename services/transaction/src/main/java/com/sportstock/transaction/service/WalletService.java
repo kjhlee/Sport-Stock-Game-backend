@@ -1,11 +1,14 @@
 package com.sportstock.transaction.service;
 
 import com.sportstock.common.dto.stock_market.StockResponse;
+import com.sportstock.common.dto.portfolio.HoldingsResponse;
+import com.sportstock.common.dto.portfolio.PortfolioResponse;
 import com.sportstock.common.dto.transaction.StipendResultResponse;
 import com.sportstock.common.dto.transaction.StockTransactionRequest;
 import com.sportstock.common.dto.transaction.TransactionResponse;
 import com.sportstock.common.dto.transaction.WalletResponse;
 import com.sportstock.transaction.client.LeagueServiceClient;
+import com.sportstock.transaction.client.PortfolioServiceClient;
 import com.sportstock.transaction.client.StockMarketServiceClient;
 import com.sportstock.transaction.entity.Transaction;
 import com.sportstock.transaction.entity.Wallet;
@@ -40,6 +43,7 @@ public class WalletService {
   private final TransactionRepository transactionRepository;
   private final TransactionTemplate transactionTemplate;
   private final LeagueServiceClient leagueServiceClient;
+  private final PortfolioServiceClient portfolioServiceClient;
   private final StockMarketServiceClient stockMarketServiceClient;
 
   public WalletService(
@@ -47,11 +51,13 @@ public class WalletService {
       TransactionRepository transactionRepository,
       PlatformTransactionManager txManager,
       LeagueServiceClient leagueServiceClient,
+      PortfolioServiceClient portfolioServiceClient,
       StockMarketServiceClient stockMarketServiceClient) {
     this.walletRepository = walletRepository;
     this.transactionRepository = transactionRepository;
     this.transactionTemplate = new TransactionTemplate(txManager);
     this.leagueServiceClient = leagueServiceClient;
+    this.portfolioServiceClient = portfolioServiceClient;
     this.stockMarketServiceClient = stockMarketServiceClient;
   }
 
@@ -190,7 +196,8 @@ public class WalletService {
                     request.idempotencyKey(),
                     pricePerShare,
                     request.buyTransactionId()));
-            // TODO: call portfolio service to update
+            portfolioServiceClient.upsertPortfolio(userId, leagueId);
+            portfolioServiceClient.processBuy(userId, leagueId, request.stockId(), quantity);
           } catch (DataIntegrityViolationException e) {
             Transaction replayTransaction =
                 loadRequiredTransaction(request.idempotencyKey(), userId, leagueId);
@@ -299,7 +306,7 @@ public class WalletService {
                     request.idempotencyKey(),
                     pricePerShare,
                     request.buyTransactionId()));
-            // TODO: call portfolio service to update
+            portfolioServiceClient.processSell(userId, leagueId, request.stockId(), quantity);
           } catch (DataIntegrityViolationException e) {
             Transaction replayTransaction =
                 loadRequiredTransaction(request.idempotencyKey(), userId, leagueId);
@@ -464,8 +471,86 @@ public class WalletService {
   }
 
   public StipendResultResponse liquidateAssets(Long leagueId, int weekNumber) {
-    // TODO: Implement liquidation logic
-    return new StipendResultResponse(leagueId, 0, 0, BigDecimal.ZERO);
+    return liquidateAssets(leagueId, weekNumber, null);
+  }
+
+  public StipendResultResponse liquidateAssets(Long leagueId, int weekNumber, String seasonType) {
+    List<Wallet> wallets = walletRepository.findAllByLeagueId(leagueId);
+    AtomicInteger liquidationCount = new AtomicInteger(0);
+
+    for (Wallet wallet : wallets) {
+      transactionTemplate.executeWithoutResult(
+          status -> {
+            Wallet lockedWallet =
+                walletRepository
+                    .findByUserIdAndLeagueIdForUpdate(wallet.getUserId(), leagueId)
+                    .orElseThrow(
+                        () ->
+                            new WalletNotFoundException(
+                                "Wallet not found for user: " + wallet.getUserId()));
+
+            portfolioServiceClient.upsertPortfolio(wallet.getUserId(), leagueId);
+            PortfolioResponse portfolio =
+                portfolioServiceClient.getPortfolio(wallet.getUserId(), leagueId);
+
+            for (HoldingsResponse holding : portfolio.holdingsList()) {
+              String idempotencyKey =
+                  "LIQUIDATE_ASSETS:"
+                      + leagueId
+                      + ":"
+                      + wallet.getUserId()
+                      + ":"
+                      + weekNumber
+                      + ":"
+                      + holding.stockId();
+
+              if (transactionRepository.existsByIdempotencyKey(idempotencyKey)) {
+                continue;
+              }
+
+              StockResponse stock = stockMarketServiceClient.getStock(holding.stockId());
+              BigDecimal liquidationAmount =
+                  holding.quantity().multiply(stock.currentPrice()).setScale(4, RoundingMode.DOWN);
+              if (liquidationAmount.compareTo(BigDecimal.ZERO) <= 0) {
+                continue;
+              }
+
+              creditWallet(
+                  lockedWallet,
+                  liquidationAmount,
+                  TransactionType.LIQUIDATE_ASSETS,
+                  "stock:" + holding.stockId(),
+                  String.format(
+                      "Liquidate %s shares of %s @ %s",
+                      holding.quantity(), stock.fullName(), stock.currentPrice()),
+                  idempotencyKey,
+                  stock.currentPrice(),
+                  null);
+              liquidationCount.incrementAndGet();
+            }
+
+            portfolioServiceClient.clearHoldings(wallet.getUserId(), leagueId);
+            if (seasonType != null && !seasonType.isBlank()) {
+              portfolioServiceClient.finalizeHistory(
+                  wallet.getUserId(),
+                  leagueId,
+                  weekNumber,
+                  seasonType,
+                  lockedWallet.getBalance());
+            }
+          });
+    }
+
+    return new StipendResultResponse(leagueId, 0, liquidationCount.get(), BigDecimal.ZERO);
+  }
+
+  public void initializePortfolioHistory(Long leagueId, int weekNumber, String seasonType) {
+    List<Wallet> wallets = walletRepository.findAllByLeagueId(leagueId);
+    for (Wallet wallet : wallets) {
+      portfolioServiceClient.upsertPortfolio(wallet.getUserId(), leagueId);
+      portfolioServiceClient.initializeHistory(
+          wallet.getUserId(), leagueId, weekNumber, seasonType, wallet.getBalance());
+    }
   }
 
   private Transaction findExistingTransaction(String idempotencyKey, Long userId, Long leagueId) {

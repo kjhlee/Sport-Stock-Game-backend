@@ -30,6 +30,10 @@ public class TransactionClient {
   }
 
   public void liquidateAssets(Long leagueId, int weekNumber) {
+    liquidateAssets(leagueId, weekNumber, null);
+  }
+
+  public void liquidateAssets(Long leagueId, int weekNumber, String seasonType) {
     restClient
         .post()
         .uri(
@@ -38,6 +42,8 @@ public class TransactionClient {
                     .path("/liquidate")
                     .queryParam("leagueId", leagueId)
                     .queryParam("weekNumber", weekNumber)
+                    .queryParamIfPresent(
+                        "seasonType", java.util.Optional.ofNullable(seasonType))
                     .build())
         .retrieve()
         .toBodilessEntity();
@@ -54,5 +60,20 @@ public class TransactionClient {
         .body(request)
         .retrieve()
         .body(StipendResultResponse.class);
+  }
+
+  public void initializePortfolioHistory(Long leagueId, int weekNumber, String seasonType) {
+    restClient
+        .post()
+        .uri(
+            uriBuilder ->
+                uriBuilder
+                    .path("/history/initialize")
+                    .queryParam("leagueId", leagueId)
+                    .queryParam("weekNumber", weekNumber)
+                    .queryParam("seasonType", seasonType)
+                    .build())
+        .retrieve()
+        .toBodilessEntity();
   }
 }

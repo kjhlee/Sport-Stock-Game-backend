@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import com.sportstock.common.dto.stock_market.StockResponse;
 import com.sportstock.common.dto.transaction.StockTransactionRequest;
 import com.sportstock.transaction.client.LeagueServiceClient;
+import com.sportstock.transaction.client.PortfolioServiceClient;
 import com.sportstock.transaction.client.StockMarketServiceClient;
 import com.sportstock.transaction.entity.Transaction;
 import com.sportstock.transaction.entity.Wallet;
@@ -44,6 +45,7 @@ class WalletServiceTest {
   @Mock private WalletRepository walletRepository;
   @Mock private TransactionRepository transactionRepository;
   @Mock private LeagueServiceClient leagueServiceClient;
+  @Mock private PortfolioServiceClient portfolioServiceClient;
   @Mock private StockMarketServiceClient stockMarketServiceClient;
 
   private WalletService service;
@@ -56,6 +58,7 @@ class WalletServiceTest {
             transactionRepository,
             new NoOpTransactionManager(),
             leagueServiceClient,
+            portfolioServiceClient,
             stockMarketServiceClient);
   }
 

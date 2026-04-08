@@ -90,9 +90,21 @@ public class WalletController {
   }
 
   @PostMapping("/internal/wallets/liquidate")
-  public void liquidateAssets(@RequestParam Long leagueId, @RequestParam int weekNumber) {
-    throw new ResponseStatusException(
-        HttpStatus.NOT_IMPLEMENTED, "Asset liquidation is not implemented");
+  @ResponseStatus(HttpStatus.OK)
+  public StipendResultResponse liquidateAssets(
+      @RequestParam Long leagueId,
+      @RequestParam int weekNumber,
+      @RequestParam(required = false) String seasonType) {
+    return walletService.liquidateAssets(leagueId, weekNumber, seasonType);
+  }
+
+  @PostMapping("/internal/wallets/history/initialize")
+  @ResponseStatus(HttpStatus.OK)
+  public void initializePortfolioHistory(
+      @RequestParam Long leagueId,
+      @RequestParam int weekNumber,
+      @RequestParam String seasonType) {
+    walletService.initializePortfolioHistory(leagueId, weekNumber, seasonType);
   }
 
   @PostMapping("/internal/wallets/stipends/matchup-win")

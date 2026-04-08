@@ -7,6 +7,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import com.sportstock.portfolio.entity.Portfolio;
 
 public interface PortfolioRepo extends JpaRepository<Portfolio, Long>{
-    Long findByUserId(Long userId);
     Optional<Portfolio> findByUserIdAndLeagueId(Long userId, Long leagueId);
 }

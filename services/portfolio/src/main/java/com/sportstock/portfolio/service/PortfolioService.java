@@ -1,55 +1,92 @@
 package com.sportstock.portfolio.service;
 
-import java.math.BigDecimal;
-import java.util.Optional;
-import java.util.UUID;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
-
+import com.sportstock.common.dto.portfolio.PortfolioResponse;
 import com.sportstock.portfolio.entity.Portfolio;
+import com.sportstock.portfolio.mapper.PortfolioDtoMapper;
 import com.sportstock.portfolio.repo.PortfolioRepo;
-
+import java.math.BigDecimal;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PortfolioService {
 
-    private static final Logger log = LoggerFactory.getLogger(PortfolioService.class);
+  private final PortfolioRepo portfolioRepo;
+  private final HoldingsService holdingsService;
+  private final PortfolioHistoryService portfolioHistoryService;
 
-    private final PortfolioRepo portfolioRepo;
-    private final HoldingsService holdingsService;
+  @Transactional(readOnly = true)
+  public PortfolioResponse getPortfolio(Long userId, Long leagueId) {
+    return PortfolioDtoMapper.toResponse(getPortfolioEntity(userId, leagueId));
+  }
 
-    public Portfolio getPortfolio(Long userId, Long leagueId){
-        log.info("Fetching portfolio for userId={} leagueId={}", userId, leagueId);
-        Optional<Portfolio> currPortfolio = portfolioRepo.findByUserIdAndLeagueId(userId, leagueId);
-        return currPortfolio.get();
-    }
+  @Transactional
+  public PortfolioResponse upsertPortfolio(Long userId, Long leagueId) {
+    Portfolio portfolio = getOrCreatePortfolio(userId, leagueId);
+    return PortfolioDtoMapper.toResponse(portfolio);
+  }
 
-    public Portfolio createPortfolio(Long userId, Long leagueId){
-        Portfolio newPortfolio = new Portfolio();
-        newPortfolio.setUserId(userId);
-        newPortfolio.setLeagueId(leagueId);
-        portfolioRepo.save(newPortfolio);
-        log.info("Created portfolio id={} for userId={} leagueId={}", newPortfolio.getId(), userId, leagueId);
-        return newPortfolio;
-    }
+  @Transactional
+  public void processBuy(Long userId, Long leagueId, UUID stockId, BigDecimal quantity) {
+    Portfolio portfolio = getOrCreatePortfolio(userId, leagueId);
+    holdingsService.addHolding(portfolio, stockId, quantity);
+  }
 
-    public void getPortfolioSummary(Long userId, Long leagueId){
+  @Transactional
+  public void processSell(Long userId, Long leagueId, UUID stockId, BigDecimal quantity) {
+    Portfolio portfolio = getPortfolioEntity(userId, leagueId);
+    holdingsService.reduceHolding(portfolio, stockId, quantity);
+  }
 
-    }
+  @Transactional
+  public void clearHoldings(Long userId, Long leagueId) {
+    Portfolio portfolio = getPortfolioEntity(userId, leagueId);
+    holdingsService.clearHoldings(portfolio);
+  }
 
-    public void processBuy(Long userId, Long leagueId, UUID stockId, int quantity, BigDecimal price){
-        log.info("Processing buy: userId={} leagueId={} stockId={} quantity={} price={}", userId, leagueId, stockId, quantity, price);
-        Portfolio currPortfolio = getPortfolio(userId, leagueId);
-        holdingsService.addHolding(currPortfolio, stockId, quantity, price);
-    }
+  @Transactional
+  public void initializeHistory(
+      Long userId, Long leagueId, Integer weekNumber, String seasonType, BigDecimal startValue) {
+    Portfolio portfolio = getOrCreatePortfolio(userId, leagueId);
+    portfolioHistoryService.initializeHistory(portfolio, weekNumber, seasonType, startValue);
+  }
 
-    public void processSell(Long userId, Long leagueId, UUID stockId, int decreaseAmmount){
-        log.info("Processing sell: userId={} leagueId={} stockId={} decreaseAmount={}", userId, leagueId, stockId, decreaseAmmount);
-        Portfolio currPortfolio = getPortfolio(userId, leagueId);
-        holdingsService.reduceHolding(currPortfolio, stockId, decreaseAmmount);
-    }
+  @Transactional
+  public void finalizeHistory(
+      Long userId, Long leagueId, Integer weekNumber, String seasonType, BigDecimal endValue) {
+    Portfolio portfolio = getPortfolioEntity(userId, leagueId);
+    portfolioHistoryService.finalizeHistory(portfolio, weekNumber, seasonType, endValue);
+  }
+
+  private Portfolio getPortfolioEntity(Long userId, Long leagueId) {
+    return portfolioRepo
+        .findByUserIdAndLeagueId(userId, leagueId)
+        .orElseThrow(
+            () ->
+                new IllegalArgumentException(
+                    "Portfolio not found for user " + userId + " in league " + leagueId));
+  }
+
+  private Portfolio getOrCreatePortfolio(Long userId, Long leagueId) {
+    return portfolioRepo
+        .findByUserIdAndLeagueId(userId, leagueId)
+        .orElseGet(
+            () -> {
+              Portfolio portfolio = new Portfolio();
+              portfolio.setUserId(userId);
+              portfolio.setLeagueId(leagueId);
+              Portfolio saved = portfolioRepo.save(portfolio);
+              log.info(
+                  "Created portfolio id={} for userId={} leagueId={}",
+                  saved.getId(),
+                  userId,
+                  leagueId);
+              return saved;
+            });
+  }
 }
