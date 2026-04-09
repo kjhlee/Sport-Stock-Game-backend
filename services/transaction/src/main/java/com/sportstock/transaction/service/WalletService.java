@@ -1,12 +1,14 @@
 package com.sportstock.transaction.service;
 
-import com.sportstock.common.dto.stock_market.StockResponse;
+import com.sportstock.common.dto.ingestion.CurrentWeekResponse;
 import com.sportstock.common.dto.portfolio.HoldingsResponse;
 import com.sportstock.common.dto.portfolio.PortfolioResponse;
+import com.sportstock.common.dto.stock_market.StockResponse;
 import com.sportstock.common.dto.transaction.StipendResultResponse;
 import com.sportstock.common.dto.transaction.StockTransactionRequest;
 import com.sportstock.common.dto.transaction.TransactionResponse;
 import com.sportstock.common.dto.transaction.WalletResponse;
+import com.sportstock.transaction.client.IngestionServiceClient;
 import com.sportstock.transaction.client.LeagueServiceClient;
 import com.sportstock.transaction.client.PortfolioServiceClient;
 import com.sportstock.transaction.client.StockMarketServiceClient;
@@ -43,6 +45,7 @@ public class WalletService {
   private final TransactionRepository transactionRepository;
   private final TransactionTemplate transactionTemplate;
   private final LeagueServiceClient leagueServiceClient;
+  private final IngestionServiceClient ingestionServiceClient;
   private final PortfolioServiceClient portfolioServiceClient;
   private final StockMarketServiceClient stockMarketServiceClient;
 
@@ -51,18 +54,34 @@ public class WalletService {
       TransactionRepository transactionRepository,
       PlatformTransactionManager txManager,
       LeagueServiceClient leagueServiceClient,
+      IngestionServiceClient ingestionServiceClient,
       PortfolioServiceClient portfolioServiceClient,
       StockMarketServiceClient stockMarketServiceClient) {
     this.walletRepository = walletRepository;
     this.transactionRepository = transactionRepository;
     this.transactionTemplate = new TransactionTemplate(txManager);
     this.leagueServiceClient = leagueServiceClient;
+    this.ingestionServiceClient = ingestionServiceClient;
     this.portfolioServiceClient = portfolioServiceClient;
     this.stockMarketServiceClient = stockMarketServiceClient;
   }
 
   public StipendResultResponse issueInitialStipends(
       Long leagueId, BigDecimal amount, List<Long> userIds) {
+    SeasonContext seasonContext = resolveCurrentSeasonContext();
+    return issueInitialStipends(
+        leagueId, amount, userIds, seasonContext.seasonYear(), seasonContext.seasonType());
+  }
+
+  public StipendResultResponse issueInitialStipends(
+      Long leagueId,
+      BigDecimal amount,
+      List<Long> userIds,
+      Integer seasonYear,
+      String seasonType) {
+    SeasonContext seasonContext = resolveSeasonContext(seasonYear, seasonType);
+    final int resolvedSeasonYear = seasonContext.seasonYear();
+    final String resolvedSeasonType = seasonContext.seasonType();
     List<Long> stipendUserIds =
         (userIds != null && !userIds.isEmpty())
             ? userIds
@@ -75,8 +94,18 @@ public class WalletService {
           status -> {
             ensureWalletExists(userId, leagueId, walletsCreated);
 
-            String idempotencyKey = "INITIAL_STIPEND:" + leagueId + ":" + userId;
-            if (transactionRepository.existsByIdempotencyKey(idempotencyKey)) {
+            String idempotencyKey =
+                "INITIAL_STIPEND:"
+                    + leagueId
+                    + ":"
+                    + userId
+                    + ":"
+                    + resolvedSeasonYear
+                    + ":"
+                    + resolvedSeasonType;
+            if (transactionRepository
+                .existsByIdempotencyKeyAndLeagueIdAndUserIdAndSeasonYearAndSeasonType(
+                    idempotencyKey, leagueId, userId, resolvedSeasonYear, resolvedSeasonType)) {
               return;
             }
 
@@ -94,6 +123,8 @@ public class WalletService {
                   null,
                   null,
                   idempotencyKey,
+                  resolvedSeasonYear,
+                  resolvedSeasonType,
                   null,
                   null);
             } catch (DataIntegrityViolationException e) {
@@ -109,15 +140,37 @@ public class WalletService {
 
   public StipendResultResponse issueWeeklyStipends(
       Long leagueId, BigDecimal amount, Integer weekNumber) {
+    SeasonContext seasonContext = resolveCurrentSeasonContext();
+    return issueWeeklyStipends(
+        leagueId, amount, weekNumber, seasonContext.seasonYear(), seasonContext.seasonType());
+  }
+
+  public StipendResultResponse issueWeeklyStipends(
+      Long leagueId, BigDecimal amount, Integer weekNumber, Integer seasonYear, String seasonType) {
+    SeasonContext seasonContext = resolveSeasonContext(seasonYear, seasonType);
+    final int resolvedSeasonYear = seasonContext.seasonYear();
+    final String resolvedSeasonType = seasonContext.seasonType();
     List<Long> userIds = leagueServiceClient.getMemberUserIdsInternal(leagueId);
     AtomicInteger stipendsIssued = new AtomicInteger(0);
 
     for (Long userId : userIds) {
       transactionTemplate.executeWithoutResult(
           status -> {
-            String idempotencyKey = "WEEKLY_STIPEND:" + leagueId + ":" + userId + ":" + weekNumber;
+            String idempotencyKey =
+                "WEEKLY_STIPEND:"
+                    + leagueId
+                    + ":"
+                    + userId
+                    + ":"
+                    + weekNumber
+                    + ":"
+                    + resolvedSeasonYear
+                    + ":"
+                    + resolvedSeasonType;
 
-            if (transactionRepository.existsByIdempotencyKey(idempotencyKey)) {
+            if (transactionRepository
+                .existsByIdempotencyKeyAndLeagueIdAndUserIdAndSeasonYearAndSeasonType(
+                    idempotencyKey, leagueId, userId, resolvedSeasonYear, resolvedSeasonType)) {
               return;
             }
 
@@ -135,6 +188,8 @@ public class WalletService {
                   null,
                   null,
                   idempotencyKey,
+                  resolvedSeasonYear,
+                  resolvedSeasonType,
                   null,
                   null);
             } catch (DataIntegrityViolationException e) {
@@ -149,6 +204,7 @@ public class WalletService {
 
   public TransactionResponse processStockBuy(
       Long userId, Long leagueId, StockTransactionRequest request) {
+    SeasonContext seasonContext = resolveCurrentSeasonContext();
     verifyLeagueMembership(userId, leagueId);
     validateTradeRequest(request);
     StockResponse stock = stockMarketServiceClient.getStock(request.stockId());
@@ -169,7 +225,12 @@ public class WalletService {
     transactionTemplate.executeWithoutResult(
         status -> {
           Transaction existingTransaction =
-              findExistingTransaction(request.idempotencyKey(), userId, leagueId);
+              findExistingTransaction(
+                  request.idempotencyKey(),
+                  userId,
+                  leagueId,
+                  seasonContext.seasonYear(),
+                  seasonContext.seasonType());
           if (existingTransaction != null) {
             validateReplayableTransaction(existingTransaction, TransactionType.STOCK_BUY, request);
             result.set(existingTransaction);
@@ -194,13 +255,20 @@ public class WalletService {
                     "stock:" + request.stockId(),
                     description,
                     request.idempotencyKey(),
+                    seasonContext.seasonYear(),
+                    seasonContext.seasonType(),
                     pricePerShare,
                     request.buyTransactionId()));
             portfolioServiceClient.upsertPortfolio(userId, leagueId);
             portfolioServiceClient.processBuy(userId, leagueId, request.stockId(), quantity);
           } catch (DataIntegrityViolationException e) {
             Transaction replayTransaction =
-                loadRequiredTransaction(request.idempotencyKey(), userId, leagueId);
+                loadRequiredTransaction(
+                    request.idempotencyKey(),
+                    userId,
+                    leagueId,
+                    seasonContext.seasonYear(),
+                    seasonContext.seasonType());
             validateReplayableTransaction(replayTransaction, TransactionType.STOCK_BUY, request);
             result.set(replayTransaction);
             status.setRollbackOnly();
@@ -212,6 +280,7 @@ public class WalletService {
 
   public TransactionResponse processStockSell(
       Long userId, Long leagueId, StockTransactionRequest request) {
+    SeasonContext seasonContext = resolveCurrentSeasonContext();
     verifyLeagueMembership(userId, leagueId);
     validateTradeRequest(request);
     StockResponse stock = stockMarketServiceClient.getStock(request.stockId());
@@ -279,7 +348,12 @@ public class WalletService {
     transactionTemplate.executeWithoutResult(
         status -> {
           Transaction existingTransaction =
-              findExistingTransaction(request.idempotencyKey(), userId, leagueId);
+              findExistingTransaction(
+                  request.idempotencyKey(),
+                  userId,
+                  leagueId,
+                  seasonContext.seasonYear(),
+                  seasonContext.seasonType());
           if (existingTransaction != null) {
             validateReplayableTransaction(existingTransaction, TransactionType.STOCK_SELL, request);
             result.set(existingTransaction);
@@ -304,12 +378,19 @@ public class WalletService {
                     "stock:" + request.stockId(),
                     description,
                     request.idempotencyKey(),
+                    seasonContext.seasonYear(),
+                    seasonContext.seasonType(),
                     pricePerShare,
                     request.buyTransactionId()));
             portfolioServiceClient.processSell(userId, leagueId, request.stockId(), quantity);
           } catch (DataIntegrityViolationException e) {
             Transaction replayTransaction =
-                loadRequiredTransaction(request.idempotencyKey(), userId, leagueId);
+                loadRequiredTransaction(
+                    request.idempotencyKey(),
+                    userId,
+                    leagueId,
+                    seasonContext.seasonYear(),
+                    seasonContext.seasonType());
             validateReplayableTransaction(replayTransaction, TransactionType.STOCK_SELL, request);
             result.set(replayTransaction);
             status.setRollbackOnly();
@@ -409,6 +490,8 @@ public class WalletService {
       String referenceId,
       String description,
       String idempotencyKey,
+      Integer seasonYear,
+      String seasonType,
       BigDecimal pricePerShare,
       Long buyTransactionId) {
     BigDecimal balanceBefore = wallet.getBalance();
@@ -422,6 +505,8 @@ public class WalletService {
     transaction.setBalanceAfter(balanceAfter);
     transaction.setLeagueId(wallet.getLeagueId());
     transaction.setUserId(wallet.getUserId());
+    transaction.setSeasonYear(seasonYear);
+    transaction.setSeasonType(seasonType);
     transaction.setReferenceId(referenceId);
     transaction.setDescription(description);
     transaction.setIdempotencyKey(idempotencyKey);
@@ -441,6 +526,8 @@ public class WalletService {
       String referenceId,
       String description,
       String idempotencyKey,
+      Integer seasonYear,
+      String seasonType,
       BigDecimal pricePerShare,
       Long buyTransactionId) {
     if (wallet.getBalance().compareTo(amount) < 0) {
@@ -458,6 +545,8 @@ public class WalletService {
     transaction.setBalanceAfter(balanceAfter);
     transaction.setLeagueId(wallet.getLeagueId());
     transaction.setUserId(wallet.getUserId());
+    transaction.setSeasonYear(seasonYear);
+    transaction.setSeasonType(seasonType);
     transaction.setReferenceId(referenceId);
     transaction.setDescription(description);
     transaction.setIdempotencyKey(idempotencyKey);
@@ -471,10 +560,16 @@ public class WalletService {
   }
 
   public StipendResultResponse liquidateAssets(Long leagueId, int weekNumber) {
-    return liquidateAssets(leagueId, weekNumber, null);
+    SeasonContext seasonContext = resolveCurrentSeasonContext();
+    return liquidateAssets(
+        leagueId, weekNumber, seasonContext.seasonYear(), seasonContext.seasonType());
   }
 
-  public StipendResultResponse liquidateAssets(Long leagueId, int weekNumber, String seasonType) {
+  public StipendResultResponse liquidateAssets(
+      Long leagueId, int weekNumber, Integer seasonYear, String seasonType) {
+    SeasonContext seasonContext = resolveSeasonContext(seasonYear, seasonType);
+    final int resolvedSeasonYear = seasonContext.seasonYear();
+    final String resolvedSeasonType = seasonContext.seasonType();
     List<Wallet> wallets = walletRepository.findAllByLeagueId(leagueId);
     AtomicInteger liquidationCount = new AtomicInteger(0);
 
@@ -502,9 +597,19 @@ public class WalletService {
                       + ":"
                       + weekNumber
                       + ":"
-                      + holding.stockId();
+                      + holding.stockId()
+                      + ":"
+                      + resolvedSeasonYear
+                      + ":"
+                      + resolvedSeasonType;
 
-              if (transactionRepository.existsByIdempotencyKey(idempotencyKey)) {
+              if (transactionRepository
+                  .existsByIdempotencyKeyAndLeagueIdAndUserIdAndSeasonYearAndSeasonType(
+                      idempotencyKey,
+                      leagueId,
+                      wallet.getUserId(),
+                      resolvedSeasonYear,
+                      resolvedSeasonType)) {
                 continue;
               }
 
@@ -524,18 +629,20 @@ public class WalletService {
                       "Liquidate %s shares of %s @ %s",
                       holding.quantity(), stock.fullName(), stock.currentPrice()),
                   idempotencyKey,
+                  resolvedSeasonYear,
+                  resolvedSeasonType,
                   stock.currentPrice(),
                   null);
               liquidationCount.incrementAndGet();
             }
 
             portfolioServiceClient.clearHoldings(wallet.getUserId(), leagueId);
-            if (seasonType != null && !seasonType.isBlank()) {
+            if (resolvedSeasonType != null && !resolvedSeasonType.isBlank()) {
               portfolioServiceClient.finalizeHistory(
                   wallet.getUserId(),
                   leagueId,
                   weekNumber,
-                  seasonType,
+                  resolvedSeasonType,
                   lockedWallet.getBalance());
             }
           });
@@ -554,22 +661,47 @@ public class WalletService {
   }
 
   private Transaction findExistingTransaction(String idempotencyKey, Long userId, Long leagueId) {
+    SeasonContext seasonContext = resolveCurrentSeasonContext();
+    return findExistingTransaction(
+        idempotencyKey, userId, leagueId, seasonContext.seasonYear(), seasonContext.seasonType());
+  }
+
+  private Transaction findExistingTransaction(
+      String idempotencyKey,
+      Long userId,
+      Long leagueId,
+      Integer seasonYear,
+      String seasonType) {
     return transactionRepository
-        .findByIdempotencyKey(idempotencyKey)
-        .filter(tx -> tx.getUserId().equals(userId) && tx.getLeagueId().equals(leagueId))
+        .findByIdempotencyKeyAndLeagueIdAndUserIdAndSeasonYearAndSeasonType(
+            idempotencyKey, leagueId, userId, seasonYear, seasonType)
         .orElse(null);
   }
 
   private Transaction loadRequiredTransaction(String idempotencyKey, Long userId, Long leagueId) {
+    SeasonContext seasonContext = resolveCurrentSeasonContext();
+    return loadRequiredTransaction(
+        idempotencyKey, userId, leagueId, seasonContext.seasonYear(), seasonContext.seasonType());
+  }
+
+  private Transaction loadRequiredTransaction(
+      String idempotencyKey,
+      Long userId,
+      Long leagueId,
+      Integer seasonYear,
+      String seasonType) {
     Transaction existingTransaction =
         transactionRepository
-            .findByIdempotencyKey(idempotencyKey)
+            .findByIdempotencyKeyAndLeagueIdAndUserIdAndSeasonYearAndSeasonType(
+                idempotencyKey, leagueId, userId, seasonYear, seasonType)
             .orElseThrow(
                 () ->
                     new InvalidTradeRequestException(
                         "Trade replay failed for idempotency key " + idempotencyKey));
     if (!existingTransaction.getUserId().equals(userId)
-        || !existingTransaction.getLeagueId().equals(leagueId)) {
+        || !existingTransaction.getLeagueId().equals(leagueId)
+        || !existingTransaction.getSeasonYear().equals(seasonYear)
+        || !existingTransaction.getSeasonType().equals(seasonType)) {
       throw new InvalidTradeRequestException(
           "Idempotency key is already in use by another trade context");
     }
@@ -606,4 +738,18 @@ public class WalletService {
       throw new TransactionAccessDeniedException("User is not a member of league " + leagueId);
     }
   }
+
+  private SeasonContext resolveCurrentSeasonContext() {
+    CurrentWeekResponse currentWeek = ingestionServiceClient.getCurrentWeek();
+    return new SeasonContext(currentWeek.seasonYear(), currentWeek.seasonType());
+  }
+
+  private SeasonContext resolveSeasonContext(Integer seasonYear, String seasonType) {
+    if (seasonYear != null && seasonType != null && !seasonType.isBlank()) {
+      return new SeasonContext(seasonYear, seasonType);
+    }
+    return resolveCurrentSeasonContext();
+  }
+
+  private record SeasonContext(Integer seasonYear, String seasonType) {}
 }

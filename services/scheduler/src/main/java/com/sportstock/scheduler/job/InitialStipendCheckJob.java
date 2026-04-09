@@ -4,6 +4,7 @@ import com.sportstock.common.dto.league.LeagueResponse;
 import com.sportstock.scheduler.client.IngestionClient;
 import com.sportstock.scheduler.client.LeagueClient;
 import com.sportstock.scheduler.client.TransactionClient;
+import com.sportstock.scheduler.season.SeasonPhase;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +30,13 @@ public class InitialStipendCheckJob {
         return;
       }
 
+      var currentWeek = ingestionClient.getCurrentWeek();
+      SeasonPhase currentPhase = SeasonPhase.fromSeasonType(currentWeek.seasonType());
+      if (!currentPhase.supportsLeagueGameplay()) {
+        log.info("Skipping initial stipend check for non-gameplay phase {}", currentPhase);
+        return;
+      }
+
       List<LeagueResponse> pendingLeagues = leagueClient.getPendingInitialStipendLeagues();
       if (pendingLeagues.isEmpty()) {
         log.info("No leagues pending initial stipend");
@@ -38,7 +46,7 @@ public class InitialStipendCheckJob {
       log.info("Found {} leagues pending initial stipend", pendingLeagues.size());
 
       for (LeagueResponse league : pendingLeagues) {
-        processLeague(league);
+        processLeague(league, currentWeek.seasonYear(), currentWeek.seasonType());
       }
 
       log.info("InitialStipendCheckJob completed");
@@ -49,7 +57,7 @@ public class InitialStipendCheckJob {
     }
   }
 
-  private void processLeague(LeagueResponse league) {
+  private void processLeague(LeagueResponse league, Integer seasonYear, String seasonType) {
     Long leagueId = league.id();
     try {
       List<Long> memberIds = leagueClient.getMemberUserIds(leagueId);
@@ -58,7 +66,12 @@ public class InitialStipendCheckJob {
         return;
       }
 
-      transactionClient.issueInitialStipends(leagueId, league.initialStipendAmount(), memberIds);
+      transactionClient.issueInitialStipends(
+          leagueId,
+          league.initialStipendAmount(),
+          memberIds,
+          seasonYear,
+          seasonType);
       log.info("Issued initial stipends for league {}", leagueId);
 
       leagueClient.updateInitialStipendStatus(leagueId, "ISSUED");

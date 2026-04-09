@@ -4,6 +4,7 @@ import com.sportstock.common.dto.ingestion.CurrentWeekResponse;
 import com.sportstock.scheduler.client.IngestionClient;
 import com.sportstock.scheduler.client.StockMarketClient;
 import com.sportstock.scheduler.config.ProjectionSyncLock;
+import com.sportstock.scheduler.season.SeasonPhase;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -36,6 +37,11 @@ public class ProjectionSyncJob {
       }
 
       CurrentWeekResponse week = ingestionClient.getCurrentWeek();
+      SeasonPhase currentPhase = SeasonPhase.fromSeasonType(week.seasonType());
+      if (!currentPhase.supportsDataSync()) {
+        log.info("Phase {} does not require projection sync", currentPhase);
+        return;
+      }
       int seasonYear = week.seasonYear();
       int seasonType = Integer.parseInt(week.seasonType());
       int weekNumber = week.week();

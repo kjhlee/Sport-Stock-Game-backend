@@ -13,6 +13,8 @@ CREATE TABLE transactions
     reference_id    VARCHAR(255),
     description     VARCHAR(512),
     idempotency_key VARCHAR(255),
+    season_year     INTEGER        NOT NULL,
+    season_type     VARCHAR(32)    NOT NULL,
     price_per_share     NUMERIC(19, 4),
     buy_transaction_id  BIGINT REFERENCES transactions(id),
     created_at      TIMESTAMPTZ    NOT NULL DEFAULT NOW(),
@@ -28,7 +30,10 @@ CREATE INDEX idx_transactions_user_id ON transactions (user_id);
 CREATE INDEX idx_transactions_type ON transactions (type);
 CREATE INDEX idx_transactions_created_at ON transactions (created_at);
 CREATE INDEX idx_transactions_user_league ON transactions (user_id, league_id, created_at DESC);
-CREATE UNIQUE INDEX idx_transactions_idempotency_key ON transactions (idempotency_key)
+CREATE UNIQUE INDEX idx_transactions_idempotency_context
+    ON transactions (idempotency_key, league_id, user_id, season_year, season_type)
     WHERE idempotency_key IS NOT NULL;
 CREATE INDEX idx_transactions_buy_tx_id ON transactions(buy_transaction_id)
     WHERE buy_transaction_id IS NOT NULL;
+CREATE INDEX idx_transactions_user_league_season
+    ON transactions (user_id, league_id, season_year, season_type, created_at DESC);

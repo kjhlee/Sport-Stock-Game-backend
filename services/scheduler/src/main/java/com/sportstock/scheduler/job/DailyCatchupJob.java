@@ -3,6 +3,7 @@ package com.sportstock.scheduler.job;
 import com.sportstock.common.dto.ingestion.CurrentWeekResponse;
 import com.sportstock.common.dto.ingestion.EventResponse;
 import com.sportstock.scheduler.client.IngestionClient;
+import com.sportstock.scheduler.season.SeasonPhase;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -31,6 +32,11 @@ public class DailyCatchupJob {
       }
 
       CurrentWeekResponse week = ingestionClient.getCurrentWeek();
+      SeasonPhase currentPhase = SeasonPhase.fromSeasonType(week.seasonType());
+      if (!currentPhase.supportsDataSync()) {
+        log.info("Phase {} does not require daily catchup", currentPhase);
+        return;
+      }
       int seasonYear = week.seasonYear();
       int seasonType = Integer.parseInt(week.seasonType());
       int weekNumber = week.week();

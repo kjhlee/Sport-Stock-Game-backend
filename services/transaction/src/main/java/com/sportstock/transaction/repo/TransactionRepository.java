@@ -17,9 +17,19 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
 
   Page<Transaction> findByWalletIdOrderByCreatedAtDesc(Long walletId, Pageable pageable);
 
-  boolean existsByIdempotencyKey(String idempotencyKey);
+  boolean existsByIdempotencyKeyAndLeagueIdAndUserIdAndSeasonYearAndSeasonType(
+      String idempotencyKey,
+      Long leagueId,
+      Long userId,
+      Integer seasonYear,
+      String seasonType);
 
-  Optional<Transaction> findByIdempotencyKey(String idempotencyKey);
+  Optional<Transaction> findByIdempotencyKeyAndLeagueIdAndUserIdAndSeasonYearAndSeasonType(
+      String idempotencyKey,
+      Long leagueId,
+      Long userId,
+      Integer seasonYear,
+      String seasonType);
 
   Page<Transaction> findByLeagueIdAndType(Long leagueId, TransactionType type, Pageable pageable);
 

@@ -128,6 +128,7 @@ class LeagueServiceComprehensiveTest {
       League savedLeague = leagueCaptor.getValue();
       assertEquals(100L, savedLeague.getOwnerUserId());
       assertEquals(LeagueStatus.INACTIVE, savedLeague.getStatus());
+      assertEquals(InitialStipendStatus.PENDING, savedLeague.getInitialStipendStatus());
       assertEquals(10, savedLeague.getMaxMembers());
 
       LeagueMember savedMember = memberCaptor.getValue();

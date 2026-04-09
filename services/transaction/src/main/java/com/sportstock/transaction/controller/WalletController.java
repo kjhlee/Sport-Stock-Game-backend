@@ -54,14 +54,23 @@ public class WalletController {
   public StipendResultResponse issueInitialStipends(
       @Valid @RequestBody IssueStipendRequest request) {
     return walletService.issueInitialStipends(
-        request.leagueId(), request.amount(), request.userIds());
+        request.leagueId(),
+        request.amount(),
+        request.userIds(),
+        request.seasonYear(),
+        request.seasonType());
   }
 
   @PostMapping("/internal/wallets/stipends/weekly")
   @ResponseStatus(HttpStatus.OK)
   public StipendResultResponse issueWeeklyStipends(
       @Valid @RequestBody IssueStipendRequest request, @RequestParam Integer weekNumber) {
-    return walletService.issueWeeklyStipends(request.leagueId(), request.amount(), weekNumber);
+    return walletService.issueWeeklyStipends(
+        request.leagueId(),
+        request.amount(),
+        weekNumber,
+        request.seasonYear(),
+        request.seasonType());
   }
 
   @PostMapping("/v1/wallets/buy")
@@ -94,8 +103,9 @@ public class WalletController {
   public StipendResultResponse liquidateAssets(
       @RequestParam Long leagueId,
       @RequestParam int weekNumber,
+      @RequestParam(required = false) Integer seasonYear,
       @RequestParam(required = false) String seasonType) {
-    return walletService.liquidateAssets(leagueId, weekNumber, seasonType);
+    return walletService.liquidateAssets(leagueId, weekNumber, seasonYear, seasonType);
   }
 
   @PostMapping("/internal/wallets/history/initialize")

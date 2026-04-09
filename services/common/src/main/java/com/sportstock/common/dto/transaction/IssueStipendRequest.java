@@ -8,4 +8,11 @@ import java.util.List;
 public record IssueStipendRequest(
     @NotNull Long leagueId,
     @NotNull @DecimalMin(value = "0.0", inclusive = false) BigDecimal amount,
-    List<Long> userIds) {}
+    List<Long> userIds,
+    Integer seasonYear,
+    String seasonType) {
+
+  public IssueStipendRequest(Long leagueId, BigDecimal amount, List<Long> userIds) {
+    this(leagueId, amount, userIds, null, null);
+  }
+}

@@ -114,12 +114,24 @@ public class PortfolioServiceClient {
 
   public void initializeHistory(
       Long userId, Long leagueId, Integer weekNumber, String seasonType, BigDecimal value) {
-    submitHistory("/api/internal/portfolio/history/initialize", userId, leagueId, weekNumber, seasonType, value);
+    submitHistory(
+        "/api/internal/portfolio/history/initialize",
+        userId,
+        leagueId,
+        weekNumber,
+        seasonType,
+        value);
   }
 
   public void finalizeHistory(
       Long userId, Long leagueId, Integer weekNumber, String seasonType, BigDecimal value) {
-    submitHistory("/api/internal/portfolio/history/finalize", userId, leagueId, weekNumber, seasonType, value);
+    submitHistory(
+        "/api/internal/portfolio/history/finalize",
+        userId,
+        leagueId,
+        weekNumber,
+        seasonType,
+        value);
   }
 
   private void submitHistory(

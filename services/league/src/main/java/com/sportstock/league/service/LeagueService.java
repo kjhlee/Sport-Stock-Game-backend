@@ -55,6 +55,7 @@ public class LeagueService {
     league.setStatus(LeagueStatus.INACTIVE);
     league.setInitialStipendAmount(req.initialStipendAmount());
     league.setWeeklyStipendAmount(req.weeklyStipendAmount());
+    league.setInitialStipendStatus(InitialStipendStatus.PENDING);
     leagueRepository.save(league);
 
     LeagueMember member = new LeagueMember();
@@ -181,20 +182,18 @@ public class LeagueService {
     if (currentWeek == null) {
       throw new LeagueStateException("League cannot be started during the NFL offseason");
     }
-    if ("3".equals(currentWeek.seasonType())) {
-      throw new LeagueStateException("League cannot be started during the NFL postseason");
+    if (!"1".equals(currentWeek.seasonType()) && !"2".equals(currentWeek.seasonType())) {
+      throw new LeagueStateException("League can only be started during the NFL preseason or regular season");
     }
 
     league.setStartedAt(OffsetDateTime.now());
     league.setStatus(LeagueStatus.ACTIVE);
-
-    if ("1".equals(currentWeek.seasonType())) {
-      league.setInitialStipendStatus(InitialStipendStatus.PENDING);
-      log.info("League {} started during preseason; initial stipend remains pending", leagueId);
-    } else {
+    if ("2".equals(currentWeek.seasonType())) {
       league.setInitialStipendStatus(InitialStipendStatus.ISSUED);
       transactionServiceClient.issueInitialStipends(leagueId, league.getInitialStipendAmount());
       league.setInitialStipendIssuedAt(OffsetDateTime.now());
+    } else {
+      league.setInitialStipendStatus(InitialStipendStatus.PENDING);
     }
 
     leagueRepository.save(league);

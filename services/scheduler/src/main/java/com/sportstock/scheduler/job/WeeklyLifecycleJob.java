@@ -11,6 +11,7 @@ import com.sportstock.scheduler.client.TransactionClient;
 import com.sportstock.scheduler.config.ProjectionSyncLock;
 import com.sportstock.scheduler.entity.EventState;
 import com.sportstock.scheduler.repo.EventStateRepository;
+import com.sportstock.scheduler.season.SeasonPhase;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -56,16 +57,18 @@ public class WeeklyLifecycleJob {
       int currentWeekNum = currentWeek.week();
       int seasonYear = currentWeek.seasonYear();
       int seasonType = Integer.parseInt(currentWeek.seasonType());
+      SeasonPhase currentPhase = SeasonPhase.fromSeasonType(currentWeek.seasonType());
 
       log.info(
-          "Running weekly lifecycle: season {}/{}, currentWeek={}",
+          "Running weekly lifecycle: season {}/{}, phase={}, currentWeek={}",
           seasonYear,
           seasonType,
+          currentPhase,
           currentWeekNum);
 
       CurrentWeekResponse priorWeek = ingestionClient.getPriorWeek();
 
-      if (priorWeek != null) {
+      if (priorWeek != null && currentPhase.supportsLeagueGameplay()) {
         int priorSeasonYear = priorWeek.seasonYear();
         int priorSeasonType = Integer.parseInt(priorWeek.seasonType());
         int priorWeekNum = priorWeek.week();
@@ -74,14 +77,26 @@ public class WeeklyLifecycleJob {
             "Prior week: season {}/{} week {}", priorSeasonYear, priorSeasonType, priorWeekNum);
         forceFinalizePriorWeek(priorSeasonYear, priorSeasonType, priorWeekNum);
       } else {
-        log.info("No prior week (first week of season), skipping force-finalize and liquidation");
+        log.info(
+            "Skipping prior-week gameplay finalization: priorWeekPresent={} currentPhase={}",
+            priorWeek != null,
+            currentPhase);
       }
 
-      List<LeagueResponse> activeLeagues = leagueClient.getActiveLeagues();
-      log.info("Processing {} active leagues", activeLeagues.size());
+      if (currentPhase.supportsLeagueGameplay()) {
+        List<LeagueResponse> activeLeagues = leagueClient.getActiveLeagues();
+        log.info("Processing {} active leagues", activeLeagues.size());
 
-      for (LeagueResponse league : activeLeagues) {
-        processLeague(league, currentWeekNum, currentWeek.seasonType(), priorWeek);
+        for (LeagueResponse league : activeLeagues) {
+          processLeague(
+              league,
+              currentWeekNum,
+              currentWeek.seasonYear(),
+              currentWeek.seasonType(),
+              priorWeek);
+        }
+      } else {
+        log.info("Skipping league gameplay lifecycle for phase {}", currentPhase);
       }
 
       try {
@@ -108,7 +123,7 @@ public class WeeklyLifecycleJob {
         log.warn("Skipping delist step because projection sync failed or updated 0 prices");
       }
 
-      if (priorWeek != null) {
+      if (priorWeek != null && currentPhase.supportsLeagueGameplay()) {
         clearPriorWeekEventStates(
             priorWeek.week(), priorWeek.seasonYear(), Integer.parseInt(priorWeek.seasonType()));
       }
@@ -181,6 +196,7 @@ public class WeeklyLifecycleJob {
   private void processLeague(
       LeagueResponse league,
       int currentWeekNum,
+      int currentSeasonYear,
       String currentSeasonType,
       CurrentWeekResponse priorWeek) {
     Long leagueId = league.id();
@@ -188,7 +204,7 @@ public class WeeklyLifecycleJob {
     if (priorWeek != null) {
       try {
         transactionClient.liquidateAssets(
-            leagueId, priorWeek.week(), priorWeek.seasonType());
+            leagueId, priorWeek.week(), priorWeek.seasonYear(), priorWeek.seasonType());
         log.info("Liquidated assets for league {} week {}", leagueId, priorWeek.week());
       } catch (Exception e) {
         log.warn(
@@ -200,7 +216,12 @@ public class WeeklyLifecycleJob {
     }
 
     try {
-      transactionClient.issueWeeklyStipends(leagueId, league.weeklyStipendAmount(), currentWeekNum);
+      transactionClient.issueWeeklyStipends(
+          leagueId,
+          league.weeklyStipendAmount(),
+          currentWeekNum,
+          currentSeasonYear,
+          currentSeasonType);
       log.info("Issued weekly stipend for league {} week {}", leagueId, currentWeekNum);
     } catch (Exception e) {
       log.error(

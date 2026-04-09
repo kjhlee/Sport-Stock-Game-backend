@@ -17,7 +17,15 @@ public class TransactionClient {
 
   public StipendResultResponse issueWeeklyStipends(
       Long leagueId, BigDecimal amount, int weekNumber) {
+    return issueWeeklyStipends(leagueId, amount, weekNumber, null, null);
+  }
+
+  public StipendResultResponse issueWeeklyStipends(
+      Long leagueId, BigDecimal amount, int weekNumber, Integer seasonYear, String seasonType) {
     IssueStipendRequest request = new IssueStipendRequest(leagueId, amount, null);
+    if (seasonYear != null || seasonType != null) {
+      request = new IssueStipendRequest(leagueId, amount, null, seasonYear, seasonType);
+    }
     return restClient
         .post()
         .uri(
@@ -30,10 +38,11 @@ public class TransactionClient {
   }
 
   public void liquidateAssets(Long leagueId, int weekNumber) {
-    liquidateAssets(leagueId, weekNumber, null);
+    liquidateAssets(leagueId, weekNumber, null, null);
   }
 
-  public void liquidateAssets(Long leagueId, int weekNumber, String seasonType) {
+  public void liquidateAssets(
+      Long leagueId, int weekNumber, Integer seasonYear, String seasonType) {
     restClient
         .post()
         .uri(
@@ -42,6 +51,8 @@ public class TransactionClient {
                     .path("/liquidate")
                     .queryParam("leagueId", leagueId)
                     .queryParam("weekNumber", weekNumber)
+                    .queryParamIfPresent(
+                        "seasonYear", java.util.Optional.ofNullable(seasonYear))
                     .queryParamIfPresent(
                         "seasonType", java.util.Optional.ofNullable(seasonType))
                     .build())
@@ -52,7 +63,19 @@ public class TransactionClient {
 
   public StipendResultResponse issueInitialStipends(
       Long leagueId, BigDecimal amount, List<Long> userIds) {
+    return issueInitialStipends(leagueId, amount, userIds, null, null);
+  }
+
+  public StipendResultResponse issueInitialStipends(
+      Long leagueId,
+      BigDecimal amount,
+      List<Long> userIds,
+      Integer seasonYear,
+      String seasonType) {
     IssueStipendRequest request = new IssueStipendRequest(leagueId, amount, userIds);
+    if (seasonYear != null || seasonType != null) {
+      request = new IssueStipendRequest(leagueId, amount, userIds, seasonYear, seasonType);
+    }
     return restClient
         .post()
         .uri("/stipends/initial")
