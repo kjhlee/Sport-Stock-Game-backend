@@ -11,10 +11,10 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "services.portfolio")
 public class PortfolioServiceProperties {
 
-    private String baseUrl;
-    private int port;
+  private String baseUrl;
+  private int port;
 
-    public String getFullUrl() {
-        return baseUrl + ":" + port;
-    }
+  public String getFullUrl() {
+    return baseUrl + ":" + port;
+  }
 }

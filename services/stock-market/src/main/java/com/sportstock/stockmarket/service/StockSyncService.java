@@ -215,12 +215,13 @@ public class StockSyncService {
     return switch (normalized) {
       case "ACTIVE" -> StockStatus.ACTIVE;
       case "INACTIVE",
-          "DELISTED",
-          "INJURED_RESERVE",
-          "PHYSICALLY_UNABLE_TO_PERFORM",
-          "SUSPENDED",
-          "NON_FOOTBALL_INJURY",
-          "PRACTICE_SQUAD" -> StockStatus.DELISTED;
+              "DELISTED",
+              "INJURED_RESERVE",
+              "PHYSICALLY_UNABLE_TO_PERFORM",
+              "SUSPENDED",
+              "NON_FOOTBALL_INJURY",
+              "PRACTICE_SQUAD" ->
+          StockStatus.DELISTED;
       default -> {
         log.warn(
             "Unknown ESPN statusType '{}' for athlete {}, defaulting to ACTIVE",

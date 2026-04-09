@@ -81,11 +81,7 @@ public class SchedulerAdminController {
       @RequestParam Integer weekNumber) {
     Map<String, Object> response = new LinkedHashMap<>();
 
-    runStep(
-        response,
-        "preseasonBootstrap",
-        () -> preseasonBootstrapJob.run(seasonYear),
-        "ok");
+    runStep(response, "preseasonBootstrap", () -> preseasonBootstrapJob.run(seasonYear), "ok");
     runStep(
         response,
         "scoreboardSync",
@@ -146,7 +142,10 @@ public class SchedulerAdminController {
   }
 
   private void runStep(
-      Map<String, Object> response, String stepName, java.util.function.Supplier<?> supplier, Object unused) {
+      Map<String, Object> response,
+      String stepName,
+      java.util.function.Supplier<?> supplier,
+      Object unused) {
     try {
       Object result = supplier.get();
       response.put(stepName, result != null ? result : "ok");

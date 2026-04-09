@@ -111,9 +111,7 @@ public class WalletController {
   @PostMapping("/internal/wallets/history/initialize")
   @ResponseStatus(HttpStatus.OK)
   public void initializePortfolioHistory(
-      @RequestParam Long leagueId,
-      @RequestParam int weekNumber,
-      @RequestParam String seasonType) {
+      @RequestParam Long leagueId, @RequestParam int weekNumber, @RequestParam String seasonType) {
     walletService.initializePortfolioHistory(leagueId, weekNumber, seasonType);
   }
 

@@ -51,10 +51,8 @@ public class TransactionClient {
                     .path("/liquidate")
                     .queryParam("leagueId", leagueId)
                     .queryParam("weekNumber", weekNumber)
-                    .queryParamIfPresent(
-                        "seasonYear", java.util.Optional.ofNullable(seasonYear))
-                    .queryParamIfPresent(
-                        "seasonType", java.util.Optional.ofNullable(seasonType))
+                    .queryParamIfPresent("seasonYear", java.util.Optional.ofNullable(seasonYear))
+                    .queryParamIfPresent("seasonType", java.util.Optional.ofNullable(seasonType))
                     .build())
         .retrieve()
         .toBodilessEntity();
@@ -67,11 +65,7 @@ public class TransactionClient {
   }
 
   public StipendResultResponse issueInitialStipends(
-      Long leagueId,
-      BigDecimal amount,
-      List<Long> userIds,
-      Integer seasonYear,
-      String seasonType) {
+      Long leagueId, BigDecimal amount, List<Long> userIds, Integer seasonYear, String seasonType) {
     IssueStipendRequest request = new IssueStipendRequest(leagueId, amount, userIds);
     if (seasonYear != null || seasonType != null) {
       request = new IssueStipendRequest(leagueId, amount, userIds, seasonYear, seasonType);

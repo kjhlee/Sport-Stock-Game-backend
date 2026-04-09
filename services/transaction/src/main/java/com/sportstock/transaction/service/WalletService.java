@@ -74,11 +74,7 @@ public class WalletService {
   }
 
   public StipendResultResponse issueInitialStipends(
-      Long leagueId,
-      BigDecimal amount,
-      List<Long> userIds,
-      Integer seasonYear,
-      String seasonType) {
+      Long leagueId, BigDecimal amount, List<Long> userIds, Integer seasonYear, String seasonType) {
     SeasonContext seasonContext = resolveSeasonContext(seasonYear, seasonType);
     final int resolvedSeasonYear = seasonContext.seasonYear();
     final String resolvedSeasonType = seasonContext.seasonType();
@@ -667,11 +663,7 @@ public class WalletService {
   }
 
   private Transaction findExistingTransaction(
-      String idempotencyKey,
-      Long userId,
-      Long leagueId,
-      Integer seasonYear,
-      String seasonType) {
+      String idempotencyKey, Long userId, Long leagueId, Integer seasonYear, String seasonType) {
     return transactionRepository
         .findByIdempotencyKeyAndLeagueIdAndUserIdAndSeasonYearAndSeasonType(
             idempotencyKey, leagueId, userId, seasonYear, seasonType)
@@ -685,11 +677,7 @@ public class WalletService {
   }
 
   private Transaction loadRequiredTransaction(
-      String idempotencyKey,
-      Long userId,
-      Long leagueId,
-      Integer seasonYear,
-      String seasonType) {
+      String idempotencyKey, Long userId, Long leagueId, Integer seasonYear, String seasonType) {
     Transaction existingTransaction =
         transactionRepository
             .findByIdempotencyKeyAndLeagueIdAndUserIdAndSeasonYearAndSeasonType(

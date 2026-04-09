@@ -19,7 +19,9 @@ public class HoldingsService {
 
   public void addHolding(Portfolio portfolio, UUID stockId, BigDecimal quantity) {
     Holdings holding =
-        holdingsRepo.findByPortfolio_IdAndStockId(portfolio.getId(), stockId).orElseGet(Holdings::new);
+        holdingsRepo
+            .findByPortfolio_IdAndStockId(portfolio.getId(), stockId)
+            .orElseGet(Holdings::new);
 
     if (holding.getId() == null) {
       holding.setPortfolio(portfolio);
@@ -41,7 +43,8 @@ public class HoldingsService {
     Holdings holding =
         holdingsRepo
             .findByPortfolio_IdAndStockId(portfolio.getId(), stockId)
-            .orElseThrow(() -> new IllegalArgumentException("Holding not found for stock " + stockId));
+            .orElseThrow(
+                () -> new IllegalArgumentException("Holding not found for stock " + stockId));
 
     BigDecimal updatedQuantity = holding.getQuantity().subtract(quantity);
     if (updatedQuantity.compareTo(BigDecimal.ZERO) < 0) {

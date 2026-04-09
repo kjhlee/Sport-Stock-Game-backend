@@ -3,9 +3,6 @@ package com.sportstock.transaction.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -125,7 +122,8 @@ class WalletServiceComprehensiveTest {
       when(walletRepository.existsByUserIdAndLeagueId(USER_ID, LEAGUE_ID)).thenReturn(true);
       when(transactionRepository.findByUserIdAndLeagueIdOrderByCreatedAtDesc(
               USER_ID, LEAGUE_ID, PageRequest.of(0, 10)))
-          .thenReturn(new PageImpl<>(List.of(stipendTransaction(wallet(USER_ID, LEAGUE_ID, "0.00")))));
+          .thenReturn(
+              new PageImpl<>(List.of(stipendTransaction(wallet(USER_ID, LEAGUE_ID, "0.00")))));
 
       Page<TransactionResponse> response =
           service.getTransactionHistory(USER_ID, LEAGUE_ID, PageRequest.of(0, 10));
@@ -154,7 +152,8 @@ class WalletServiceComprehensiveTest {
               service.processStockBuy(
                   USER_ID,
                   LEAGUE_ID,
-                  new StockTransactionRequest(LEAGUE_ID, STOCK_ID, bd("1.0000"), null, null, "buy")));
+                  new StockTransactionRequest(
+                      LEAGUE_ID, STOCK_ID, bd("1.0000"), null, null, "buy")));
 
       verify(stockMarketServiceClient, never()).getStock(any());
       verify(leagueServiceClient, never()).getMemberUserIdsInternal(any());
@@ -166,10 +165,8 @@ class WalletServiceComprehensiveTest {
 
       when(walletRepository.existsByUserIdAndLeagueId(USER_ID, LEAGUE_ID)).thenReturn(true);
       when(stockMarketServiceClient.getStock(STOCK_ID)).thenReturn(activeStock("50.00"));
-      when(
-              transactionRepository
-                  .findByIdempotencyKeyAndLeagueIdAndUserIdAndSeasonYearAndSeasonType(
-                      "buy-1", LEAGUE_ID, USER_ID, 2026, "2"))
+      when(transactionRepository.findByIdempotencyKeyAndLeagueIdAndUserIdAndSeasonYearAndSeasonType(
+              "buy-1", LEAGUE_ID, USER_ID, 2026, "2"))
           .thenReturn(Optional.empty());
       when(walletRepository.findByUserIdAndLeagueIdForUpdate(USER_ID, LEAGUE_ID))
           .thenReturn(Optional.of(wallet));
@@ -210,10 +207,8 @@ class WalletServiceComprehensiveTest {
       when(walletRepository.existsByUserIdAndLeagueId(USER_ID, LEAGUE_ID)).thenReturn(true);
       when(stockMarketServiceClient.getStock(STOCK_ID)).thenReturn(activeStock("50.00"));
       when(transactionRepository.findById(900L)).thenReturn(Optional.of(buyTransaction));
-      when(
-              transactionRepository
-                  .findByIdempotencyKeyAndLeagueIdAndUserIdAndSeasonYearAndSeasonType(
-                      "sell-1", LEAGUE_ID, USER_ID, 2026, "2"))
+      when(transactionRepository.findByIdempotencyKeyAndLeagueIdAndUserIdAndSeasonYearAndSeasonType(
+              "sell-1", LEAGUE_ID, USER_ID, 2026, "2"))
           .thenReturn(Optional.empty());
       when(transactionRepository.sumSoldQuantityByBuyTransactionId(900L)).thenReturn(bd("3.0000"));
       when(walletRepository.findByUserIdAndLeagueIdForUpdate(USER_ID, LEAGUE_ID))
@@ -251,14 +246,13 @@ class WalletServiceComprehensiveTest {
         when(walletRepository.existsByUserIdAndLeagueId(userId, LEAGUE_ID)).thenReturn(false);
         when(walletRepository.findByUserIdAndLeagueIdForUpdate(userId, LEAGUE_ID))
             .thenReturn(Optional.of(wallet(userId, LEAGUE_ID, "0.00")));
-        when(
-                transactionRepository
-                    .existsByIdempotencyKeyAndLeagueIdAndUserIdAndSeasonYearAndSeasonType(
-                        "INITIAL_STIPEND:" + LEAGUE_ID + ":" + userId + ":2026:2",
-                        LEAGUE_ID,
-                        userId,
-                        2026,
-                        "2"))
+        when(transactionRepository
+                .existsByIdempotencyKeyAndLeagueIdAndUserIdAndSeasonYearAndSeasonType(
+                    "INITIAL_STIPEND:" + LEAGUE_ID + ":" + userId + ":2026:2",
+                    LEAGUE_ID,
+                    userId,
+                    2026,
+                    "2"))
             .thenReturn(false);
       }
       stubWalletSave();
@@ -273,10 +267,9 @@ class WalletServiceComprehensiveTest {
     @Test
     void issueWeeklyStipends_isIdempotentPerWeek() {
       when(leagueServiceClient.getMemberUserIdsInternal(LEAGUE_ID)).thenReturn(List.of(USER_ID));
-      when(
-              transactionRepository
-                  .existsByIdempotencyKeyAndLeagueIdAndUserIdAndSeasonYearAndSeasonType(
-                      "WEEKLY_STIPEND:7:42:3:2026:2", LEAGUE_ID, USER_ID, 2026, "2"))
+      when(transactionRepository
+              .existsByIdempotencyKeyAndLeagueIdAndUserIdAndSeasonYearAndSeasonType(
+                  "WEEKLY_STIPEND:7:42:3:2026:2", LEAGUE_ID, USER_ID, 2026, "2"))
           .thenReturn(true);
 
       StipendResultResponse response = service.issueWeeklyStipends(LEAGUE_ID, bd("100.00"), 3);

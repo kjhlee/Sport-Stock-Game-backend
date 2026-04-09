@@ -24,7 +24,8 @@ public class ProjectionSyncJob {
   @Scheduled(cron = "${scheduler.projection-sync.cron}")
   public void run() {
     if (!projectionSyncLock.tryAcquire()) {
-      log.warn("ProjectionSyncJob skipped because another projection sync chain is already running");
+      log.warn(
+          "ProjectionSyncJob skipped because another projection sync chain is already running");
       return;
     }
 

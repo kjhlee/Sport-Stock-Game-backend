@@ -95,7 +95,8 @@ class StockSyncServiceTest {
 
     ArgumentCaptor<Stock> stockCaptor = ArgumentCaptor.forClass(Stock.class);
     verify(stockRepository).save(stockCaptor.capture());
-    assertEquals(com.sportstock.common.enums.stock_market.StockStatus.ACTIVE,
+    assertEquals(
+        com.sportstock.common.enums.stock_market.StockStatus.ACTIVE,
         stockCaptor.getValue().getStatus());
   }
 
@@ -114,7 +115,8 @@ class StockSyncServiceTest {
 
     ArgumentCaptor<Stock> stockCaptor = ArgumentCaptor.forClass(Stock.class);
     verify(stockRepository).save(stockCaptor.capture());
-    assertEquals(com.sportstock.common.enums.stock_market.StockStatus.ACTIVE,
+    assertEquals(
+        com.sportstock.common.enums.stock_market.StockStatus.ACTIVE,
         stockCaptor.getValue().getStatus());
   }
 
@@ -133,7 +135,8 @@ class StockSyncServiceTest {
 
     ArgumentCaptor<Stock> stockCaptor = ArgumentCaptor.forClass(Stock.class);
     verify(stockRepository).save(stockCaptor.capture());
-    assertEquals(com.sportstock.common.enums.stock_market.StockStatus.DELISTED,
+    assertEquals(
+        com.sportstock.common.enums.stock_market.StockStatus.DELISTED,
         stockCaptor.getValue().getStatus());
   }
 

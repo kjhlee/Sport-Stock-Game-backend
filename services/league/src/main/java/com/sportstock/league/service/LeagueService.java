@@ -183,7 +183,8 @@ public class LeagueService {
       throw new LeagueStateException("League cannot be started during the NFL offseason");
     }
     if (!"1".equals(currentWeek.seasonType()) && !"2".equals(currentWeek.seasonType())) {
-      throw new LeagueStateException("League can only be started during the NFL preseason or regular season");
+      throw new LeagueStateException(
+          "League can only be started during the NFL preseason or regular season");
     }
 
     league.setStartedAt(OffsetDateTime.now());

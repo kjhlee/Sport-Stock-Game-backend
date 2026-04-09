@@ -67,11 +67,7 @@ public class InitialStipendCheckJob {
       }
 
       transactionClient.issueInitialStipends(
-          leagueId,
-          league.initialStipendAmount(),
-          memberIds,
-          seasonYear,
-          seasonType);
+          leagueId, league.initialStipendAmount(), memberIds, seasonYear, seasonType);
       log.info("Issued initial stipends for league {}", leagueId);
 
       leagueClient.updateInitialStipendStatus(leagueId, "ISSUED");

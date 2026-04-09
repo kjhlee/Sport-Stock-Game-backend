@@ -22,19 +22,19 @@ import lombok.Setter;
     schema = "portfolio",
     uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "league_id"}))
 public class Portfolio {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
 
-    @Column(name = "user_id", nullable = false)
-    private Long userId;
+  @Column(name = "user_id", nullable = false)
+  private Long userId;
 
-    @Column(name = "league_id", nullable = false)
-    private Long leagueId;
-    
-    @OneToMany(mappedBy = "portfolio", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Holdings> holdingsList = new ArrayList<>();
+  @Column(name = "league_id", nullable = false)
+  private Long leagueId;
 
-    @OneToMany(mappedBy = "portfolio", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<PortfolioHistory> historyEntries = new ArrayList<>();
+  @OneToMany(mappedBy = "portfolio", cascade = CascadeType.ALL, orphanRemoval = true)
+  private List<Holdings> holdingsList = new ArrayList<>();
+
+  @OneToMany(mappedBy = "portfolio", cascade = CascadeType.ALL, orphanRemoval = true)
+  private List<PortfolioHistory> historyEntries = new ArrayList<>();
 }

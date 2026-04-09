@@ -14,7 +14,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
- 
 
 @Slf4j
 @Component
@@ -31,7 +30,8 @@ public class PortfolioServiceClient {
           .retrieve()
           .toBodilessEntity();
     } catch (RestClientResponseException e) {
-      log.error("Failed to upsert portfolio for user {} league {}: {}", userId, leagueId, e.getMessage());
+      log.error(
+          "Failed to upsert portfolio for user {} league {}: {}", userId, leagueId, e.getMessage());
       throw new TransactionException("Portfolio service unavailable", e);
     }
   }
@@ -99,7 +99,8 @@ public class PortfolioServiceClient {
           .retrieve()
           .body(PortfolioResponse.class);
     } catch (RestClientResponseException e) {
-      log.error("Failed to fetch portfolio for user {} league {}: {}", userId, leagueId, e.getMessage());
+      log.error(
+          "Failed to fetch portfolio for user {} league {}: {}", userId, leagueId, e.getMessage());
       throw new TransactionException("Portfolio service unavailable", e);
     }
   }
@@ -135,7 +136,12 @@ public class PortfolioServiceClient {
   }
 
   private void submitHistory(
-      String uri, Long userId, Long leagueId, Integer weekNumber, String seasonType, BigDecimal value) {
+      String uri,
+      Long userId,
+      Long leagueId,
+      Integer weekNumber,
+      String seasonType,
+      BigDecimal value) {
     try {
       portfolioRestClient
           .post()

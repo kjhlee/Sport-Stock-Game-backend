@@ -43,7 +43,7 @@ public class RestClientConfig {
   }
 
   @Bean
-  public RestClient portfolioRestClient(PortfolioServiceProperties props){
+  public RestClient portfolioRestClient(PortfolioServiceProperties props) {
     HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
 
     JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(client);
