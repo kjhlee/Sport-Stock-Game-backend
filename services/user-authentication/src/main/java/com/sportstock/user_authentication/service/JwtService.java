@@ -1,7 +1,5 @@
 package com.sportstock.user_authentication.service;
 
-// import com.example.user_authentication.security.exceptions.InvalidTokenException;
-// import com.example.user_authentication.security.exceptions.TokenExpiredException;
 import com.sportstock.common.exceptions.InvalidTokenException;
 import com.sportstock.common.exceptions.RefreshTokenExpiredException;
 import io.jsonwebtoken.Claims;
@@ -25,8 +23,6 @@ public class JwtService {
   @Value("${jwt.refresh.expire-interval}")
   private long refreshExpireInterval;
 
-  // TODO: fix the extraClaims to be more specific to the user, such as user id, email, etc.
-  // public String generateToken(Optional<Map<String, String>> extraClaims, String email) {
   public String generateAccessToken(String email, Long id, String username) {
     return Jwts.builder()
         .subject(email)

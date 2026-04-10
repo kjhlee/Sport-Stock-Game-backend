@@ -7,6 +7,13 @@
 out/
 
 # ======================
+# AI tools
+# ======================
+CLAUDE.md
+.claude/
+services/.claude/
+
+# ======================
 # macOS
 # ======================
 .DS_Store
@@ -37,5 +44,4 @@ postman/
 # ======================
 # Git worktrees
 # ======================
-.worktrees/
 .worktrees/

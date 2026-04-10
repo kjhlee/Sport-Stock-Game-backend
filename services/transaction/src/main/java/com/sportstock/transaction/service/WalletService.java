@@ -19,6 +19,7 @@ import com.sportstock.transaction.exception.InsufficientFundsException;
 import com.sportstock.transaction.exception.InvalidTradeRequestException;
 import com.sportstock.transaction.exception.StockNotActiveException;
 import com.sportstock.transaction.exception.TransactionAccessDeniedException;
+import com.sportstock.transaction.exception.TransactionStateException;
 import com.sportstock.transaction.exception.WalletNotFoundException;
 import com.sportstock.transaction.mapper.DtoMapper;
 import com.sportstock.transaction.repo.TransactionRepository;
@@ -585,51 +586,15 @@ public class WalletService {
                 portfolioServiceClient.getPortfolio(wallet.getUserId(), leagueId);
 
             for (HoldingsResponse holding : portfolio.holdingsList()) {
-              String idempotencyKey =
-                  "LIQUIDATE_ASSETS:"
-                      + leagueId
-                      + ":"
-                      + wallet.getUserId()
-                      + ":"
-                      + weekNumber
-                      + ":"
-                      + holding.stockId()
-                      + ":"
-                      + resolvedSeasonYear
-                      + ":"
-                      + resolvedSeasonType;
-
-              if (transactionRepository
-                  .existsByIdempotencyKeyAndLeagueIdAndUserIdAndSeasonYearAndSeasonType(
-                      idempotencyKey,
-                      leagueId,
-                      wallet.getUserId(),
-                      resolvedSeasonYear,
-                      resolvedSeasonType)) {
-                continue;
-              }
-
               StockResponse stock = stockMarketServiceClient.getStock(holding.stockId());
-              BigDecimal liquidationAmount =
-                  holding.quantity().multiply(stock.currentPrice()).setScale(4, RoundingMode.DOWN);
-              if (liquidationAmount.compareTo(BigDecimal.ZERO) <= 0) {
-                continue;
-              }
-
-              creditWallet(
-                  lockedWallet,
-                  liquidationAmount,
-                  TransactionType.LIQUIDATE_ASSETS,
-                  "stock:" + holding.stockId(),
-                  String.format(
-                      "Liquidate %s shares of %s @ %s",
-                      holding.quantity(), stock.fullName(), stock.currentPrice()),
-                  idempotencyKey,
-                  resolvedSeasonYear,
-                  resolvedSeasonType,
-                  stock.currentPrice(),
-                  null);
-              liquidationCount.incrementAndGet();
+              liquidationCount.addAndGet(
+                  liquidateHolding(
+                      lockedWallet,
+                      holding,
+                      stock,
+                      weekNumber,
+                      resolvedSeasonYear,
+                      resolvedSeasonType));
             }
 
             portfolioServiceClient.clearHoldings(wallet.getUserId(), leagueId);
@@ -645,6 +610,102 @@ public class WalletService {
     }
 
     return new StipendResultResponse(leagueId, 0, liquidationCount.get(), BigDecimal.ZERO);
+  }
+
+  private int liquidateHolding(
+      Wallet wallet,
+      HoldingsResponse holding,
+      StockResponse stock,
+      int weekNumber,
+      int seasonYear,
+      String seasonType) {
+    BigDecimal remainingToLiquidate = holding.quantity().setScale(4, RoundingMode.DOWN);
+    if (remainingToLiquidate.compareTo(BigDecimal.ZERO) <= 0) {
+      return 0;
+    }
+
+    String referenceId = "stock:" + holding.stockId();
+    List<Transaction> buyTransactions =
+        transactionRepository.findByUserIdAndLeagueIdAndReferenceIdAndTypeOrderByCreatedAtAsc(
+            wallet.getUserId(), wallet.getLeagueId(), referenceId, TransactionType.STOCK_BUY);
+
+    int liquidatedLots = 0;
+    for (Transaction buyTransaction : buyTransactions) {
+      if (remainingToLiquidate.compareTo(BigDecimal.ZERO) <= 0) {
+        break;
+      }
+
+      BigDecimal buyQuantity =
+          buyTransaction
+              .getAmount()
+              .divide(buyTransaction.getPricePerShare(), 4, RoundingMode.DOWN);
+      BigDecimal soldQuantity =
+          transactionRepository.sumSoldQuantityByBuyTransactionId(buyTransaction.getId());
+      if (soldQuantity == null) {
+        soldQuantity = BigDecimal.ZERO;
+      }
+      BigDecimal openQuantity = buyQuantity.subtract(soldQuantity).setScale(4, RoundingMode.DOWN);
+      if (openQuantity.compareTo(BigDecimal.ZERO) <= 0) {
+        continue;
+      }
+
+      BigDecimal quantityForLot =
+          remainingToLiquidate.min(openQuantity).setScale(4, RoundingMode.DOWN);
+      String idempotencyKey =
+          "LIQUIDATE_ASSETS:"
+              + wallet.getLeagueId()
+              + ":"
+              + wallet.getUserId()
+              + ":"
+              + weekNumber
+              + ":"
+              + holding.stockId()
+              + ":"
+              + buyTransaction.getId()
+              + ":"
+              + seasonYear
+              + ":"
+              + seasonType;
+
+      if (transactionRepository
+          .existsByIdempotencyKeyAndLeagueIdAndUserIdAndSeasonYearAndSeasonType(
+              idempotencyKey, wallet.getLeagueId(), wallet.getUserId(), seasonYear, seasonType)) {
+        remainingToLiquidate = remainingToLiquidate.subtract(quantityForLot);
+        continue;
+      }
+
+      BigDecimal liquidationAmount =
+          quantityForLot.multiply(stock.currentPrice()).setScale(4, RoundingMode.DOWN);
+      if (liquidationAmount.compareTo(BigDecimal.ZERO) <= 0) {
+        continue;
+      }
+
+      creditWallet(
+          wallet,
+          liquidationAmount,
+          TransactionType.LIQUIDATE_ASSETS,
+          referenceId,
+          String.format(
+              "Liquidate %s shares of %s @ %s",
+              quantityForLot, stock.fullName(), stock.currentPrice()),
+          idempotencyKey,
+          seasonYear,
+          seasonType,
+          stock.currentPrice(),
+          buyTransaction.getId());
+      remainingToLiquidate =
+          remainingToLiquidate.subtract(quantityForLot).setScale(4, RoundingMode.DOWN);
+      liquidatedLots++;
+    }
+
+    if (remainingToLiquidate.compareTo(BigDecimal.ZERO) > 0) {
+      throw new TransactionStateException(
+          String.format(
+              "Could not fully liquidate holding for user %s league %s stock %s: %s shares had no open buy lot",
+              wallet.getUserId(), wallet.getLeagueId(), holding.stockId(), remainingToLiquidate));
+    }
+
+    return liquidatedLots;
   }
 
   public void initializePortfolioHistory(Long leagueId, int weekNumber, String seasonType) {

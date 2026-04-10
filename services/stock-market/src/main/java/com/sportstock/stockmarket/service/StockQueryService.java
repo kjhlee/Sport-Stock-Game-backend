@@ -87,6 +87,7 @@ public class StockQueryService {
                     h.getSeasonType(),
                     h.getWeek(),
                     h.getPrice(),
+                    h.getPriceType().name(),
                     h.getRecordedAt()))
         .toList();
   }

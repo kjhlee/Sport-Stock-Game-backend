@@ -8,6 +8,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.sportstock.common.dto.ingestion.CurrentWeekResponse;
+import com.sportstock.common.dto.portfolio.HoldingsResponse;
+import com.sportstock.common.dto.portfolio.PortfolioResponse;
 import com.sportstock.common.dto.stock_market.StockResponse;
 import com.sportstock.common.dto.transaction.StockTransactionRequest;
 import com.sportstock.transaction.client.IngestionServiceClient;
@@ -259,6 +261,50 @@ class WalletServiceTest {
     assertEquals(bd("250.0000"), wallet.getBalance());
     verify(transactionRepository, never()).save(any(Transaction.class));
     verify(walletRepository, never()).save(any(Wallet.class));
+  }
+
+  @Test
+  void liquidateAssets_recordsLiquidationAgainstEachOpenBuyLot() {
+    Wallet wallet = wallet(USER_ID, LEAGUE_ID, "0.0000");
+    Transaction firstBuy = buyTransaction(wallet, "10.0000", "20.0000");
+    Transaction secondBuy = buyTransaction(wallet, "5.0000", "5.0000");
+    secondBuy.setId(901L);
+
+    when(walletRepository.findAllByLeagueId(LEAGUE_ID)).thenReturn(List.of(wallet));
+    when(walletRepository.findByUserIdAndLeagueIdForUpdate(USER_ID, LEAGUE_ID))
+        .thenReturn(Optional.of(wallet));
+    when(portfolioServiceClient.getPortfolio(USER_ID, LEAGUE_ID))
+        .thenReturn(
+            new PortfolioResponse(
+                1L, USER_ID, LEAGUE_ID, List.of(new HoldingsResponse(1L, STOCK_ID, bd("3.0000")))));
+    when(stockMarketServiceClient.getStock(STOCK_ID)).thenReturn(activeStock("15.0000"));
+    when(transactionRepository.findByUserIdAndLeagueIdAndReferenceIdAndTypeOrderByCreatedAtAsc(
+            USER_ID, LEAGUE_ID, "stock:" + STOCK_ID, TransactionType.STOCK_BUY))
+        .thenReturn(List.of(firstBuy, secondBuy));
+    when(transactionRepository.sumSoldQuantityByBuyTransactionId(900L)).thenReturn(BigDecimal.ZERO);
+    when(transactionRepository.sumSoldQuantityByBuyTransactionId(901L)).thenReturn(BigDecimal.ZERO);
+    when(transactionRepository.existsByIdempotencyKeyAndLeagueIdAndUserIdAndSeasonYearAndSeasonType(
+            any(), any(), any(), any(), any()))
+        .thenReturn(false);
+    stubWalletSave();
+    stubTransactionSave();
+
+    var response = service.liquidateAssets(LEAGUE_ID, 1);
+
+    assertEquals(2, response.stipendsIssued());
+    assertEquals(bd("45.0000"), wallet.getBalance());
+
+    ArgumentCaptor<Transaction> transactionCaptor = ArgumentCaptor.forClass(Transaction.class);
+    verify(transactionRepository, org.mockito.Mockito.times(2)).save(transactionCaptor.capture());
+    List<Transaction> saved = transactionCaptor.getAllValues();
+    assertEquals(TransactionType.LIQUIDATE_ASSETS, saved.get(0).getType());
+    assertEquals(900L, saved.get(0).getBuyTransactionId());
+    assertEquals(bd("30.0000"), saved.get(0).getAmount());
+    assertEquals(TransactionType.LIQUIDATE_ASSETS, saved.get(1).getType());
+    assertEquals(901L, saved.get(1).getBuyTransactionId());
+    assertEquals(bd("15.0000"), saved.get(1).getAmount());
+    verify(portfolioServiceClient).clearHoldings(USER_ID, LEAGUE_ID);
+    verify(portfolioServiceClient).finalizeHistory(USER_ID, LEAGUE_ID, 1, "2", bd("45.0000"));
   }
 
   private static Wallet wallet(Long userId, Long leagueId, String balance) {

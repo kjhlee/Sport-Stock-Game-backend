@@ -4,4 +4,9 @@ import java.math.BigDecimal;
 import java.time.Instant;
 
 public record PriceHistoryResponse(
-    int seasonYear, int seasonType, int week, BigDecimal price, Instant recordedAt) {}
+    int seasonYear,
+    int seasonType,
+    int week,
+    BigDecimal price,
+    String priceType,
+    Instant recordedAt) {}

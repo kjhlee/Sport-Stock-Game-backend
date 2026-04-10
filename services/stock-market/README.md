@@ -46,7 +46,7 @@ curl "http://localhost:8130/api/v1/stocks/<uuid>"
 
 ### `GET /api/v1/stocks/{stockId}/price-history`
 
-Returns week-by-week prices ordered by week ascending.
+Returns week-by-week prices ordered by week ascending. Each entry includes `priceType`, such as `BASE` for projection-based prices and `FINAL` for final postgame prices.
 
 Query params:
 
@@ -63,7 +63,7 @@ curl "http://localhost:8130/api/v1/stocks/<uuid>/price-history?seasonYear=2024&s
 
 ### `POST /api/internal/stocks/sync-athletes`
 
-Pulls athletes from the ingestion service and creates/updates `PlayerStock` records. Assigns base prices by position on first creation.
+Pulls athletes from the ingestion service and creates/updates `Stock` records. Assigns base prices by position on first creation.
 
 Query params:
 
@@ -149,7 +149,7 @@ curl -X POST "http://localhost:8090/api/internal/ingestion/sync/scoreboard?seaso
 
 ### Step 3 — Sync player stocks
 
-Creates a `PlayerStock` record for every athlete in ingestion. Run this once (or again after a new roster sync):
+Creates a `Stock` record for every athlete in ingestion. Run this once (or again after a new roster sync):
 
 ```bash
 curl -X POST "http://localhost:8130/api/internal/stocks/sync-athletes"
@@ -181,7 +181,7 @@ Example response:
 }
 ```
 
-`skipped` counts athletes in ingestion that have no matching `PlayerStock` (e.g. positions not tracked).
+`skipped` counts athletes in ingestion that have no matching `Stock` (e.g. positions not tracked).
 
 Repeat for additional weeks to build up history:
 
@@ -258,6 +258,7 @@ Example response:
     "seasonType": 2,
     "week": 1,
     "price": 18.12,
+    "priceType": "BASE",
     "recordedAt": "2024-09-10T02:15:00Z"
   },
   {
@@ -265,6 +266,7 @@ Example response:
     "seasonType": 2,
     "week": 2,
     "price": 20.87,
+    "priceType": "FINAL",
     "recordedAt": "2024-09-17T02:30:00Z"
   },
   {
@@ -272,6 +274,7 @@ Example response:
     "seasonType": 2,
     "week": 3,
     "price": 22.45,
+    "priceType": "BASE",
     "recordedAt": "2024-09-24T02:10:00Z"
   }
 ]
