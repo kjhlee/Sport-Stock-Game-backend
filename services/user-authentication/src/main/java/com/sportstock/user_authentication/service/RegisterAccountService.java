@@ -6,16 +6,12 @@ import com.sportstock.user_authentication.repository.UserAccountRepo;
 import java.time.OffsetDateTime;
 import java.util.HashMap;
 import java.util.Map;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
 public class RegisterAccountService {
-  private static Logger logger = LoggerFactory.getLogger(RegisterAccountService.class);
-
   private final UserAccountRepo accountRepo;
 
   @Autowired BCryptPasswordEncoder passwordEncoder;
@@ -37,7 +33,6 @@ public class RegisterAccountService {
     newAccount.setPassword(hashedPassword);
 
     if (newAccount.getEmail() == null || newAccount.getPassword() == null) {
-      logger.error("Email or password is null for login attempt: {}", email);
       throw new IllegalArgumentException("Email or password cannot be null");
     }
 
@@ -53,7 +48,6 @@ public class RegisterAccountService {
     }
 
     accountRepo.save(newAccount);
-    logger.info("Sucessfully added new user to the database: {}", newAccount);
     return "Account registered successfully";
   }
 }
