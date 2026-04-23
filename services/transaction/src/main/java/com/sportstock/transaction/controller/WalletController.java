@@ -24,7 +24,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @Validated
@@ -113,29 +112,5 @@ public class WalletController {
   public void initializePortfolioHistory(
       @RequestParam Long leagueId, @RequestParam int weekNumber, @RequestParam String seasonType) {
     walletService.initializePortfolioHistory(leagueId, weekNumber, seasonType);
-  }
-
-  @PostMapping("/internal/wallets/stipends/matchup-win")
-  public void matchupWin(@RequestBody IssueStipendRequest request, @RequestParam int weekNumber) {
-    throw new ResponseStatusException(
-        HttpStatus.NOT_IMPLEMENTED, "Matchup win stipend is not implemented");
-  }
-
-  @PostMapping("/internal/wallets/stipends/matchup-loss")
-  public void matchupLoss(@RequestBody IssueStipendRequest request, @RequestParam int weekNumber) {
-    throw new ResponseStatusException(
-        HttpStatus.NOT_IMPLEMENTED, "Matchup loss stipend is not implemented");
-  }
-
-  @PostMapping("/internal/wallets/stipends/playoff-win")
-  public void playoffWin(@RequestBody IssueStipendRequest request, @RequestParam int round) {
-    throw new ResponseStatusException(
-        HttpStatus.NOT_IMPLEMENTED, "Playoff win stipend is not implemented");
-  }
-
-  @PostMapping("/internal/wallets/stipends/playoff-loss")
-  public void playoffLoss(@RequestBody IssueStipendRequest request, @RequestParam int round) {
-    throw new ResponseStatusException(
-        HttpStatus.NOT_IMPLEMENTED, "Playoff loss stipend is not implemented");
   }
 }
