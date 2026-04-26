@@ -4,6 +4,7 @@ import com.sportstock.common.exceptions.MissingAuthenticationException;
 import com.sportstock.transaction.exception.InsufficientFundsException;
 import com.sportstock.transaction.exception.InvalidTradeRequestException;
 import com.sportstock.transaction.exception.StockNotActiveException;
+import com.sportstock.transaction.exception.TransactionAccessDeniedException;
 import com.sportstock.transaction.exception.TransactionException;
 import com.sportstock.transaction.exception.TransactionStateException;
 import com.sportstock.transaction.exception.WalletAlreadyExistsException;
@@ -58,6 +59,12 @@ public class GlobalExceptionHandler {
   public ResponseEntity<Map<String, Object>> handleTransactionStateConflict(
       TransactionStateException ex) {
     return build(HttpStatus.CONFLICT, "CONFLICT", ex.getMessage());
+  }
+
+  @ExceptionHandler(TransactionAccessDeniedException.class)
+  public ResponseEntity<Map<String, Object>> handleTransactionAccessDenied(
+      TransactionAccessDeniedException ex) {
+    return build(HttpStatus.FORBIDDEN, "FORBIDDEN", ex.getMessage());
   }
 
   @ExceptionHandler(MethodArgumentNotValidException.class)

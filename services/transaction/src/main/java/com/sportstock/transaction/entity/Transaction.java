@@ -50,6 +50,12 @@ public class Transaction {
   @Column(name = "user_id", nullable = false)
   private Long userId;
 
+  @Column(name = "season_year", nullable = false)
+  private Integer seasonYear;
+
+  @Column(name = "season_type", nullable = false, length = 32)
+  private String seasonType;
+
   @Size(max = 255)
   @Column(name = "reference_id")
   private String referenceId;
@@ -61,6 +67,12 @@ public class Transaction {
   @Size(max = 255)
   @Column(name = "idempotency_key")
   private String idempotencyKey;
+
+  @Column(name = "price_per_share", precision = 19, scale = 4)
+  private BigDecimal pricePerShare;
+
+  @Column(name = "buy_transaction_id")
+  private Long buyTransactionId;
 
   @Column(name = "created_at", nullable = false)
   private OffsetDateTime createdAt;

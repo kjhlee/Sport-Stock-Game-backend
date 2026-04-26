@@ -32,6 +32,8 @@ public final class DtoMapper {
         entity.getReferenceId(),
         entity.getDescription(),
         entity.getIdempotencyKey(),
+        entity.getPricePerShare(),
+        entity.getBuyTransactionId(),
         entity.getCreatedAt());
   }
 }

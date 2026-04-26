@@ -1,15 +1,15 @@
 package com.sportstock.transaction.controller;
 
-import com.sportstock.common.dto.transaction.CreateWalletRequest;
 import com.sportstock.common.dto.transaction.IssueStipendRequest;
 import com.sportstock.common.dto.transaction.StipendResultResponse;
 import com.sportstock.common.dto.transaction.StockTransactionRequest;
-import com.sportstock.common.dto.transaction.StockTransactionResponse;
 import com.sportstock.common.dto.transaction.TransactionResponse;
 import com.sportstock.common.dto.transaction.WalletResponse;
 import com.sportstock.common.security.CurrentUserProvider;
 import com.sportstock.transaction.service.WalletService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Positive;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -28,68 +28,89 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @Validated
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/wallets")
+@RequestMapping("/api")
 public class WalletController {
 
   private final WalletService walletService;
   private final CurrentUserProvider currentUserProvider;
 
-  @PostMapping("")
-  @ResponseStatus(HttpStatus.CREATED)
-  public WalletResponse createWallet(@Valid @RequestBody CreateWalletRequest request) {
-    Long userId = currentUserProvider.getCurrentUserId();
-    return walletService.createWallet(userId, request.leagueId());
-  }
-
-  @GetMapping("")
+  @GetMapping("/v1/wallets")
   @ResponseStatus(HttpStatus.OK)
-  public WalletResponse getWallet(@RequestParam Long leagueId) {
+  public WalletResponse getWallet(@RequestParam @Positive Long leagueId) {
     Long userId = currentUserProvider.getCurrentUserId();
     return walletService.getWallet(userId, leagueId);
   }
 
-  @GetMapping("/league/{leagueId}")
+  @GetMapping("/v1/wallets/league/{leagueId}")
   @ResponseStatus(HttpStatus.OK)
-  public List<WalletResponse> getLeagueWallets(@PathVariable Long leagueId) {
-    return walletService.getLeagueWallets(leagueId);
+  public List<WalletResponse> getLeagueWallets(@PathVariable @Positive Long leagueId) {
+    Long userId = currentUserProvider.getCurrentUserId();
+    return walletService.getLeagueWallets(userId, leagueId);
   }
 
-  @PostMapping("/stipends/initial")
+  @PostMapping("/internal/wallets/stipends/initial")
   @ResponseStatus(HttpStatus.OK)
   public StipendResultResponse issueInitialStipends(
       @Valid @RequestBody IssueStipendRequest request) {
-    return walletService.issueInitialStipends(request.leagueId(), request.amount());
+    return walletService.issueInitialStipends(
+        request.leagueId(),
+        request.amount(),
+        request.userIds(),
+        request.seasonYear(),
+        request.seasonType());
   }
 
-  @PostMapping("/stipends/weekly")
+  @PostMapping("/internal/wallets/stipends/weekly")
   @ResponseStatus(HttpStatus.OK)
   public StipendResultResponse issueWeeklyStipends(
       @Valid @RequestBody IssueStipendRequest request, @RequestParam Integer weekNumber) {
-    return walletService.issueWeeklyStipends(request.leagueId(), request.amount(), weekNumber);
+    return walletService.issueWeeklyStipends(
+        request.leagueId(),
+        request.amount(),
+        weekNumber,
+        request.seasonYear(),
+        request.seasonType());
   }
 
-  @PostMapping("/buy")
+  @PostMapping("/v1/wallets/buy")
   @ResponseStatus(HttpStatus.OK)
-  public StockTransactionResponse buyStock(@Valid @RequestBody StockTransactionRequest request) {
+  public TransactionResponse buyStock(@Valid @RequestBody StockTransactionRequest request) {
     Long userId = currentUserProvider.getCurrentUserId();
     return walletService.processStockBuy(userId, request.leagueId(), request);
   }
 
-  @PostMapping("/sell")
+  @PostMapping("/v1/wallets/sell")
   @ResponseStatus(HttpStatus.OK)
-  public StockTransactionResponse sellStock(@Valid @RequestBody StockTransactionRequest request) {
+  public TransactionResponse sellStock(@Valid @RequestBody StockTransactionRequest request) {
     Long userId = currentUserProvider.getCurrentUserId();
     return walletService.processStockSell(userId, request.leagueId(), request);
   }
 
-  @GetMapping("/transactions")
+  @GetMapping("/v1/wallets/transactions")
   @ResponseStatus(HttpStatus.OK)
   public Page<TransactionResponse> getTransactionHistory(
       @RequestParam Long leagueId,
-      @RequestParam(defaultValue = "0") int page,
-      @RequestParam(defaultValue = "20") int size) {
+      @RequestParam(defaultValue = "0") @Min(0) int page,
+      @RequestParam(defaultValue = "20") @Min(1) int size) {
     Long userId = currentUserProvider.getCurrentUserId();
     return walletService.getTransactionHistory(
         userId, leagueId, PageRequest.of(page, Math.min(size, 100)));
+  }
+
+  @PostMapping("/internal/wallets/liquidate")
+  @ResponseStatus(HttpStatus.OK)
+  public StipendResultResponse liquidateAssets(
+      @RequestParam Long leagueId,
+      @RequestParam int weekNumber,
+      @RequestParam(required = false) Integer seasonYear,
+      @RequestParam(required = false) String seasonType) {
+    return walletService.liquidateAssets(leagueId, weekNumber, seasonYear, seasonType);
+  }
+
+  @PostMapping("/internal/wallets/history/initialize")
+  @ResponseStatus(HttpStatus.OK)
+  public void initializePortfolioHistory(
+      @RequestParam Long leagueId, @RequestParam int weekNumber, @RequestParam String seasonType) {
+    walletService.initializePortfolioHistory(leagueId, weekNumber, seasonType);
   }
 }

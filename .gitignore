@@ -7,6 +7,13 @@
 out/
 
 # ======================
+# AI tools
+# ======================
+CLAUDE.md
+.claude/
+services/.claude/
+
+# ======================
 # macOS
 # ======================
 .DS_Store
@@ -31,3 +38,10 @@ application-dev.yml
 # Test output
 # ======================
 **/tmp/
+
+postman/
+
+# ======================
+# Git worktrees
+# ======================
+.worktrees/

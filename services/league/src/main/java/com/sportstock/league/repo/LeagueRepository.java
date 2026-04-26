@@ -1,7 +1,8 @@
 package com.sportstock.league.repo;
 
+import com.sportstock.common.enums.league.InitialStipendStatus;
+import com.sportstock.common.enums.league.LeagueStatus;
 import com.sportstock.league.entity.League;
-import com.sportstock.league.enums.LeagueStatus;
 import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
@@ -22,6 +23,8 @@ public interface LeagueRepository extends JpaRepository<League, Long> {
 
   List<League> findByOwnerUserIdAndStatus(Long ownerUserId, LeagueStatus status);
 
-  List<League> findByStatusAndStartedAtIsNotNullAndWeeklyPayoutDowUtcOrderByIdAsc(
-      LeagueStatus status, Short weeklyPayoutDowUtc);
+  List<League> findByStatus(LeagueStatus status);
+
+  List<League> findByStatusAndInitialStipendStatus(
+      LeagueStatus status, InitialStipendStatus initialStipendStatus);
 }

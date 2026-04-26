@@ -4,13 +4,14 @@ import com.sportstock.common.dto.ingestion.CurrentWeekResponse;
 import com.sportstock.ingestion.entity.SeasonWeek;
 import com.sportstock.ingestion.exception.EntityNotFoundException;
 import com.sportstock.ingestion.repo.SeasonWeekRepository;
-import jakarta.transaction.Transactional;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Slf4j
@@ -19,6 +20,7 @@ public class SeasonQueryService {
 
   private final SeasonWeekRepository seasonWeekRepository;
   private static final List<String> SEASON_TYPES = List.of("2", "3"); // season , postseason
+  private static final List<String> ACTIVE_OR_PRESEASON_TYPES = List.of("1", "2", "3");
 
   @Transactional
   public CurrentWeekResponse getCurrentWeek() {
@@ -45,6 +47,68 @@ public class SeasonQueryService {
     Instant now = Instant.now();
     return seasonWeekRepository
         .findNextWeek(now, SEASON_TYPES)
+        .map(
+            sw ->
+                new CurrentWeekResponse(
+                    sw.getSeason().getYear(),
+                    sw.getSeasonTypeValue(),
+                    sw.getSeason().getSeasonTypeName(),
+                    Integer.parseInt(sw.getWeekValue()),
+                    sw.getLabel(),
+                    sw.getStartDate(),
+                    sw.getEndDate()));
+  }
+
+  public boolean isSeasonActive() {
+    try {
+      getCurrentWeek();
+      return true;
+    } catch (EntityNotFoundException e) {
+      return false;
+    } catch (DataAccessException e) {
+      log.error("Database error checking season active status: {}", e.getMessage(), e);
+      throw e;
+    } catch (Exception e) {
+      log.error("Unexpected error checking season active status: {}", e.getMessage(), e);
+      throw e;
+    }
+  }
+
+  public Optional<CurrentWeekResponse> getCurrentWeekOptional() {
+    try {
+      return Optional.of(getCurrentWeek());
+    } catch (Exception e) {
+      return Optional.empty();
+    }
+  }
+
+  @Transactional
+  public Optional<CurrentWeekResponse> getPriorWeek() {
+    Instant now = Instant.now();
+    Optional<SeasonWeek> currentWeekOpt = seasonWeekRepository.findCurrentWeek(now, SEASON_TYPES);
+    if (currentWeekOpt.isEmpty()) {
+      return Optional.empty();
+    }
+
+    SeasonWeek currentWeek = currentWeekOpt.get();
+    return seasonWeekRepository
+        .findPriorWeek(currentWeek.getStartDate(), SEASON_TYPES)
+        .map(
+            sw ->
+                new CurrentWeekResponse(
+                    sw.getSeason().getYear(),
+                    sw.getSeasonTypeValue(),
+                    sw.getSeason().getSeasonTypeName(),
+                    Integer.parseInt(sw.getWeekValue()),
+                    sw.getLabel(),
+                    sw.getStartDate(),
+                    sw.getEndDate()));
+  }
+
+  public Optional<CurrentWeekResponse> getCurrentWeekIncludingPreseasonOptional() {
+    Instant now = Instant.now();
+    return seasonWeekRepository
+        .findCurrentWeek(now, ACTIVE_OR_PRESEASON_TYPES)
         .map(
             sw ->
                 new CurrentWeekResponse(

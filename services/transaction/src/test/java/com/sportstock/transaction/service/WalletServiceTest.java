@@ -1,685 +1,400 @@
 package com.sportstock.transaction.service;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.sportstock.common.dto.ingestion.CurrentWeekResponse;
+import com.sportstock.common.dto.portfolio.HoldingsResponse;
+import com.sportstock.common.dto.portfolio.PortfolioResponse;
 import com.sportstock.common.dto.stock_market.StockResponse;
-import com.sportstock.common.dto.transaction.StipendResultResponse;
 import com.sportstock.common.dto.transaction.StockTransactionRequest;
-import com.sportstock.common.dto.transaction.TransactionResponse;
-import com.sportstock.common.dto.transaction.WalletResponse;
+import com.sportstock.transaction.client.IngestionServiceClient;
 import com.sportstock.transaction.client.LeagueServiceClient;
+import com.sportstock.transaction.client.PortfolioServiceClient;
 import com.sportstock.transaction.client.StockMarketServiceClient;
 import com.sportstock.transaction.entity.Transaction;
 import com.sportstock.transaction.entity.Wallet;
 import com.sportstock.transaction.enums.TransactionType;
-import com.sportstock.transaction.exception.InvalidTradeRequestException;
-import com.sportstock.transaction.exception.WalletAlreadyExistsException;
-import com.sportstock.transaction.exception.WalletNotFoundException;
+import com.sportstock.transaction.exception.InsufficientFundsException;
+import com.sportstock.transaction.exception.TransactionAccessDeniedException;
 import com.sportstock.transaction.repo.TransactionRepository;
 import com.sportstock.transaction.repo.WalletRepository;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.OffsetDateTime;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.AbstractPlatformTransactionManager;
+import org.springframework.transaction.support.DefaultTransactionStatus;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("WalletService Unit Tests")
 class WalletServiceTest {
 
+  private static final Long USER_ID = 42L;
+  private static final Long LEAGUE_ID = 7L;
+  private static final UUID STOCK_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
+
   @Mock private WalletRepository walletRepository;
-
   @Mock private TransactionRepository transactionRepository;
-
-  @Mock private PlatformTransactionManager txManager;
-
   @Mock private LeagueServiceClient leagueServiceClient;
+  @Mock private IngestionServiceClient ingestionServiceClient;
+  @Mock private PortfolioServiceClient portfolioServiceClient;
   @Mock private StockMarketServiceClient stockMarketServiceClient;
 
-  private WalletService walletService;
-
-  @Captor private ArgumentCaptor<Wallet> walletCaptor;
-
-  private static final Long TEST_USER_ID = 1001L;
-  private static final Long TEST_LEAGUE_ID = 1L;
-  private static final BigDecimal INITIAL_BALANCE = BigDecimal.ZERO;
+  private WalletService service;
 
   @BeforeEach
   void setUp() {
-    walletService =
+    service =
         new WalletService(
             walletRepository,
             transactionRepository,
-            txManager,
+            new NoOpTransactionManager(),
             leagueServiceClient,
+            ingestionServiceClient,
+            portfolioServiceClient,
             stockMarketServiceClient);
+    when(ingestionServiceClient.getCurrentWeek())
+        .thenReturn(new CurrentWeekResponse(2026, "2", "REGULAR", 1, "Week 1", null, null));
   }
 
-  @Nested
-  @DisplayName("createWallet() tests")
-  class CreateWalletTests {
+  @Test
+  void processStockBuy_debitsWalletAndRecordsTransaction() {
+    Wallet wallet = wallet(USER_ID, LEAGUE_ID, "100.0000");
+    StockResponse stock = activeStock("12.5000");
 
-    @Test
-    @DisplayName("Should successfully create a new wallet")
-    void shouldCreateNewWallet() {
-      // Given
-      when(walletRepository.existsByUserIdAndLeagueId(TEST_USER_ID, TEST_LEAGUE_ID))
-          .thenReturn(false);
+    when(walletRepository.existsByUserIdAndLeagueId(USER_ID, LEAGUE_ID)).thenReturn(true);
+    stubWalletSave();
+    stubTransactionSave();
+    when(stockMarketServiceClient.getStock(STOCK_ID)).thenReturn(stock);
+    when(transactionRepository.findByIdempotencyKeyAndLeagueIdAndUserIdAndSeasonYearAndSeasonType(
+            "buy-1", LEAGUE_ID, USER_ID, 2026, "2"))
+        .thenReturn(Optional.empty());
+    when(walletRepository.findByUserIdAndLeagueIdForUpdate(USER_ID, LEAGUE_ID))
+        .thenReturn(Optional.of(wallet));
 
-      Wallet savedWallet = createMockWallet(1L, TEST_USER_ID, TEST_LEAGUE_ID, INITIAL_BALANCE);
-      when(walletRepository.save(any(Wallet.class))).thenReturn(savedWallet);
+    var response =
+        service.processStockBuy(
+            USER_ID,
+            LEAGUE_ID,
+            new StockTransactionRequest(LEAGUE_ID, STOCK_ID, bd("2.0000"), null, null, "buy-1"));
 
-      // When
-      WalletResponse response = walletService.createWallet(TEST_USER_ID, TEST_LEAGUE_ID);
+    assertEquals("STOCK_BUY", response.type());
+    assertEquals(bd("25.0000"), response.amount());
+    assertEquals(bd("100.0000"), response.balanceBefore());
+    assertEquals(bd("75.0000"), response.balanceAfter());
+    assertEquals(bd("12.5000"), response.pricePerShare());
+    assertEquals(bd("75.0000"), wallet.getBalance());
 
-      // Then
-      assertThat(response).isNotNull();
-      assertThat(response.userId()).isEqualTo(TEST_USER_ID);
-      assertThat(response.leagueId()).isEqualTo(TEST_LEAGUE_ID);
-      assertThat(response.balance()).isEqualByComparingTo(INITIAL_BALANCE);
-
-      verify(walletRepository).existsByUserIdAndLeagueId(TEST_USER_ID, TEST_LEAGUE_ID);
-      verify(walletRepository).save(walletCaptor.capture());
-
-      Wallet capturedWallet = walletCaptor.getValue();
-      assertThat(capturedWallet.getUserId()).isEqualTo(TEST_USER_ID);
-      assertThat(capturedWallet.getLeagueId()).isEqualTo(TEST_LEAGUE_ID);
-      assertThat(capturedWallet.getBalance()).isEqualByComparingTo(INITIAL_BALANCE);
-    }
-
-    @Test
-    @DisplayName("Should throw WalletAlreadyExistsException when wallet exists")
-    void shouldThrowExceptionWhenWalletExists() {
-      // Given
-      when(walletRepository.existsByUserIdAndLeagueId(TEST_USER_ID, TEST_LEAGUE_ID))
-          .thenReturn(true);
-
-      // When & Then
-      assertThatThrownBy(() -> walletService.createWallet(TEST_USER_ID, TEST_LEAGUE_ID))
-          .isInstanceOf(WalletAlreadyExistsException.class)
-          .hasMessageContaining("userId=" + TEST_USER_ID)
-          .hasMessageContaining("leagueId=" + TEST_LEAGUE_ID);
-
-      verify(walletRepository).existsByUserIdAndLeagueId(TEST_USER_ID, TEST_LEAGUE_ID);
-      verify(walletRepository, never()).save(any(Wallet.class));
-    }
-
-    @Test
-    @DisplayName("Should throw WalletAlreadyExistsException on DataIntegrityViolationException")
-    void shouldHandleConcurrentCreation() {
-      // Given
-      when(walletRepository.existsByUserIdAndLeagueId(TEST_USER_ID, TEST_LEAGUE_ID))
-          .thenReturn(false);
-      when(walletRepository.save(any(Wallet.class)))
-          .thenThrow(new DataIntegrityViolationException("Duplicate key"));
-
-      // When & Then
-      assertThatThrownBy(() -> walletService.createWallet(TEST_USER_ID, TEST_LEAGUE_ID))
-          .isInstanceOf(WalletAlreadyExistsException.class);
-
-      verify(walletRepository).save(any(Wallet.class));
-    }
+    ArgumentCaptor<Transaction> transactionCaptor = ArgumentCaptor.forClass(Transaction.class);
+    verify(transactionRepository).save(transactionCaptor.capture());
+    Transaction saved = transactionCaptor.getValue();
+    assertEquals(TransactionType.STOCK_BUY, saved.getType());
+    assertEquals("stock:" + STOCK_ID, saved.getReferenceId());
+    assertEquals("buy-1", saved.getIdempotencyKey());
+    assertEquals(bd("25.0000"), saved.getAmount());
+    assertEquals(bd("12.5000"), saved.getPricePerShare());
+    verify(leagueServiceClient, never()).getMemberUserIdsInternal(any());
   }
 
-  @Nested
-  @DisplayName("getWallet() tests")
-  class GetWalletTests {
+  @Test
+  void processStockBuy_rejectsWhenFundsAreInsufficient() {
+    Wallet wallet = wallet(USER_ID, LEAGUE_ID, "10.0000");
 
-    @Test
-    @DisplayName("Should successfully retrieve wallet")
-    void shouldGetWallet() {
-      // Given
-      Wallet wallet = createMockWallet(1L, TEST_USER_ID, TEST_LEAGUE_ID, new BigDecimal("1000.00"));
-      when(walletRepository.findByUserIdAndLeagueId(TEST_USER_ID, TEST_LEAGUE_ID))
-          .thenReturn(Optional.of(wallet));
+    when(walletRepository.existsByUserIdAndLeagueId(USER_ID, LEAGUE_ID)).thenReturn(true);
+    when(stockMarketServiceClient.getStock(STOCK_ID)).thenReturn(activeStock("12.5000"));
+    when(transactionRepository.findByIdempotencyKeyAndLeagueIdAndUserIdAndSeasonYearAndSeasonType(
+            "buy-2", LEAGUE_ID, USER_ID, 2026, "2"))
+        .thenReturn(Optional.empty());
+    when(walletRepository.findByUserIdAndLeagueIdForUpdate(USER_ID, LEAGUE_ID))
+        .thenReturn(Optional.of(wallet));
 
-      // When
-      WalletResponse response = walletService.getWallet(TEST_USER_ID, TEST_LEAGUE_ID);
+    assertThrows(
+        InsufficientFundsException.class,
+        () ->
+            service.processStockBuy(
+                USER_ID,
+                LEAGUE_ID,
+                new StockTransactionRequest(
+                    LEAGUE_ID, STOCK_ID, bd("1.0000"), null, null, "buy-2")));
 
-      // Then
-      assertThat(response).isNotNull();
-      assertThat(response.id()).isEqualTo(1L);
-      assertThat(response.userId()).isEqualTo(TEST_USER_ID);
-      assertThat(response.leagueId()).isEqualTo(TEST_LEAGUE_ID);
-      assertThat(response.balance()).isEqualByComparingTo(new BigDecimal("1000.00"));
-
-      verify(walletRepository).findByUserIdAndLeagueId(TEST_USER_ID, TEST_LEAGUE_ID);
-    }
-
-    @Test
-    @DisplayName("Should throw WalletNotFoundException when wallet not found")
-    void shouldThrowExceptionWhenWalletNotFound() {
-      // Given
-      when(walletRepository.findByUserIdAndLeagueId(TEST_USER_ID, TEST_LEAGUE_ID))
-          .thenReturn(Optional.empty());
-
-      // When & Then
-      assertThatThrownBy(() -> walletService.getWallet(TEST_USER_ID, TEST_LEAGUE_ID))
-          .isInstanceOf(WalletNotFoundException.class)
-          .hasMessageContaining("user: " + TEST_USER_ID);
-
-      verify(walletRepository).findByUserIdAndLeagueId(TEST_USER_ID, TEST_LEAGUE_ID);
-    }
+    assertEquals(bd("10.0000"), wallet.getBalance());
+    verify(transactionRepository, never()).save(any(Transaction.class));
+    verify(leagueServiceClient, never()).getMemberUserIdsInternal(any());
   }
 
-  @Nested
-  @DisplayName("getLeagueWallets() tests")
-  class GetLeagueWalletsTests {
+  @Test
+  void processStockBuy_throwsAccessDeniedWhenWalletNotFound() {
+    when(walletRepository.existsByUserIdAndLeagueId(USER_ID, LEAGUE_ID)).thenReturn(false);
 
-    @Test
-    @DisplayName("Should retrieve all wallets for a league")
-    void shouldGetAllLeagueWallets() {
-      // Given
-      List<Wallet> wallets =
-          Arrays.asList(
-              createMockWallet(1L, 1001L, TEST_LEAGUE_ID, new BigDecimal("5000.00")),
-              createMockWallet(2L, 1002L, TEST_LEAGUE_ID, new BigDecimal("6000.00")),
-              createMockWallet(3L, 1003L, TEST_LEAGUE_ID, new BigDecimal("7000.00")));
-      when(walletRepository.findAllByLeagueId(TEST_LEAGUE_ID)).thenReturn(wallets);
+    assertThrows(
+        TransactionAccessDeniedException.class,
+        () ->
+            service.processStockBuy(
+                USER_ID,
+                LEAGUE_ID,
+                new StockTransactionRequest(
+                    LEAGUE_ID, STOCK_ID, bd("1.0000"), null, null, "buy-no-wallet")));
 
-      // When
-      List<WalletResponse> responses = walletService.getLeagueWallets(TEST_LEAGUE_ID);
-
-      // Then
-      assertThat(responses).hasSize(3);
-      assertThat(responses.get(0).userId()).isEqualTo(1001L);
-      assertThat(responses.get(1).userId()).isEqualTo(1002L);
-      assertThat(responses.get(2).userId()).isEqualTo(1003L);
-      assertThat(responses.get(0).balance()).isEqualByComparingTo(new BigDecimal("5000.00"));
-
-      verify(walletRepository).findAllByLeagueId(TEST_LEAGUE_ID);
-    }
-
-    @Test
-    @DisplayName("Should return empty list when no wallets exist")
-    void shouldReturnEmptyListWhenNoWallets() {
-      // Given
-      when(walletRepository.findAllByLeagueId(TEST_LEAGUE_ID)).thenReturn(List.of());
-
-      // When
-      List<WalletResponse> responses = walletService.getLeagueWallets(TEST_LEAGUE_ID);
-
-      // Then
-      assertThat(responses).isEmpty();
-      verify(walletRepository).findAllByLeagueId(TEST_LEAGUE_ID);
-    }
+    verify(leagueServiceClient, never()).getMemberUserIdsInternal(any());
+    verify(stockMarketServiceClient, never()).getStock(any());
   }
 
-  @Nested
-  @DisplayName("getTransactionHistory() tests")
-  class GetTransactionHistoryTests {
+  @Test
+  void processStockSell_creditsWalletAtNinetyPercentOfOriginalBuyPrice() {
+    Wallet wallet = wallet(USER_ID, LEAGUE_ID, "50.0000");
+    Transaction buyTransaction = buyTransaction(wallet, "10.0000", "20.0000");
 
-    @Test
-    @DisplayName("Should retrieve paginated transaction history")
-    void shouldGetTransactionHistory() {
-      // Given
-      Wallet wallet =
-          createMockWallet(1L, TEST_USER_ID, TEST_LEAGUE_ID, new BigDecimal("10000.00"));
+    when(walletRepository.existsByUserIdAndLeagueId(USER_ID, LEAGUE_ID)).thenReturn(true);
+    stubWalletSave();
+    stubTransactionSave();
+    when(stockMarketServiceClient.getStock(STOCK_ID)).thenReturn(activeStock("99.0000"));
+    when(transactionRepository.findById(900L)).thenReturn(Optional.of(buyTransaction));
+    when(transactionRepository.sumSoldQuantityByBuyTransactionId(900L)).thenReturn(BigDecimal.ZERO);
+    when(transactionRepository.findByIdempotencyKeyAndLeagueIdAndUserIdAndSeasonYearAndSeasonType(
+            "sell-1", LEAGUE_ID, USER_ID, 2026, "2"))
+        .thenReturn(Optional.empty());
+    when(walletRepository.findByUserIdAndLeagueIdForUpdate(USER_ID, LEAGUE_ID))
+        .thenReturn(Optional.of(wallet));
 
-      Transaction tx1 =
-          createMockTransaction(
-              1L,
-              wallet,
-              TransactionType.INITIAL_STIPEND,
-              new BigDecimal("10000.00"),
-              BigDecimal.ZERO,
-              new BigDecimal("10000.00"));
-      Transaction tx2 =
-          createMockTransaction(
-              2L,
-              wallet,
-              TransactionType.WEEKLY_STIPEND,
-              new BigDecimal("500.00"),
-              new BigDecimal("10000.00"),
-              new BigDecimal("10500.00"));
+    var response =
+        service.processStockSell(
+            USER_ID,
+            LEAGUE_ID,
+            new StockTransactionRequest(LEAGUE_ID, STOCK_ID, bd("1.0000"), null, 900L, "sell-1"));
 
-      Page<Transaction> transactionPage =
-          new PageImpl<>(Arrays.asList(tx2, tx1), PageRequest.of(0, 20), 2);
+    assertEquals("STOCK_SELL", response.type());
+    assertEquals(bd("9.0000"), response.amount());
+    assertEquals(bd("9.0000"), response.pricePerShare());
+    assertEquals(bd("59.0000"), response.balanceAfter());
+    assertEquals(bd("59.0000"), wallet.getBalance());
 
-      when(transactionRepository.findByUserIdAndLeagueIdOrderByCreatedAtDesc(
-              eq(TEST_USER_ID), eq(TEST_LEAGUE_ID), any(Pageable.class)))
-          .thenReturn(transactionPage);
-
-      // When
-      Page<TransactionResponse> responses =
-          walletService.getTransactionHistory(TEST_USER_ID, TEST_LEAGUE_ID, PageRequest.of(0, 20));
-
-      // Then
-      assertThat(responses.getContent()).hasSize(2);
-      assertThat(responses.getTotalElements()).isEqualTo(2);
-      assertThat(responses.getContent().get(0).type()).isEqualTo("WEEKLY_STIPEND");
-      assertThat(responses.getContent().get(1).type()).isEqualTo("INITIAL_STIPEND");
-
-      verify(transactionRepository)
-          .findByUserIdAndLeagueIdOrderByCreatedAtDesc(
-              eq(TEST_USER_ID), eq(TEST_LEAGUE_ID), any(Pageable.class));
-    }
-
-    @Test
-    @DisplayName("Should return empty page when no transactions exist")
-    void shouldReturnEmptyPageWhenNoTransactions() {
-      // Given
-      Page<Transaction> emptyPage = new PageImpl<>(List.of(), PageRequest.of(0, 20), 0);
-      when(transactionRepository.findByUserIdAndLeagueIdOrderByCreatedAtDesc(
-              eq(TEST_USER_ID), eq(TEST_LEAGUE_ID), any(Pageable.class)))
-          .thenReturn(emptyPage);
-
-      // When
-      Page<TransactionResponse> responses =
-          walletService.getTransactionHistory(TEST_USER_ID, TEST_LEAGUE_ID, PageRequest.of(0, 20));
-
-      // Then
-      assertThat(responses.getContent()).isEmpty();
-      assertThat(responses.getTotalElements()).isZero();
-    }
-
-    @Test
-    @DisplayName("Should handle pagination correctly")
-    void shouldHandlePaginationCorrectly() {
-      // Given
-      Wallet wallet =
-          createMockWallet(1L, TEST_USER_ID, TEST_LEAGUE_ID, new BigDecimal("10000.00"));
-
-      List<Transaction> allTransactions =
-          Arrays.asList(
-              createMockTransaction(
-                  1L,
-                  wallet,
-                  TransactionType.INITIAL_STIPEND,
-                  new BigDecimal("10000.00"),
-                  BigDecimal.ZERO,
-                  new BigDecimal("10000.00")),
-              createMockTransaction(
-                  2L,
-                  wallet,
-                  TransactionType.WEEKLY_STIPEND,
-                  new BigDecimal("500.00"),
-                  new BigDecimal("10000.00"),
-                  new BigDecimal("10500.00")),
-              createMockTransaction(
-                  3L,
-                  wallet,
-                  TransactionType.WEEKLY_STIPEND,
-                  new BigDecimal("500.00"),
-                  new BigDecimal("10500.00"),
-                  new BigDecimal("11000.00")));
-
-      Page<Transaction> page1 =
-          new PageImpl<>(allTransactions.subList(0, 2), PageRequest.of(0, 2), 3);
-
-      Page<Transaction> page2 =
-          new PageImpl<>(allTransactions.subList(2, 3), PageRequest.of(1, 2), 3);
-
-      when(transactionRepository.findByUserIdAndLeagueIdOrderByCreatedAtDesc(
-              eq(TEST_USER_ID), eq(TEST_LEAGUE_ID), eq(PageRequest.of(0, 2))))
-          .thenReturn(page1);
-
-      when(transactionRepository.findByUserIdAndLeagueIdOrderByCreatedAtDesc(
-              eq(TEST_USER_ID), eq(TEST_LEAGUE_ID), eq(PageRequest.of(1, 2))))
-          .thenReturn(page2);
-
-      // When
-      Page<TransactionResponse> firstPage =
-          walletService.getTransactionHistory(TEST_USER_ID, TEST_LEAGUE_ID, PageRequest.of(0, 2));
-      Page<TransactionResponse> secondPage =
-          walletService.getTransactionHistory(TEST_USER_ID, TEST_LEAGUE_ID, PageRequest.of(1, 2));
-
-      // Then
-      assertThat(firstPage.getContent()).hasSize(2);
-      assertThat(firstPage.getTotalElements()).isEqualTo(3);
-      assertThat(firstPage.getTotalPages()).isEqualTo(2);
-
-      assertThat(secondPage.getContent()).hasSize(1);
-      assertThat(secondPage.getTotalElements()).isEqualTo(3);
-      assertThat(secondPage.isLast()).isTrue();
-    }
+    ArgumentCaptor<Transaction> transactionCaptor = ArgumentCaptor.forClass(Transaction.class);
+    verify(transactionRepository).save(transactionCaptor.capture());
+    Transaction saved = transactionCaptor.getValue();
+    assertEquals(TransactionType.STOCK_SELL, saved.getType());
+    assertEquals(900L, saved.getBuyTransactionId());
+    assertEquals(bd("9.0000"), saved.getPricePerShare());
+    verify(leagueServiceClient, never()).getMemberUserIdsInternal(any());
   }
 
-  @Nested
-  @DisplayName("issueInitialStipends() tests")
-  class IssueInitialStipendsTests {
+  @Test
+  void processStockSell_handlesNullSoldQuantityFromRepo() {
+    Wallet wallet = wallet(USER_ID, LEAGUE_ID, "50.0000");
+    Transaction buyTransaction = buyTransaction(wallet, "10.0000", "20.0000");
 
-    @Test
-    @DisplayName("Should return stipend result with league info")
-    void shouldReturnStipendResultWithLeagueInfo() {
-      // Given
-      BigDecimal amount = new BigDecimal("10000.00");
+    when(walletRepository.existsByUserIdAndLeagueId(USER_ID, LEAGUE_ID)).thenReturn(true);
+    stubWalletSave();
+    stubTransactionSave();
+    when(stockMarketServiceClient.getStock(STOCK_ID)).thenReturn(activeStock("99.0000"));
+    when(transactionRepository.findById(900L)).thenReturn(Optional.of(buyTransaction));
+    when(transactionRepository.sumSoldQuantityByBuyTransactionId(900L)).thenReturn(null);
+    when(transactionRepository.findByIdempotencyKeyAndLeagueIdAndUserIdAndSeasonYearAndSeasonType(
+            "sell-null", LEAGUE_ID, USER_ID, 2026, "2"))
+        .thenReturn(Optional.empty());
+    when(walletRepository.findByUserIdAndLeagueIdForUpdate(USER_ID, LEAGUE_ID))
+        .thenReturn(Optional.of(wallet));
 
-      when(leagueServiceClient.getMemberUserIdsInternal(TEST_LEAGUE_ID))
-          .thenReturn(List.of(TEST_USER_ID));
-      Wallet wallet = createMockWallet(1L, TEST_USER_ID, TEST_LEAGUE_ID, INITIAL_BALANCE);
-      when(walletRepository.findByUserIdAndLeagueIdForUpdate(TEST_USER_ID, TEST_LEAGUE_ID))
-          .thenReturn(Optional.of(wallet));
-      when(transactionRepository.existsByIdempotencyKey(any())).thenReturn(false);
+    var response =
+        service.processStockSell(
+            USER_ID,
+            LEAGUE_ID,
+            new StockTransactionRequest(
+                LEAGUE_ID, STOCK_ID, bd("1.0000"), null, 900L, "sell-null"));
 
-      // When
-      StipendResultResponse response = walletService.issueInitialStipends(TEST_LEAGUE_ID, amount);
-
-      // Then
-      assertThat(response).isNotNull();
-      assertThat(response.leagueId()).isEqualTo(TEST_LEAGUE_ID);
-      assertThat(response.amountPerUser()).isEqualByComparingTo(amount);
-    }
-
-    @Test
-    @DisplayName("Should handle empty user list")
-    void shouldHandleEmptyUserList() {
-      // Given
-      BigDecimal amount = new BigDecimal("10000.00");
-      when(leagueServiceClient.getMemberUserIdsInternal(TEST_LEAGUE_ID)).thenReturn(List.of());
-
-      // When
-      StipendResultResponse response = walletService.issueInitialStipends(TEST_LEAGUE_ID, amount);
-
-      // Then
-      assertThat(response).isNotNull();
-      assertThat(response.leagueId()).isEqualTo(TEST_LEAGUE_ID);
-      assertThat(response.walletsCreated()).isZero();
-      assertThat(response.stipendsIssued()).isZero();
-    }
+    assertEquals("STOCK_SELL", response.type());
+    assertEquals(bd("9.0000"), response.amount());
   }
 
-  @Nested
-  @DisplayName("issueWeeklyStipends() tests")
-  class IssueWeeklyStipendsTests {
+  @Test
+  void issueInitialStipends_createsMissingWalletAndCreditsIt() {
+    Wallet wallet = wallet(USER_ID, LEAGUE_ID, "0.0000");
 
-    @Test
-    @DisplayName("Should return stipend result with league info")
-    void shouldReturnStipendResultWithLeagueInfo() {
-      // Given
-      BigDecimal amount = new BigDecimal("500.00");
-      Integer weekNumber = 1;
+    stubWalletSave();
+    stubTransactionSave();
+    when(walletRepository.existsByUserIdAndLeagueId(USER_ID, LEAGUE_ID)).thenReturn(false);
+    when(walletRepository.findByUserIdAndLeagueIdForUpdate(USER_ID, LEAGUE_ID))
+        .thenReturn(Optional.of(wallet));
+    when(transactionRepository.existsByIdempotencyKeyAndLeagueIdAndUserIdAndSeasonYearAndSeasonType(
+            "INITIAL_STIPEND:7:42:2026:2", LEAGUE_ID, USER_ID, 2026, "2"))
+        .thenReturn(false);
 
-      when(leagueServiceClient.getMemberUserIdsInternal(TEST_LEAGUE_ID))
-          .thenReturn(List.of(TEST_USER_ID));
-      Wallet wallet =
-          createMockWallet(1L, TEST_USER_ID, TEST_LEAGUE_ID, new BigDecimal("10000.00"));
-      when(walletRepository.findByUserIdAndLeagueIdForUpdate(TEST_USER_ID, TEST_LEAGUE_ID))
-          .thenReturn(Optional.of(wallet));
-      when(transactionRepository.existsByIdempotencyKey(any())).thenReturn(false);
+    var response = service.issueInitialStipends(LEAGUE_ID, bd("250.0000"), List.of(USER_ID));
 
-      // When
-      StipendResultResponse response =
-          walletService.issueWeeklyStipends(TEST_LEAGUE_ID, amount, weekNumber);
+    assertEquals(1, response.walletsCreated());
+    assertEquals(1, response.stipendsIssued());
+    assertEquals(bd("250.0000"), wallet.getBalance());
 
-      // Then
-      assertThat(response).isNotNull();
-      assertThat(response.leagueId()).isEqualTo(TEST_LEAGUE_ID);
-      assertThat(response.amountPerUser()).isEqualByComparingTo(amount);
-      assertThat(response.walletsCreated()).isZero(); // Weekly stipends don't create wallets
-    }
-
-    @Test
-    @DisplayName("Should handle empty user list")
-    void shouldHandleEmptyUserList() {
-      // Given
-      BigDecimal amount = new BigDecimal("500.00");
-      Integer weekNumber = 1;
-      when(leagueServiceClient.getMemberUserIdsInternal(TEST_LEAGUE_ID)).thenReturn(List.of());
-
-      // When
-      StipendResultResponse response =
-          walletService.issueWeeklyStipends(TEST_LEAGUE_ID, amount, weekNumber);
-
-      // Then
-      assertThat(response).isNotNull();
-      assertThat(response.leagueId()).isEqualTo(TEST_LEAGUE_ID);
-      assertThat(response.stipendsIssued()).isZero();
-    }
-
-    @Test
-    @DisplayName("Should handle multiple week numbers")
-    void shouldHandleMultipleWeekNumbers() {
-      // Given
-      BigDecimal amount = new BigDecimal("500.00");
-
-      when(leagueServiceClient.getMemberUserIdsInternal(TEST_LEAGUE_ID))
-          .thenReturn(List.of(TEST_USER_ID));
-      Wallet wallet =
-          createMockWallet(1L, TEST_USER_ID, TEST_LEAGUE_ID, new BigDecimal("10000.00"));
-      when(walletRepository.findByUserIdAndLeagueIdForUpdate(TEST_USER_ID, TEST_LEAGUE_ID))
-          .thenReturn(Optional.of(wallet));
-      when(transactionRepository.existsByIdempotencyKey(any())).thenReturn(false);
-
-      // When
-      StipendResultResponse response1 =
-          walletService.issueWeeklyStipends(TEST_LEAGUE_ID, amount, 1);
-      StipendResultResponse response2 =
-          walletService.issueWeeklyStipends(TEST_LEAGUE_ID, amount, 2);
-      StipendResultResponse response3 =
-          walletService.issueWeeklyStipends(TEST_LEAGUE_ID, amount, 18);
-
-      // Then
-      assertThat(response1).isNotNull();
-      assertThat(response2).isNotNull();
-      assertThat(response3).isNotNull();
-    }
+    ArgumentCaptor<Transaction> transactionCaptor = ArgumentCaptor.forClass(Transaction.class);
+    verify(transactionRepository).save(transactionCaptor.capture());
+    Transaction saved = transactionCaptor.getValue();
+    assertEquals(TransactionType.INITIAL_STIPEND, saved.getType());
+    assertEquals("INITIAL_STIPEND:7:42:2026:2", saved.getIdempotencyKey());
+    assertEquals(bd("250.0000"), saved.getBalanceAfter());
   }
 
-  @Nested
-  @DisplayName("processStockBuy() tests")
-  class ProcessStockBuyTests {
+  @Test
+  void issueWeeklyStipends_isIdempotentPerLeagueUserAndWeek() {
+    Wallet wallet = wallet(USER_ID, LEAGUE_ID, "250.0000");
 
-    @Test
-    @DisplayName("Should process stock buy request")
-    void shouldProcessStockBuy() {
-      when(stockMarketServiceClient.getStock(any())).thenReturn(createActiveStockResponse());
-      Wallet wallet = createMockWallet(1L, TEST_USER_ID, TEST_LEAGUE_ID, new BigDecimal("1000.00"));
-      when(walletRepository.findByUserIdAndLeagueIdForUpdate(TEST_USER_ID, TEST_LEAGUE_ID))
-          .thenReturn(Optional.of(wallet));
-      when(transactionRepository.existsByIdempotencyKey("idem-buy-1")).thenReturn(false);
-      when(transactionRepository.save(any(Transaction.class)))
-          .thenAnswer(
-              invocation -> {
-                Transaction tx = invocation.getArgument(0);
-                tx.setId(1001L);
-                tx.setCreatedAt(OffsetDateTime.now());
-                return tx;
-              });
+    when(leagueServiceClient.getMemberUserIdsInternal(LEAGUE_ID)).thenReturn(List.of(USER_ID));
+    when(transactionRepository.existsByIdempotencyKeyAndLeagueIdAndUserIdAndSeasonYearAndSeasonType(
+            "WEEKLY_STIPEND:7:42:3:2026:2", LEAGUE_ID, USER_ID, 2026, "2"))
+        .thenReturn(true);
 
-      var response =
-          walletService.processStockBuy(
-              TEST_USER_ID,
-              TEST_LEAGUE_ID,
-              new StockTransactionRequest(
-                  TEST_LEAGUE_ID, UUID.randomUUID(), new BigDecimal("10"), null, "idem-buy-1"));
+    var response = service.issueWeeklyStipends(LEAGUE_ID, bd("25.0000"), 3);
 
-      assertThat(response).isNotNull();
-      assertThat(response.type()).isEqualTo("STOCK_BUY");
-      assertThat(response.quantity()).isEqualByComparingTo(new BigDecimal("10"));
-      assertThat(response.totalAmount()).isEqualByComparingTo(new BigDecimal("250.0000"));
-    }
-
-    @Test
-    @DisplayName("Should require exactly one of quantity or dollarAmount")
-    void shouldValidateAllParametersArePassed() {
-      // When & Then
-      assertThatThrownBy(
-              () ->
-                  walletService.processStockBuy(
-                      1001L,
-                      1L,
-                      new StockTransactionRequest(1L, UUID.randomUUID(), null, null, "idem-buy-2")))
-          .isInstanceOf(InvalidTradeRequestException.class);
-    }
+    assertEquals(0, response.walletsCreated());
+    assertEquals(0, response.stipendsIssued());
+    assertEquals(bd("250.0000"), wallet.getBalance());
+    verify(transactionRepository, never()).save(any(Transaction.class));
+    verify(walletRepository, never()).save(any(Wallet.class));
   }
 
-  @Nested
-  @DisplayName("processStockSell() tests")
-  class ProcessStockSellTests {
+  @Test
+  void liquidateAssets_recordsLiquidationAgainstEachOpenBuyLot() {
+    Wallet wallet = wallet(USER_ID, LEAGUE_ID, "0.0000");
+    Transaction firstBuy = buyTransaction(wallet, "10.0000", "20.0000");
+    Transaction secondBuy = buyTransaction(wallet, "5.0000", "5.0000");
+    secondBuy.setId(901L);
 
-    @Test
-    @DisplayName("Should process stock sell request")
-    void shouldProcessStockSell() {
-      when(stockMarketServiceClient.getStock(any())).thenReturn(createActiveStockResponse());
-      Wallet wallet = createMockWallet(2L, 1002L, 2L, new BigDecimal("1000.00"));
-      when(walletRepository.findByUserIdAndLeagueIdForUpdate(1002L, 2L))
-          .thenReturn(Optional.of(wallet));
-      when(transactionRepository.existsByIdempotencyKey("idem-sell-1")).thenReturn(false);
-      when(transactionRepository.save(any(Transaction.class)))
-          .thenAnswer(
-              invocation -> {
-                Transaction tx = invocation.getArgument(0);
-                tx.setId(2001L);
-                tx.setCreatedAt(OffsetDateTime.now());
-                return tx;
-              });
+    when(walletRepository.findAllByLeagueId(LEAGUE_ID)).thenReturn(List.of(wallet));
+    when(walletRepository.findByUserIdAndLeagueIdForUpdate(USER_ID, LEAGUE_ID))
+        .thenReturn(Optional.of(wallet));
+    when(portfolioServiceClient.getPortfolio(USER_ID, LEAGUE_ID))
+        .thenReturn(
+            new PortfolioResponse(
+                1L, USER_ID, LEAGUE_ID, List.of(new HoldingsResponse(1L, STOCK_ID, bd("3.0000")))));
+    when(stockMarketServiceClient.getStock(STOCK_ID)).thenReturn(activeStock("15.0000"));
+    when(transactionRepository.findByUserIdAndLeagueIdAndReferenceIdAndTypeOrderByCreatedAtAsc(
+            USER_ID, LEAGUE_ID, "stock:" + STOCK_ID, TransactionType.STOCK_BUY))
+        .thenReturn(List.of(firstBuy, secondBuy));
+    when(transactionRepository.sumSoldQuantityByBuyTransactionId(900L)).thenReturn(BigDecimal.ZERO);
+    when(transactionRepository.sumSoldQuantityByBuyTransactionId(901L)).thenReturn(BigDecimal.ZERO);
+    when(transactionRepository.existsByIdempotencyKeyAndLeagueIdAndUserIdAndSeasonYearAndSeasonType(
+            any(), any(), any(), any(), any()))
+        .thenReturn(false);
+    stubWalletSave();
+    stubTransactionSave();
 
-      var response =
-          walletService.processStockSell(
-              1002L,
-              2L,
-              new StockTransactionRequest(
-                  2L, UUID.randomUUID(), new BigDecimal("10"), null, "idem-sell-1"));
+    var response = service.liquidateAssets(LEAGUE_ID, 1);
 
-      assertThat(response).isNotNull();
-      assertThat(response.type()).isEqualTo("STOCK_SELL");
-      assertThat(response.quantity()).isEqualByComparingTo(new BigDecimal("10"));
-      assertThat(response.totalAmount()).isEqualByComparingTo(new BigDecimal("250.0000"));
-    }
+    assertEquals(2, response.stipendsIssued());
+    assertEquals(bd("45.0000"), wallet.getBalance());
 
-    @Test
-    @DisplayName("Should require exactly one of quantity or dollarAmount")
-    void shouldValidateAllParametersArePassed() {
-      // When & Then
-      assertThatThrownBy(
-              () ->
-                  walletService.processStockSell(
-                      1002L,
-                      2L,
-                      new StockTransactionRequest(
-                          2L, UUID.randomUUID(), null, null, "idem-sell-2")))
-          .isInstanceOf(InvalidTradeRequestException.class);
-    }
+    ArgumentCaptor<Transaction> transactionCaptor = ArgumentCaptor.forClass(Transaction.class);
+    verify(transactionRepository, org.mockito.Mockito.times(2)).save(transactionCaptor.capture());
+    List<Transaction> saved = transactionCaptor.getAllValues();
+    assertEquals(TransactionType.LIQUIDATE_ASSETS, saved.get(0).getType());
+    assertEquals(900L, saved.get(0).getBuyTransactionId());
+    assertEquals(bd("30.0000"), saved.get(0).getAmount());
+    assertEquals(TransactionType.LIQUIDATE_ASSETS, saved.get(1).getType());
+    assertEquals(901L, saved.get(1).getBuyTransactionId());
+    assertEquals(bd("15.0000"), saved.get(1).getAmount());
+    verify(portfolioServiceClient).clearHoldings(USER_ID, LEAGUE_ID);
+    verify(portfolioServiceClient).finalizeHistory(USER_ID, LEAGUE_ID, 1, "2", bd("45.0000"));
   }
 
-  @Nested
-  @DisplayName("Edge Cases and Boundary Tests")
-  class EdgeCaseTests {
-
-    @Test
-    @DisplayName("Should handle very large balance amounts")
-    void shouldHandleLargeBalances() {
-      // Given
-      BigDecimal largeAmount = new BigDecimal("999999999.9999");
-      Wallet wallet = createMockWallet(1L, TEST_USER_ID, TEST_LEAGUE_ID, largeAmount);
-      when(walletRepository.findByUserIdAndLeagueId(TEST_USER_ID, TEST_LEAGUE_ID))
-          .thenReturn(Optional.of(wallet));
-
-      // When
-      WalletResponse response = walletService.getWallet(TEST_USER_ID, TEST_LEAGUE_ID);
-
-      // Then
-      assertThat(response.balance()).isEqualByComparingTo(largeAmount);
-    }
-
-    @Test
-    @DisplayName("Should handle zero balance")
-    void shouldHandleZeroBalance() {
-      // Given
-      Wallet wallet = createMockWallet(1L, TEST_USER_ID, TEST_LEAGUE_ID, BigDecimal.ZERO);
-      when(walletRepository.findByUserIdAndLeagueId(TEST_USER_ID, TEST_LEAGUE_ID))
-          .thenReturn(Optional.of(wallet));
-
-      // When
-      WalletResponse response = walletService.getWallet(TEST_USER_ID, TEST_LEAGUE_ID);
-
-      // Then
-      assertThat(response.balance()).isEqualByComparingTo(BigDecimal.ZERO);
-    }
-
-    @Test
-    @DisplayName("Should handle multiple leagues for same user")
-    void shouldHandleMultipleLeaguesForSameUser() {
-      // Given
-      Long league1 = 1L;
-      Long league2 = 2L;
-
-      Wallet wallet1 = createMockWallet(1L, TEST_USER_ID, league1, new BigDecimal("5000.00"));
-      Wallet wallet2 = createMockWallet(2L, TEST_USER_ID, league2, new BigDecimal("7000.00"));
-
-      when(walletRepository.findByUserIdAndLeagueId(TEST_USER_ID, league1))
-          .thenReturn(Optional.of(wallet1));
-      when(walletRepository.findByUserIdAndLeagueId(TEST_USER_ID, league2))
-          .thenReturn(Optional.of(wallet2));
-
-      // When
-      WalletResponse response1 = walletService.getWallet(TEST_USER_ID, league1);
-      WalletResponse response2 = walletService.getWallet(TEST_USER_ID, league2);
-
-      // Then
-      assertThat(response1.leagueId()).isEqualTo(league1);
-      assertThat(response2.leagueId()).isEqualTo(league2);
-      assertThat(response1.balance()).isEqualByComparingTo(new BigDecimal("5000.00"));
-      assertThat(response2.balance()).isEqualByComparingTo(new BigDecimal("7000.00"));
-    }
-  }
-
-  // Helper methods
-
-  private Wallet createMockWallet(Long id, Long userId, Long leagueId, BigDecimal balance) {
+  private static Wallet wallet(Long userId, Long leagueId, String balance) {
     Wallet wallet = new Wallet();
-    wallet.setId(id);
+    wallet.setId(100L);
     wallet.setUserId(userId);
     wallet.setLeagueId(leagueId);
-    wallet.setBalance(balance);
-    wallet.setCreatedAt(OffsetDateTime.now());
-    wallet.setUpdatedAt(OffsetDateTime.now());
+    wallet.setBalance(bd(balance));
+    wallet.setCreatedAt(OffsetDateTime.parse("2026-04-06T12:00:00Z"));
+    wallet.setUpdatedAt(OffsetDateTime.parse("2026-04-06T12:00:00Z"));
     return wallet;
   }
 
-  private Transaction createMockTransaction(
-      Long id,
-      Wallet wallet,
-      TransactionType type,
-      BigDecimal amount,
-      BigDecimal balanceBefore,
-      BigDecimal balanceAfter) {
+  private static Transaction buyTransaction(Wallet wallet, String pricePerShare, String amount) {
     Transaction transaction = new Transaction();
-    transaction.setId(id);
+    transaction.setId(900L);
     transaction.setWallet(wallet);
-    transaction.setType(type);
-    transaction.setAmount(amount);
-    transaction.setBalanceBefore(balanceBefore);
-    transaction.setBalanceAfter(balanceAfter);
+    transaction.setType(TransactionType.STOCK_BUY);
     transaction.setLeagueId(wallet.getLeagueId());
     transaction.setUserId(wallet.getUserId());
-    transaction.setCreatedAt(OffsetDateTime.now());
+    transaction.setReferenceId("stock:" + STOCK_ID);
+    transaction.setPricePerShare(bd(pricePerShare));
+    transaction.setAmount(bd(amount));
+    transaction.setCreatedAt(OffsetDateTime.parse("2026-04-01T12:00:00Z"));
     return transaction;
   }
 
-  private StockResponse createActiveStockResponse() {
+  private static StockResponse activeStock(String currentPrice) {
     return new StockResponse(
-        UUID.randomUUID(),
-        "espn-athlete-1",
-        "Test Player",
+        STOCK_ID,
+        "3139477",
+        "Patrick Mahomes",
         "QB",
-        "team-1",
-        new BigDecimal("25.00"),
+        "PLAYER",
+        "12",
+        bd(currentPrice),
         "ACTIVE",
-        Instant.now());
+        false,
+        false,
+        Instant.parse("2026-04-06T11:55:00Z"));
+  }
+
+  private static BigDecimal bd(String value) {
+    return new BigDecimal(value);
+  }
+
+  private void stubWalletSave() {
+    when(walletRepository.save(any(Wallet.class)))
+        .thenAnswer(
+            invocation -> {
+              Wallet wallet = invocation.getArgument(0);
+              if (wallet.getId() == null) {
+                wallet.setId(100L);
+              }
+              if (wallet.getCreatedAt() == null) {
+                wallet.setCreatedAt(OffsetDateTime.parse("2026-04-06T12:00:00Z"));
+              }
+              wallet.setUpdatedAt(OffsetDateTime.parse("2026-04-06T12:00:00Z"));
+              return wallet;
+            });
+  }
+
+  private void stubTransactionSave() {
+    when(transactionRepository.save(any(Transaction.class)))
+        .thenAnswer(
+            invocation -> {
+              Transaction transaction = invocation.getArgument(0);
+              if (transaction.getId() == null) {
+                transaction.setId(200L);
+              }
+              if (transaction.getCreatedAt() == null) {
+                transaction.setCreatedAt(OffsetDateTime.parse("2026-04-06T12:01:00Z"));
+              }
+              return transaction;
+            });
+  }
+
+  private static final class NoOpTransactionManager extends AbstractPlatformTransactionManager {
+    @Override
+    protected Object doGetTransaction() {
+      return new Object();
+    }
+
+    @Override
+    protected void doBegin(Object transaction, TransactionDefinition definition) {}
+
+    @Override
+    protected void doCommit(DefaultTransactionStatus status) {}
+
+    @Override
+    protected void doRollback(DefaultTransactionStatus status) {}
   }
 }

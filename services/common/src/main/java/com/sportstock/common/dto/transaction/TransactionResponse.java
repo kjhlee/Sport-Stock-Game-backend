@@ -15,4 +15,6 @@ public record TransactionResponse(
     String referenceId,
     String description,
     String idempotencyKey,
+    BigDecimal pricePerShare,
+    Long buyTransactionId,
     OffsetDateTime createdAt) {}

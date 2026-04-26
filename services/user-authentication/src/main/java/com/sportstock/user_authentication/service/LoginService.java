@@ -5,16 +5,12 @@ import com.sportstock.user_authentication.exception.InvalidCredentialsException;
 import com.sportstock.user_authentication.models.UserDetails;
 import com.sportstock.user_authentication.repository.UserAccountRepo;
 import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
 public class LoginService {
-
-  private final Logger logger = LoggerFactory.getLogger(LoginService.class);
 
   private final BCryptPasswordEncoder passwordEncoder;
 
@@ -38,9 +34,7 @@ public class LoginService {
               .orElseThrow(
                   () -> new InvalidCredentialsException("Incorrect username/email or password."));
     }
-    logger.info("Login attempt for account: {}", account);
     if (!passwordEncoder.matches(password, account.getPassword())) {
-      logger.error("Login failed for account: {}", account);
       throw new InvalidCredentialsException("Incorrect username/email or password.");
     }
 

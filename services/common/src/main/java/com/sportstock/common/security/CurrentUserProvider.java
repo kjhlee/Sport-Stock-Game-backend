@@ -8,19 +8,19 @@ import org.springframework.stereotype.Component;
 @Component
 public class CurrentUserProvider {
 
-  private AuthenticatedUser getPrincipal() {
+  private JwtUserPrincipal getPrincipal() {
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-    if (authentication == null || !(authentication.getPrincipal() instanceof AuthenticatedUser)) {
+    if (authentication == null || !(authentication.getPrincipal() instanceof JwtUserPrincipal)) {
       throw new MissingAuthenticationException("No authenticated user found in security context");
     }
-    return (AuthenticatedUser) authentication.getPrincipal();
+    return (JwtUserPrincipal) authentication.getPrincipal();
   }
 
   public Long getCurrentUserId() {
     return getPrincipal().userId();
   }
 
-  public String getCurrentUserEmail() {
+  public String getCurrentEmail() {
     return getPrincipal().email();
   }
 

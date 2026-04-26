@@ -8,6 +8,7 @@ import com.sportstock.common.dto.ingestion.EventResponse;
 import com.sportstock.common.dto.ingestion.PlayerGameStatResponse;
 import com.sportstock.common.dto.ingestion.TeamRecordResponse;
 import com.sportstock.common.dto.ingestion.TeamResponse;
+import com.sportstock.common.dto.stock_market.IngestionEventDto;
 import com.sportstock.ingestion.entity.Athlete;
 import com.sportstock.ingestion.entity.BoxscoreTeamStat;
 import com.sportstock.ingestion.entity.Event;
@@ -21,7 +22,7 @@ public final class DtoMapper {
 
   private DtoMapper() {}
 
-  public static AthleteResponse toAthleteResponse(Athlete entity) {
+  public static AthleteResponse toAthleteResponse(Athlete entity, String teamEspnId) {
     return new AthleteResponse(
         entity.getEspnId(),
         entity.getFirstName(),
@@ -51,7 +52,8 @@ public final class DtoMapper {
         entity.getStatusId(),
         entity.getStatusName(),
         entity.getStatusType(),
-        entity.getHandType());
+        entity.getHandType(),
+        teamEspnId);
   }
 
   public static TeamResponse toTeamResponse(Team entity) {
@@ -148,5 +150,15 @@ public final class DtoMapper {
         entity.getDivisionLosses(),
         entity.getDivisionTies(),
         entity.getLeagueWinPercent());
+  }
+
+  public static IngestionEventDto toEventDto(Event event) {
+    return new IngestionEventDto(
+        event.getEspnId(),
+        event.getSeasonYear(),
+        event.getSeasonType(),
+        event.getWeekNumber(),
+        event.getStatusCompleted(),
+        event.getStatusState());
   }
 }

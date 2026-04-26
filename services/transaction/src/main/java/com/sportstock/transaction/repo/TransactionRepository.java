@@ -2,10 +2,14 @@ package com.sportstock.transaction.repo;
 
 import com.sportstock.transaction.entity.Transaction;
 import com.sportstock.transaction.enums.TransactionType;
+import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface TransactionRepository extends JpaRepository<Transaction, Long> {
 
@@ -14,9 +18,24 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
 
   Page<Transaction> findByWalletIdOrderByCreatedAtDesc(Long walletId, Pageable pageable);
 
-  boolean existsByIdempotencyKey(String idempotencyKey);
+  boolean existsByIdempotencyKeyAndLeagueIdAndUserIdAndSeasonYearAndSeasonType(
+      String idempotencyKey, Long leagueId, Long userId, Integer seasonYear, String seasonType);
 
-  Optional<Transaction> findByIdempotencyKey(String idempotencyKey);
+  Optional<Transaction> findByIdempotencyKeyAndLeagueIdAndUserIdAndSeasonYearAndSeasonType(
+      String idempotencyKey, Long leagueId, Long userId, Integer seasonYear, String seasonType);
 
   Page<Transaction> findByLeagueIdAndType(Long leagueId, TransactionType type, Pageable pageable);
+
+  List<Transaction> findByUserIdAndLeagueIdAndReferenceIdAndTypeOrderByCreatedAtAsc(
+      Long userId, Long leagueId, String referenceId, TransactionType type);
+
+  @Query(
+      """
+    SELECT COALESCE(SUM(t.amount / t.pricePerShare), 0)
+    FROM Transaction t
+    WHERE t.buyTransactionId = :buyTxId
+      AND t.type IN (com.sportstock.transaction.enums.TransactionType.STOCK_SELL,
+                     com.sportstock.transaction.enums.TransactionType.LIQUIDATE_ASSETS)
+    """)
+  BigDecimal sumSoldQuantityByBuyTransactionId(@Param("buyTxId") Long buyTransactionId);
 }

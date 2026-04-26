@@ -2,6 +2,7 @@ package com.sportstock.ingestion.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.sportstock.common.dto.ingestion.EventResponse;
+import com.sportstock.common.dto.stock_market.IngestionEventDto;
 import com.sportstock.ingestion.client.EspnApiClient;
 import com.sportstock.ingestion.entity.Event;
 import com.sportstock.ingestion.entity.EventCompetitor;
@@ -88,10 +89,18 @@ public class EventIngestionService {
         .toList();
   }
 
-  public EventResponse getEventByEspnId(String eventEspnId) {
+  public EventResponse getEventResponseByEspnId(String eventEspnId) {
     return eventRepository
         .findByEspnId(eventEspnId)
         .map(DtoMapper::toEventResponse)
+        .orElseThrow(
+            () -> new EntityNotFoundException("Event not found with ESPN ID: " + eventEspnId));
+  }
+
+  public IngestionEventDto getEventByEspnId(String eventEspnId) {
+    return eventRepository
+        .findByEspnId(eventEspnId)
+        .map(DtoMapper::toEventDto)
         .orElseThrow(
             () -> new EntityNotFoundException("Event not found with ESPN ID: " + eventEspnId));
   }

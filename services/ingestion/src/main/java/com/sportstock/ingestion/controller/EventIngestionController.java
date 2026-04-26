@@ -3,6 +3,11 @@ package com.sportstock.ingestion.controller;
 import com.sportstock.common.dto.ingestion.BoxscoreTeamStatResponse;
 import com.sportstock.common.dto.ingestion.EventResponse;
 import com.sportstock.common.dto.ingestion.PlayerGameStatResponse;
+import com.sportstock.common.dto.stock_market.IngestionEventDto;
+import com.sportstock.ingestion.entity.Event;
+import com.sportstock.ingestion.repo.EventCompetitorRepository;
+import com.sportstock.ingestion.repo.EventRepository;
+import com.sportstock.ingestion.repo.TeamRosterEntryRepository;
 import com.sportstock.ingestion.service.EventIngestionService;
 import com.sportstock.ingestion.service.EventSummaryIngestionService;
 import jakarta.validation.constraints.Max;
@@ -26,13 +31,16 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @Validated
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/ingestion")
+@RequestMapping("/api/internal/ingestion")
 public class EventIngestionController {
 
   private static final String ESPN_ID_PATTERN = "\\d{1,15}";
 
   private final EventIngestionService eventIngestionService;
   private final EventSummaryIngestionService eventSummaryIngestionService;
+  private final EventRepository eventRepository;
+  private final EventCompetitorRepository eventCompetitorRepository;
+  private final TeamRosterEntryRepository teamRosterEntryRepository;
 
   @PostMapping("/sync/scoreboard")
   public ResponseEntity<Map<String, Object>> syncScoreboard(
@@ -62,7 +70,7 @@ public class EventIngestionController {
   }
 
   @GetMapping("/events/{eventEspnId}")
-  public ResponseEntity<EventResponse> getEvent(
+  public ResponseEntity<IngestionEventDto> getEvent(
       @PathVariable @NotBlank @Pattern(regexp = ESPN_ID_PATTERN) String eventEspnId) {
     return ResponseEntity.ok(eventIngestionService.getEventByEspnId(eventEspnId));
   }
@@ -94,5 +102,23 @@ public class EventIngestionController {
     response.put("status", "ACCEPTED");
     response.put("requestedAt", Instant.now());
     return response;
+  }
+
+  @GetMapping("/events/{espnId}/teams")
+  public List<String> getEventTeamEspnIds(@PathVariable String espnId) {
+    return eventCompetitorRepository.findByEventEspnIdWithTeam(espnId).stream()
+        .map(ec -> ec.getTeam().getEspnId())
+        .toList();
+  }
+
+  @GetMapping("/events/{espnId}/roster/{teamEspnId}")
+  public List<String> getEventRosterEspnIds(
+      @PathVariable String espnId, @PathVariable String teamEspnId) {
+    Event event =
+        eventRepository
+            .findByEspnId(espnId)
+            .orElseThrow(() -> new IllegalArgumentException("Event not found: " + espnId));
+    return teamRosterEntryRepository.findAthleteEspnIdsByTeamEspnIdAndSeasonYear(
+        teamEspnId, event.getSeasonYear());
   }
 }

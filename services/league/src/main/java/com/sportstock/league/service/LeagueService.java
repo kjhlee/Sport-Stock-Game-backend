@@ -6,12 +6,13 @@ import com.sportstock.common.dto.league.JoinLeagueRequest;
 import com.sportstock.common.dto.league.LeagueInviteResponse;
 import com.sportstock.common.dto.league.LeagueMemberResponse;
 import com.sportstock.common.dto.league.LeagueResponse;
-import com.sportstock.common.dto.league.StipendEligibleLeagueResponse;
+import com.sportstock.common.enums.league.InitialStipendStatus;
+import com.sportstock.common.enums.league.LeagueStatus;
+import com.sportstock.league.client.IngestionServiceClient;
 import com.sportstock.league.client.TransactionServiceClient;
 import com.sportstock.league.entity.League;
 import com.sportstock.league.entity.LeagueInvite;
 import com.sportstock.league.entity.LeagueMember;
-import com.sportstock.league.enums.LeagueStatus;
 import com.sportstock.league.exception.InvalidInviteException;
 import com.sportstock.league.exception.LeagueAccessDeniedException;
 import com.sportstock.league.exception.LeagueNotFoundException;
@@ -41,6 +42,7 @@ public class LeagueService {
   private final LeagueMemberRepository leagueMemberRepository;
   private final LeagueInviteRepository leagueInviteRepository;
   private final TransactionServiceClient transactionServiceClient;
+  private final IngestionServiceClient ingestionServiceClient;
 
   @Transactional
   public LeagueResponse createLeague(Long userId, CreateLeagueRequest req) {
@@ -53,7 +55,7 @@ public class LeagueService {
     league.setStatus(LeagueStatus.INACTIVE);
     league.setInitialStipendAmount(req.initialStipendAmount());
     league.setWeeklyStipendAmount(req.weeklyStipendAmount());
-    league.setWeeklyPayoutDowUtc(req.weeklyPayoutDowUtc());
+    league.setInitialStipendStatus(InitialStipendStatus.PENDING);
     leagueRepository.save(league);
 
     LeagueMember member = new LeagueMember();
@@ -176,11 +178,25 @@ public class LeagueService {
       throw new LeagueStateException("League must have at least 2 members to start");
     }
 
+    var currentWeek = ingestionServiceClient.getCurrentWeekOrPreseasonOptional();
+    if (currentWeek == null) {
+      throw new LeagueStateException("League cannot be started during the NFL offseason");
+    }
+    if (!"1".equals(currentWeek.seasonType()) && !"2".equals(currentWeek.seasonType())) {
+      throw new LeagueStateException(
+          "League can only be started during the NFL preseason or regular season");
+    }
+
     league.setStartedAt(OffsetDateTime.now());
     league.setStatus(LeagueStatus.ACTIVE);
+    if ("2".equals(currentWeek.seasonType())) {
+      league.setInitialStipendStatus(InitialStipendStatus.ISSUED);
+      transactionServiceClient.issueInitialStipends(leagueId, league.getInitialStipendAmount());
+      league.setInitialStipendIssuedAt(OffsetDateTime.now());
+    } else {
+      league.setInitialStipendStatus(InitialStipendStatus.PENDING);
+    }
 
-    transactionServiceClient.issueInitialStipends(leagueId, league.getInitialStipendAmount());
-    league.setInitialStipendIssuedAt(OffsetDateTime.now());
     leagueRepository.save(league);
     return DtoMapper.toLeagueResponse(league, memberCount);
   }
@@ -212,6 +228,9 @@ public class LeagueService {
         leagueMemberRepository
             .findByLeagueIdAndUserId(leagueId, userId)
             .orElseThrow(() -> new LeagueNotFoundException("User is not a member of the league"));
+    if (league.getStatus() == LeagueStatus.ARCHIVED) {
+      throw new LeagueStateException("Cannot leave an archived league");
+    }
     if (league.getStartedAt() != null || league.getStatus() != LeagueStatus.INACTIVE) {
       throw new LeagueStateException("Cannot leave a league that has already started");
     }
@@ -275,15 +294,29 @@ public class LeagueService {
   }
 
   @Transactional(readOnly = true)
-  public List<StipendEligibleLeagueResponse> getStipendEligibleLeagues(Short payoutDay) {
-    List<League> leagues =
-        leagueRepository.findByStatusAndStartedAtIsNotNullAndWeeklyPayoutDowUtcOrderByIdAsc(
-            LeagueStatus.ACTIVE, payoutDay);
-    return leagues.stream()
-        .map(
-            l ->
-                new StipendEligibleLeagueResponse(
-                    l.getId(), l.getWeeklyStipendAmount(), l.getInitialStipendIssuedAt()))
+  public List<LeagueResponse> getLeaguesWithPendingStipend() {
+    return leagueRepository
+        .findByStatusAndInitialStipendStatus(LeagueStatus.ACTIVE, InitialStipendStatus.PENDING)
+        .stream()
+        .map(l -> DtoMapper.toLeagueResponse(l, leagueMemberRepository.countByLeagueId(l.getId())))
+        .toList();
+  }
+
+  @Transactional
+  public void updateInitialStipendStatus(Long leagueId, String status) {
+    League league = findLeagueOrThrow(leagueId);
+    try {
+      league.setInitialStipendStatus(InitialStipendStatus.valueOf(status));
+    } catch (IllegalArgumentException ex) {
+      throw new IllegalArgumentException("Invalid initial stipend status: " + status);
+    }
+    leagueRepository.save(league);
+  }
+
+  @Transactional(readOnly = true)
+  public List<LeagueResponse> getActiveLeagues() {
+    return leagueRepository.findByStatus(LeagueStatus.ACTIVE).stream()
+        .map(l -> DtoMapper.toLeagueResponse(l, leagueMemberRepository.countByLeagueId(l.getId())))
         .toList();
   }
 

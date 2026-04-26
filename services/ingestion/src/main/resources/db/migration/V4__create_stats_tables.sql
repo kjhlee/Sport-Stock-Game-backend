@@ -28,3 +28,20 @@ CREATE TABLE player_game_stats (
     CONSTRAINT fk_player_game_stats_team FOREIGN KEY (team_id) REFERENCES teams (id),
     CONSTRAINT uk_player_game_stats_event_athlete_category UNIQUE (event_id, athlete_espn_id, stat_category)
 );
+
+CREATE TABLE fantasy_snapshot (
+      id                          BIGSERIAL PRIMARY KEY,
+      event_id                    BIGINT NOT NULL,
+      subject_type                VARCHAR(20) NOT NULL,
+      espn_id                     VARCHAR(15) NOT NULL,
+      full_name                   VARCHAR(255) NOT NULL,
+      projected_stats             JSONB,
+      projected_fantasy_points    DECIMAL(10,2),
+      actual_fantasy_points       DECIMAL(10,2),
+      completed                   BOOLEAN NOT NULL DEFAULT false,
+      ingested_at                 TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      CONSTRAINT fk_fantasy_snapshot_event FOREIGN KEY (event_id) REFERENCES events(id),
+      CONSTRAINT ck_fantasy_snapshot_type CHECK (subject_type IN ('PLAYER', 'TEAM_DEFENSE')),
+      CONSTRAINT uk_fantasy_snapshot_event_subject UNIQUE (event_id, subject_type, espn_id)
+);

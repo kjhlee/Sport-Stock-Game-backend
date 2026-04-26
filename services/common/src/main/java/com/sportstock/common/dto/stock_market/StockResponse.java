@@ -6,10 +6,13 @@ import java.util.UUID;
 
 public record StockResponse(
     UUID id,
-    String athleteEspnId,
+    String espnId,
     String fullName,
     String position,
+    String type,
     String teamEspnId,
     BigDecimal currentPrice,
     String status,
+    boolean gameLocked,
+    boolean injuryLocked,
     Instant priceUpdatedAt) {}

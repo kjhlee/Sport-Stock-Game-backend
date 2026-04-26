@@ -1,11 +1,13 @@
 package com.sportstock.league.client;
 
-import com.sportstock.common.dto.transaction.CreateWalletRequest;
 import com.sportstock.common.dto.transaction.IssueStipendRequest;
 import com.sportstock.common.dto.transaction.StipendResultResponse;
 import com.sportstock.common.dto.transaction.WalletResponse;
 import com.sportstock.common.security.RequestContextAuthorizationHeaderResolver;
+import com.sportstock.league.entity.LeagueMember;
+import com.sportstock.league.repo.LeagueMemberRepository;
 import java.math.BigDecimal;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -18,30 +20,19 @@ import org.springframework.web.client.RestClientResponseException;
 public class TransactionServiceClient {
 
   private final RestClient transactionRestClient;
-
-  public WalletResponse createWallet(Long leagueId) {
-    try {
-      return transactionRestClient
-          .post()
-          .uri("/api/v1/wallets")
-          .header(
-              "Authorization",
-              RequestContextAuthorizationHeaderResolver.resolveBearerAuthorizationHeader())
-          .body(new CreateWalletRequest(leagueId))
-          .retrieve()
-          .body(WalletResponse.class);
-    } catch (RestClientResponseException e) {
-      log.error("Failed to create wallet for league {}: {}", leagueId, e.getMessage());
-      throw new RuntimeException("Transaction service unavailable", e);
-    }
-  }
+  private final LeagueMemberRepository leagueMemberRepository;
 
   public StipendResultResponse issueInitialStipends(Long leagueId, BigDecimal amount) {
     try {
+      List<Long> userIds =
+          leagueMemberRepository.findAllByLeagueId(leagueId).stream()
+              .map(LeagueMember::getUserId)
+              .toList();
+
       return transactionRestClient
           .post()
-          .uri("/api/v1/wallets/stipends/initial")
-          .body(new IssueStipendRequest(leagueId, amount))
+          .uri("/api/internal/wallets/stipends/initial")
+          .body(new IssueStipendRequest(leagueId, amount, userIds))
           .retrieve()
           .body(StipendResultResponse.class);
     } catch (RestClientResponseException e) {

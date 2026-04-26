@@ -2,6 +2,7 @@ package com.sportstock.ingestion.controller;
 
 import com.sportstock.common.dto.ingestion.TeamRecordResponse;
 import com.sportstock.common.dto.ingestion.TeamResponse;
+import com.sportstock.common.dto.stock_market.IngestionInjuryStatusDto;
 import com.sportstock.ingestion.service.RosterIngestionService;
 import com.sportstock.ingestion.service.TeamIngestionService;
 import jakarta.validation.constraints.Max;
@@ -10,6 +11,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,7 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @Validated
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/ingestion")
+@RequestMapping("/api/internal/ingestion")
 public class TeamIngestionController {
 
   private static final String ESPN_ID_PATTERN = "\\d{1,15}";
@@ -65,6 +67,15 @@ public class TeamIngestionController {
     return ResponseEntity.accepted().body(accepted("rostersSync"));
   }
 
+  @PostMapping("/sync/rosters/stale")
+  public ResponseEntity<Map<String, Object>> syncStaleRosters(
+      @RequestParam @Min(2000) @Max(2100) Integer seasonYear,
+      @RequestParam(defaultValue = "24") @Min(1) @Max(168) Integer staleHours) {
+    rosterIngestionService.ingestRostersNeedingSync(
+        seasonYear, Instant.now().minus(staleHours, ChronoUnit.HOURS));
+    return ResponseEntity.accepted().body(accepted("staleRostersSync"));
+  }
+
   @GetMapping("/teams")
   public ResponseEntity<List<TeamResponse>> listTeams() {
     return ResponseEntity.ok(teamIngestionService.listTeams());
@@ -89,6 +100,12 @@ public class TeamIngestionController {
       @PathVariable @NotBlank String recordType,
       @RequestParam @Min(2000) @Max(2100) Integer seasonYear) {
     return ResponseEntity.ok(teamIngestionService.getRecord(teamEspnId, seasonYear, recordType));
+  }
+
+  @GetMapping("/rosters/injuries")
+  public ResponseEntity<List<IngestionInjuryStatusDto>> listInjuredAthletes(
+      @RequestParam @Min(2000) @Max(2100) Integer seasonYear) {
+    return ResponseEntity.ok(rosterIngestionService.listInjuredAthletes(seasonYear));
   }
 
   private Map<String, Object> accepted(String jobName) {

@@ -20,7 +20,7 @@ public interface SeasonWeekRepository extends JpaRepository<SeasonWeek, Long> {
     WHERE sw.startDate <= :now
       AND sw.endDate >= :now
       AND sw.seasonTypeValue IN :seasonTypes
-    ORDER BY sw.seasonTypeValue ASC
+    ORDER BY sw.seasonTypeValue DESC, sw.startDate DESC
     """)
   Optional<SeasonWeek> findCurrentWeek(
       @Param("now") Instant now, @Param("seasonTypes") List<String> seasonTypes);
@@ -36,6 +36,19 @@ public interface SeasonWeekRepository extends JpaRepository<SeasonWeek, Long> {
     """)
   Optional<SeasonWeek> findNextWeek(
       @Param("now") Instant now, @Param("seasonTypes") List<String> seasonTypes);
+
+  @Query(
+      """
+    SELECT sw FROM SeasonWeek sw
+    JOIN FETCH sw.season s
+    WHERE sw.endDate < :currentWeekStart
+      AND sw.seasonTypeValue IN :seasonTypes
+    ORDER BY sw.endDate DESC
+    LIMIT 1
+    """)
+  Optional<SeasonWeek> findPriorWeek(
+      @Param("currentWeekStart") Instant currentWeekStart,
+      @Param("seasonTypes") List<String> seasonTypes);
 
   @Query(
       """
